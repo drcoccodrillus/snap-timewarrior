@@ -1,0 +1,76 @@
+'\" t
+.\"     Title: timew-fill
+.\"    Author: [see the "AUTHOR(S)" section]
+.\" Generator: Asciidoctor 2.0.13
+.\"      Date: 2021-05-16
+.\"    Manual: User Manuals
+.\"    Source: timew 1.4.3
+.\"  Language: English
+.\"
+.TH "TIMEW\-FILL" "1" "2021-05-16" "timew 1.4.3" "User Manuals"
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE pass:[blue\ R\ <\ >]
+.\}
+.SH "NAME"
+timew-fill \- adjust intervals to fill in surrounding gaps
+.SH "SYNOPSIS"
+.sp
+.nf
+\fBtimew fill\fP \fI<id>\fP\fB...\fP
+.fi
+.br
+.SH "DESCRIPTION"
+.sp
+The \(aqfill\(aq command is used to adjust any interval to fill in surrounding gaps.
+Using the \(aqsummary\(aq command, and specifying the \(aq:ids\(aq hint shows interval IDs.
+Using the right ID, you can identify an interval to fill.
+.SH "EXAMPLES"
+.sp
+For example, show the IDs:
+.sp
+.if n .RS 4
+.nf
+.fam C
+$ timew summary :week :ids
+.fam
+.fi
+.if n .RE
+.sp
+Then having selected \(aq@2\(aq as the interval you wish to fill:
+.sp
+.if n .RS 4
+.nf
+.fam C
+$ timew fill @2
+.fam
+.fi
+.if n .RE
+.sp
+Note that you can fill multiple intervals:
+.sp
+.if n .RS 4
+.nf
+.fam C
+$ timew fill @2 @10 @23
+.fam
+.fi
+.if n .RE
+.SH "SEE ALSO"
+.sp
+\fBtimew\-hints\fP(1)

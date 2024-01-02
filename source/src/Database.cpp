@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016, 2018 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016, 2018 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -477,7 +477,7 @@ void Database::initializeTagDatabase ()
 
       for (auto &pair : json->_data)
       {
-        auto key = str_replace (pair.first, "\\\"", "\"");
+        auto key = json::decode (pair.first);
         auto *value = (json::object *) pair.second;
         auto iter = value->_data.find ("count");
 

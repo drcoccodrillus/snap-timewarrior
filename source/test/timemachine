@@ -1,0 +1,88 @@
+#!/bin/bash
+
+function default_dates()
+{
+  case "${OSTYPE}" in
+    darwin*)
+      date "+%Y-%m-%d"
+      ;;
+    *)
+      date --rfc-3339=date
+      ;;
+  esac
+}
+
+function default_minutes()
+{
+  case "${OSTYPE}" in
+    darwin*)
+      echo "0$( jot -r 1 0 59 )" | sed -E "s|.+(..)|\1|g"
+      ;;
+    *)
+      echo "0$( rand -M 60 )" | sed "s|.\+\(..\)\$|\1|g"
+      ;;
+  esac
+}
+
+function default_hours()
+{
+  seq -w 0 23
+}
+
+if ! command -v faketime >/dev/null 2>&1 ; then
+  echo "timemachine requires libfaketime to be installed!"
+  exit 1
+fi
+
+# parse options/arguments
+until [[ -z "${1}" ]] ; do
+  case "${1}" in
+    --minute)
+      shift
+      minutes="${minutes} ${1}"
+      ;;
+    --minutes)
+      shift
+      minutes="${1}"
+      ;;
+    --hour)
+      shift
+      hours="${hours} ${1}"
+      ;;
+    --hours)
+      shift
+      hours="${1}"
+      ;;
+    --date)
+      shift
+      dates="${dates} ${1}"
+      ;;
+    --fail-at-end)
+      fail_at_end=1
+      ;;
+    -*)
+      echo "Unknown option '${1}'"
+      exit 1
+      ;;
+    *)
+      tests="${tests} ${1}"
+      ;;
+  esac
+  shift
+done
+
+for date in ${dates-$( default_dates )} ; do
+  for hour in ${hours-$( default_hours )} ; do
+    for minute in ${minutes-$( default_minutes )} ; do
+      date_time="${date}T${hour}:${minute}"
+      for single_test in ${tests} ; do
+        echo "Running test ${single_test} at ${date_time}"
+
+        if ! faketime "${date_time}" "${single_test}" ; then
+          echo "Test ${single_test} broke at ${date_time}!"
+          [[ ${fail_at_end-0} -ne 0 ]] || break 2
+        fi
+      done
+    done
+  done
+done

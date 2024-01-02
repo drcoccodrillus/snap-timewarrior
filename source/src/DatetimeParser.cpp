@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez
+// Copyright 2020 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -2774,7 +2774,7 @@ bool DatetimeParser::isOrdinal (const std::string& token, int& ordinal)
   if (p.getDigits (number) &&
       p.getRemainder (suffix))
   {
-    if (((number >= 11 || number <= 13) && suffix == "th") ||
+    if (((number >= 11 && number <= 13) && suffix == "th") ||
         (number % 10 == 1               && suffix == "st") ||
         (number % 10 == 2               && suffix == "nd") ||
         (number % 10 == 3               && suffix == "rd") ||

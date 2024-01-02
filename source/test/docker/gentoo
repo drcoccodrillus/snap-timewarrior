@@ -1,0 +1,38 @@
+# Currently deactivated, see https://github.com/GothenburgBitFactory/timewarrior/issues/380
+# image is based on stage3-x86
+FROM gentoo/stage3-x86:latest
+
+# copy the entire portage volume in
+COPY --from=gentoo/portage:latest /var/db/repos/gentoo /var/db/repos/gentoo
+
+RUN ( CNT=60 ; while [[ ${CNT} -ne 0 ]] ; do echo "RUNNING (${CNT})" ; sleep 60 ; ((CNT--)) ; done ) & \
+    emerge -qv \
+           dev-util/cmake \
+           dev-vcs/git \
+           sys-devel/make \
+           sys-apps/man-db \
+           dev-lang/python \
+           dev-python/python-dateutil \
+           sys-libs/readline:0 \
+           sys-apps/util-linux ; \
+    kill %1
+
+# Setup environment
+ENV LC_ALL en_US.UTF-8
+ENV LANG en_US.UTF-8
+ENV LANGUAGE en_US.UTF-8
+
+# Setup timewarrior
+ADD . /root/code/
+WORKDIR /root/code/
+RUN git clean -dfx
+RUN git submodule init
+RUN git submodule update
+RUN cmake -DCMAKE_BUILD_TYPE=debug .
+RUN make -j2
+RUN make install
+
+# Setup tests
+RUN make -j2 test || true
+WORKDIR /root/code/test
+CMD ["bash", "-c", "./problems --summary ; cat all.log | grep 'not ok' ; ./problems ; FAILED=$? ; echo timew $( timew --version ) ; python --version ; cmake --version ; gcc --version; exit $FAILED"]

@@ -1,0 +1,52 @@
+'\" t
+.\"     Title: timew-report
+.\"    Author: [see the "AUTHOR(S)" section]
+.\" Generator: Asciidoctor 2.0.13
+.\"      Date: 2021-05-16
+.\"    Manual: User Manuals
+.\"    Source: timew 1.4.3
+.\"  Language: English
+.\"
+.TH "TIMEW\-REPORT" "1" "2021-05-16" "timew 1.4.3" "User Manuals"
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.ss \n[.ss] 0
+.nh
+.ad l
+.de URL
+\fI\\$2\fP <\\$1>\\$3
+..
+.als MTO URL
+.if \n[.g] \{\
+.  mso www.tmac
+.  am URL
+.    ad l
+.  .
+.  am MTO
+.    ad l
+.  .
+.  LINKSTYLE pass:[blue\ R\ <\ >]
+.\}
+.SH "NAME"
+timew-report \- run an extension report
+.SH "SYNOPSIS"
+.sp
+.nf
+\fBtimew\fP [\fBreport\fP] \fI<report>\fP [\fI<range>\fP] [\fI<tag>\fP\fB...\fP]
+.fi
+.br
+.SH "DESCRIPTION"
+.sp
+Runs an extension report, and supports filtering data.
+The \(aqreport\(aq command itself is optional, which means that these two commands are equivalent:
+.sp
+.if n .RS 4
+.nf
+.fam C
+$ timew report foo :week
+$ timew        foo :week
+.fam
+.fi
+.if n .RE
+.sp
+This does however assume there is a \(aqfoo\(aq extension installed.
