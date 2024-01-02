@@ -35,6 +35,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 bool domGet (
   Database& database,
+  Interval& filter,
   const Rules& rules,
   const std::string& reference,
   std::string& value)
@@ -42,6 +43,7 @@ bool domGet (
   Pig pig (reference);
   if (pig.skipLiteral ("dom."))
   {
+    // dom.active
     if (pig.skipLiteral ("active"))
     {
       auto latest = getLatestInterval (database);
@@ -102,11 +104,46 @@ bool domGet (
       }
     }
 
+    // dom.tracked.<...>
     else if (pig.skipLiteral ("tracked."))
     {
-      Interval filter;
       auto tracked = getTracked (database, rules, filter);
       int count = static_cast <int> (tracked.size ());
+
+      // dom.tracked.tags
+      if (pig.skipLiteral ("tags"))
+      {
+        std::set <std::string> tags;
+        for (const auto& interval : tracked)
+        {
+          for (const auto &tag : interval.tags ())
+          {
+            tags.insert (tag);
+          }
+        }
+
+        std::stringstream s;
+
+        for (const auto& tag : tags)
+        {
+          s << format ( "{1} ", tag );
+        }
+
+        value = s.str();
+        return true;
+      }
+
+      // dom.tracked.ids
+      if (pig.skipLiteral ("ids"))
+      {
+        std::stringstream s;
+        for (auto& interval : tracked)
+        {
+          s << format ( "@{1} ", interval.id );
+        }
+        value = s.str();
+        return true;
+      }
 
       // dom.tracked.count
       if (pig.skipLiteral ("count"))
@@ -116,25 +153,26 @@ bool domGet (
       }
 
       int n;
+      // dom.tracked.<N>.<...>
       if (pig.getDigits (n) &&
           n <= count        &&
           pig.skipLiteral ("."))
       {
-        // dom.tracked.N.tag.count
+        // dom.tracked.<N>.tag.count
         if (pig.skipLiteral ("tag.count"))
         {
           value = format ("{1}", tracked[count - n].tags ().size ());
           return true;
         }
 
-        // dom.tracked.N.start
+        // dom.tracked.<N>.start
         if (pig.skipLiteral ("start"))
         {
           value = tracked[count - n].start.toISOLocalExtended ();
           return true;
         }
 
-        // dom.tracked.N.end
+        // dom.tracked.<N>.end
         if (pig.skipLiteral ("end"))
         {
           if (tracked[count -n].is_open ())
@@ -144,14 +182,14 @@ bool domGet (
           return true;
         }
 
-        // dom.tracked.N.duration
+        // dom.tracked.<N>.duration
         if (pig.skipLiteral ("duration"))
         {
           value = Duration (tracked[count - n].total ()).formatISO ();
           return true;
         }
 
-        // dom.tracked.N.json
+        // dom.tracked.<N>.json
         if (pig.skipLiteral ("json"))
         {
           value = tracked[count - n].json ();
@@ -159,6 +197,7 @@ bool domGet (
         }
 
         int n;
+        // dom.tracked.<N>.tag.<M>
         if (pig.skipLiteral ("tag.") &&
             pig.getDigits (n))
         {
@@ -175,6 +214,7 @@ bool domGet (
       }
     }
 
+    // dom.tag.<...>
     else if (pig.skipLiteral ("tag."))
     {
       // get unique, ordered list of tags.
@@ -187,8 +227,8 @@ bool domGet (
         return true;
       }
 
-      // dom.tag.<N>
       int n;
+      // dom.tag.<N>
       if (pig.getDigits (n))
       {
         if (n <= static_cast <int> (tags.size ()))

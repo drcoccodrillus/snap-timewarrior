@@ -35,9 +35,9 @@ int CmdTrack (
   Database& database,
   Journal& journal)
 {
-  auto boolean = rules.getBoolean ("verbose");
+  const bool verbose = rules.getBoolean ("verbose");
 
-  auto filter = getFilter (cli);
+  auto filter = cli.getFilter ();
 
   // If this is not a proper closed interval, then the user is trying to make
   // the 'track' command behave like 'start', so delegate to CmdStart.
@@ -52,10 +52,10 @@ int CmdTrack (
 
   for (auto& interval : flatten (filter, getAllExclusions (rules, filter)))
   {
-    database.addInterval (interval, boolean);
+    database.addInterval (interval, verbose);
 
-    if (boolean)
-      std::cout << intervalSummarize (database, rules, interval);
+    if (verbose)
+      std::cout << intervalSummarize (rules, interval);
   }
 
   journal.endTransaction ();

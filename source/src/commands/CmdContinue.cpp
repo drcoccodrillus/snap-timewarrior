@@ -38,27 +38,33 @@ int CmdContinue (
   Journal& journal)
 {
   const bool verbose = rules.getBoolean ("verbose");
+  const Datetime now {};
 
-  // Gather IDs and TAGs.
-  std::set <int> ids = cli.getIds();
+  auto filter = cli.getFilter ({ now, 0 });
 
+  if (filter.start > now)
+  {
+    throw std::string ("Time tracking cannot be set in the future.");
+  }
+
+  std::set <int> ids = cli.getIds ();
+
+  if (!ids.empty () && !filter.tags().empty ())
+  {
+    throw std::string ("You cannot specify both id and tags to continue an interval.");
+  }
   if (ids.size() > 1)
   {
     throw std::string ("You can only specify one ID to continue.");
   }
 
-  journal.startTransaction ();
-
-  flattenDatabase (database, rules);
-
   Interval to_copy;
-  Interval latest = getLatestInterval (database);
 
-  if (ids.size() == 1)
+  if (ids.size () == 1)
   {
     auto intervals = getIntervalsByIds (database, rules, ids);
 
-    if (intervals.size () == 0)
+    if (intervals.empty ())
     {
       throw format ("ID '@{1}' does not correspond to any tracking.", *ids.begin ());
     }
@@ -66,13 +72,27 @@ int CmdContinue (
     assert (intervals.size () == 1);
     to_copy = intervals.front ();
   }
+  else if (!filter.tags ().empty ())
+  {
+    Interval tagFilter = {filter};
+    tagFilter.setRange (0, 0);
+    auto tracked = getTracked (database, rules, tagFilter);
+
+    if (tracked.empty())
+    {
+      throw format ("Tags '{1}' do not correspond to any tracking.", joinQuotedIfNeeded (", ", filter.tags ()));
+    }
+
+    to_copy = tracked.back();
+  }
   else
   {
+    Interval latest = getLatestInterval (database);
+
     if (latest.empty ())
     {
       throw std::string ("There is no previous tracking to continue.");
     }
-
     if (latest.is_open ())
     {
       throw std::string ("There is already active tracking.");
@@ -81,11 +101,10 @@ int CmdContinue (
     to_copy = latest;
   }
 
-  auto filter = getFilter (cli);
   Datetime start_time;
   Datetime end_time;
 
-  if (filter.start.toEpoch () != 0)
+  if (filter.is_started ())
   {
     start_time = filter.start;
     end_time = filter.end;
@@ -100,25 +119,15 @@ int CmdContinue (
   to_copy.start = start_time;
   to_copy.end = end_time;
 
-  if (latest.is_open ())
+  journal.startTransaction ();
+  if (validate (cli, rules, database, to_copy))
   {
-    Interval modified {latest};
-    modified.end = start_time;
-    database.modifyInterval(latest, modified, verbose);
-    if (verbose)
-    {
-      std::cout << '\n' << intervalSummarize (database, rules, modified);
-    }
+    database.addInterval (to_copy, verbose);
+    journal.endTransaction ();
   }
-
-  validate (cli, rules, database, to_copy);
-  database.addInterval (to_copy, verbose);
-
-  journal.endTransaction ();
-
   if (verbose)
   {
-    std::cout << intervalSummarize (database, rules, to_copy);
+    std::cout << intervalSummarize (rules, to_copy);
   }
 
   return 0;

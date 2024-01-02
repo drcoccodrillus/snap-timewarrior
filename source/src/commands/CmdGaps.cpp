@@ -37,10 +37,10 @@ int CmdGaps (
   Rules& rules,
   Database& database)
 {
-  auto verbose = rules.getBoolean ("verbose");
+  const bool verbose = rules.getBoolean ("verbose");
 
   // If filter is empty, choose 'today'.
-  auto filter = getFilter (cli);
+  auto filter = cli.getFilter ();
   if (! filter.is_started ())
   {
     if (rules.has ("reports.gaps.range"))

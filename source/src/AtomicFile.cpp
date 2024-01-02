@@ -24,11 +24,15 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <csignal>
 #include <stdio.h>
+#include <string.h>
+#include <errno.h>
 #include <cassert>
 #include <iostream>
 #include <vector>
 #include <unistd.h>
+#include <timew.h>
 
 #include <format.h>
 #include <AtomicFile.h>
@@ -57,7 +61,9 @@ struct AtomicFile::impl
 
   bool open ();
   void close ();
+  size_t size () const;
   void truncate ();
+  void remove ();
   void read (std::string& content);
   void read (std::vector <std::string>& lines);
   void append (const std::string& content);
@@ -149,11 +155,38 @@ void AtomicFile::impl::close ()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+size_t AtomicFile::impl::size () const
+{
+  struct stat s;
+  const char *filename = (is_temp_active) ? temp_file._data.c_str () : real_file._data.c_str ();
+  if (stat (filename, &s))
+  {
+    throw format ("stat error {1}: {2}", errno, strerror (errno));
+  }
+  return s.st_size;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void AtomicFile::impl::truncate ()
 {
   try 
   {
     temp_file.truncate ();
+    is_temp_active = true;
+  }
+  catch (...)
+  {
+    allow_atomics = false;
+    throw;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void AtomicFile::impl::remove ()
+{
+  try
+  {
+    temp_file.remove ();
     is_temp_active = true;
   }
   catch (...)
@@ -231,10 +264,19 @@ void AtomicFile::impl::finalize ()
 {
   if (is_temp_active && impl::allow_atomics)
   {
-    if (std::rename (temp_file._data.c_str (), real_file._data.c_str ()))
+    if (temp_file.exists ())
     {
-      throw format("Failed copying '{1}' to '{2}'. Database corruption possible.",
-                   temp_file._data, real_file._data);
+      debug (format ("Moving '{1}' -> '{2}'", temp_file._data, real_file._data));
+      if (std::rename (temp_file._data.c_str (), real_file._data.c_str ()))
+      {
+        throw format("Failed copying '{1}' to '{2}'. Database corruption possible.",
+            temp_file._data, real_file._data);
+      }
+    }
+    else
+    {
+      debug (format ("Removing '{1}'", real_file._data));
+      std::remove (real_file._data.c_str ());
     }
     is_temp_active = false;
   }
@@ -320,9 +362,21 @@ void AtomicFile::close ()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+size_t AtomicFile::size () const
+{
+  return pimpl->size ();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void AtomicFile::truncate ()
 {
   pimpl->truncate ();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void AtomicFile::remove ()
+{
+  pimpl->remove ();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -415,13 +469,23 @@ void AtomicFile::finalize_all ()
     file->close ();
   }
 
-  atomic_files_t new_atomic_files;
 
-  // Step 2: Rename the temp files to the *real* files
+  sigset_t new_mask;
+  sigset_t old_mask;
+  sigfillset (&new_mask);
+
+  // Step 2: Rename the temp files to the *real* file
+  sigprocmask (SIG_SETMASK, &new_mask, &old_mask);
   for (auto& file : impl::atomic_files)
   {
     file->finalize ();
+  }
+  sigprocmask (SIG_SETMASK, &old_mask, nullptr);
 
+  // Step 3: Cleanup any references
+  atomic_files_t new_atomic_files;
+  for (auto& file : impl::atomic_files)
+  {
     // Delete entry if we are holding the last reference
     if (file.use_count () > 1)
     {

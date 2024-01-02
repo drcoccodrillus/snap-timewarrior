@@ -38,192 +38,6 @@
 #include <IntervalFactory.h>
 
 ////////////////////////////////////////////////////////////////////////////////
-// A filter is just another interval, containing start, end and tags.
-//
-// Supported interval forms:
-//   ["from"] <date> ["to"|"-" <date>]
-//   ["from"] <date> "for" <duration>
-//   <duration> ["before"|"after" <date>]
-//   <duration> "ago"
-//
-Interval getFilter (const CLI& cli)
-{
-  // One instance, so we can directly compare.
-  Datetime now;
-
-  Interval filter;
-  std::string start;
-  std::string end;
-  std::string duration;
-  std::vector <std::string> args;
-  for (auto& arg : cli._args)
-  {
-    if (arg.hasTag ("BINARY") ||
-        arg.hasTag ("CMD")    ||
-        arg.hasTag ("EXT"))
-      continue;
-
-    if (arg.hasTag ("FILTER"))
-    {
-      auto canonical = arg.attribute ("canonical");
-      auto raw       = arg.attribute ("raw");
-
-      if (arg.hasTag ("HINT"))
-      {
-        Range range;
-        if (expandIntervalHint (canonical, range))
-        {
-          start = range.start.toISO ();
-          end   = range.end.toISO ();
-
-          args.push_back ("<date>");
-          args.push_back ("-");
-          args.push_back ("<date>");
-        }
-
-        // Hints that are not expandable to a date range are ignored.
-      }
-      else if (arg._lextype == Lexer::Type::date)
-      {
-        if (start.empty ())
-          start = raw;
-        else if (end.empty ())
-          end = raw;
-
-        args.push_back ("<date>");
-      }
-      else if (arg._lextype == Lexer::Type::duration)
-      {
-        if (duration.empty ())
-          duration = raw;
-
-        args.push_back ("<duration>");
-      }
-      else if (arg.hasTag ("KEYWORD"))
-      {
-        // Note: that KEYWORDS are not entities (why not?) and there is a list
-        //       in CLI.cpp of them that must be maintained and synced with this
-        //       function.
-        args.push_back (raw);
-      }
-      else if (arg.hasTag ("ID"))
-      {
-        // Not part of a filter.
-      }
-      else
-      {
-        filter.tag (raw);
-      }
-    }
-  }
-
-  // <date>
-  if (args.size () == 1 &&
-      args[0] == "<date>")
-  {
-    filter.setRange ({Datetime (start), 0});
-  }
-
-  // from <date>
-  else if (args.size () == 2 &&
-           args[0] == "from" &&
-           args[1] == "<date>")
-  {
-    filter.setRange ({Datetime (start), 0});
-  }
-
-  // <date> to/- <date>
-  else if (args.size () == 3                   &&
-           args[0] == "<date>"                 &&
-           (args[1] == "to" || args[1] == "-") &&
-           args[2] == "<date>")
-  {
-    filter.setRange ({Datetime (start), Datetime (end)});
-  }
-
-  // from <date> to/- <date>
-  else if (args.size () == 4                   &&
-           args[0] == "from"                   &&
-           args[1] == "<date>"                 &&
-           (args[2] == "to" || args[2] == "-") &&
-           args[3] == "<date>")
-  {
-    filter.setRange ({Datetime (start), Datetime (end)});
-  }
-
-  // <date> for <duration>
-  else if (args.size () == 3   &&
-           args[0] == "<date>" &&
-           args[1] == "for"    &&
-           args[2] == "<duration>")
-  {
-    filter.setRange ({Datetime (start), Datetime (start) + Duration (duration).toTime_t ()});
-  }
-
-  // from <date> for <duration>
-  else if (args.size () == 4       &&
-           args[0] == "from"       &&
-           args[1] == "<date>"     &&
-           args[2] == "for"        &&
-           args[3] == "<duration>")
-  {
-    filter.setRange ({Datetime (start), Datetime (start) + Duration (duration).toTime_t ()});
-  }
-
-  // <duration> before <date>
-  else if (args.size () == 3       &&
-           args[0] == "<duration>" &&
-           args[1] == "before"     &&
-           args[2] == "<date>")
-  {
-    filter.setRange ({Datetime (start) - Duration (duration).toTime_t (), Datetime (start)});
-  }
-
-  // <duration> after <date>
-  else if (args.size () == 3       &&
-           args[0] == "<duration>" &&
-           args[1] == "after"      &&
-           args[2] == "<date>")
-  {
-    filter.setRange ({Datetime (start), Datetime (start) + Duration (duration).toTime_t ()});
-  }
-
-  // <duration> ago
-  else if (args.size () == 2       &&
-           args[0] == "<duration>" &&
-           args[1] == "ago")
-  {
-    filter.setRange ({now - Duration (duration).toTime_t (), 0});
-  }
-
-  // for <duration>
-  else if (args.size () == 2       &&
-           args[0] == "for"        &&
-           args[1] == "<duration>")
-  {
-    filter.setRange ({now - Duration (duration).toTime_t (), now});
-  }
-
-  // <duration>
-  else if (args.size () == 1 &&
-           args[0] == "<duration>")
-  {
-    filter.setRange ({now - Duration (duration).toTime_t (), now});
-  }
-
-  // Unrecognized date range construct.
-  else if (! args.empty ())
-  {
-    throw std::string ("Unrecognized date range: '") + join (" ", args) + "'.";
-  }
-
-  if (filter.end != 0 && filter.start > filter.end)
-    throw std::string ("The end of a date range must be after the start.");
-
-  return filter;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // Read rules and extract all holiday definitions. Create a Range for each
 // one that spans from midnight to midnight.
 std::vector <Range> getHolidays (const Rules& rules)
@@ -497,6 +311,11 @@ std::vector <Interval> flatten (
   Datetime now;
   for (auto& result : subtractRanges ({interval}, enclosed))
   {
+    if (interval.is_open() && result.start > now)
+    {
+      break;
+    }
+
     Interval chunk {interval};
     chunk.setRange (result);
 
@@ -589,9 +408,7 @@ std::vector <Range> subtractRanges (
 // An interval matches a filter range if the start/end overlaps
 bool matchesRange (const Interval& interval, const Range& filter)
 {
-  return ((filter.start.toEpoch () == 0 &&
-           filter.end.toEpoch () == 0
-          ) || interval.intersects (filter));
+  return ((!filter.is_started() && !filter.is_ended()) || interval.intersects (filter));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -674,27 +491,6 @@ std::vector <Interval> getTracked (
   const Rules& rules,
   Interval& filter)
 {
-  // Exclusions are only usable within a range, so if no filter range exists,
-  // determine the infinite range starting at the first inclusion, i.e.:
-  //
-  //   [earliest start, infinity)
-  //
-  // Avoid assigning a zero-width range - leave it unstarted instead.
-  if (! filter.is_started ())
-  {
-    auto begin = database.rbegin ();
-    auto end = database.rend ();
-    if (begin != end)
-    {
-      filter.start = IntervalFactory::fromSerialization (*begin).start;
-    }
-
-    // Use an infinite range instead of the last end date; this prevents
-    // issues when there is an empty range [q, q) at the end of a filter
-    // [p, q), in which case there is no overlap or intersection.
-    filter.end = 0;
-  }
-
   int id_skip = 0;
   std::deque <Interval> intervals;
 

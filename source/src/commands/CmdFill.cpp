@@ -37,12 +37,14 @@ int CmdFill (
   Database& database,
   Journal& journal)
 {
-  auto verbose = rules.getBoolean ("verbose");
+  const bool verbose = rules.getBoolean ("verbose");
 
   std::set <int> ids = cli.getIds ();
 
   if (ids.empty ())
+  {
     throw std::string ("IDs must be specified. See 'timew help fill'.");
+  }
 
   // Load the data.
   // Note: There is no filter.

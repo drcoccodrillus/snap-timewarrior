@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -64,7 +64,7 @@ void autoFill (
     }
   }
 
-// If the interval is closed, scan forwards for the next boundary.
+  // If the interval is closed, scan forwards for the next boundary.
   if (! interval.is_open ())
   {
     for (auto& later : tracked)
@@ -91,28 +91,60 @@ void autoFill (
 //   can involve rejection, adjustment of modified interval, or adjustment of
 //   recorded data.
 //
-static void autoAdjust (
+static bool autoAdjust (
   bool adjust,
   const Rules& rules,
   Database& database,
   Interval& interval)
 {
-  auto overlaps = getOverlaps (database, rules, interval);
+  const bool verbose = rules.getBoolean ("verbose");
 
-  if (! overlaps.empty ())
+  // We do not need the adjust flag set to "flatten" the database if the last
+  // interval is open and encloses the current interval that we're adding.
+  Interval latest = getLatestInterval (database);
+  if (interval.is_open () && latest.encloses (interval))
   {
-    debug ("Input         " + interval.dump ());
-    debug ("Overlaps with");
-
-    for (auto& overlap : overlaps)
+    if (latest.tags () == interval.tags ())
     {
-      debug ("              " + overlap.dump ());
+      // If the new interval tags match those of the currently open interval,
+      // then do nothing - the tags are already being tracked.
+      return false;
     }
 
-    if (! adjust)
-      throw std::string("You cannot overlap intervals. Correct the start/end "
-                        "time, or specify the :adjust hint.");
+    database.deleteInterval (latest);
+    latest.end = interval.start;
+    for (auto& interval : flatten (latest, getAllExclusions (rules, latest)))
+    {
+      database.addInterval (interval, verbose);
+      if (verbose)
+      {
+        std::cout << intervalSummarize (rules, interval);
+      }
+    }
+  }
 
+  Interval overlaps_filter {interval.start, interval.end};
+  auto overlaps = getTracked (database, rules, overlaps_filter);
+
+  if (overlaps.empty ())
+  {
+    return true;
+  }
+
+  debug ("Input         " + interval.dump ());
+  debug ("Overlaps with");
+
+  for (auto& overlap : overlaps)
+  {
+    debug ("              " + overlap.dump ());
+  }
+
+  if (! adjust)
+  {
+    throw std::string ("You cannot overlap intervals. Correct the start/end time, or specify the :adjust hint.");
+  }
+  else
+  {
     // implement overwrite resolution, i.e. the new interval overwrites existing intervals
     for (auto& overlap : overlaps)
     {
@@ -124,14 +156,30 @@ static void autoAdjust (
         // start date of new interval within old interval
         Interval modified {overlap};
         modified.end = interval.start;
-        database.modifyInterval (overlap, modified, rules.getBoolean ("verbose"));
+
+        if (modified.is_empty ())
+        {
+          database.deleteInterval (overlap);
+        }
+        else
+        {
+          database.modifyInterval (overlap, modified, verbose);
+        }
       }
       else if (!start_within_overlap && end_within_overlap)
       {
         // end date of new interval within old interval
         Interval modified {overlap};
         modified.start = interval.end;
-        database.modifyInterval (overlap, modified, rules.getBoolean ("verbose"));
+
+        if (modified.is_empty ())
+        {
+          database.deleteInterval (overlap);
+        }
+        else
+        {
+          database.modifyInterval (overlap, modified, verbose);
+        }
       }
       else if (!start_within_overlap && !end_within_overlap)
       {
@@ -153,35 +201,33 @@ static void autoAdjust (
         }
         else
         {
-          database.modifyInterval (overlap, split1, rules.getBoolean ("verbose"));
+          database.modifyInterval (overlap, split1, verbose);
         }
 
         if (! split2.is_empty ())
         {
-          database.addInterval (split2, rules.getBoolean ("verbose"));
+          database.addInterval (split2, verbose);
         }
       }
     }
   }
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void validate (
+bool validate (
   const CLI& cli,
   const Rules& rules,
   Database& database,
   Interval& interval)
 {
-  // Create a filter, and if empty, choose 'today'.
-  auto filter = getFilter (cli);
-  if (! filter.is_started ())
-    filter.setRange (Datetime ("today"), Datetime ("tomorrow"));
-
   // All validation performed here.
   if (findHint (cli, ":fill"))
+  {
     autoFill (rules, database, interval);
+  }
 
-  autoAdjust (findHint (cli, ":adjust"), rules, database, interval);
+  return autoAdjust (findHint (cli, ":adjust"), rules, database, interval);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

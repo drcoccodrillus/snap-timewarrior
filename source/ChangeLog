@@ -1,6 +1,53 @@
 ------ current release ---------------------------
 
-1.3.0 (2020-04-19) -
+1.4.2 (2020-08-29) -
+
+- #377    make install with error due to missing file `COPYING`
+          (thanks to Dirk Deimeke)
+
+------ old releases ------------------------------
+
+1.4.1 (2020-08-29) - 6747beb2963475f50d2d58b1da5465247eb9e28e
+
+- #378    Summary with `:all` hint is empty for open interval
+
+1.4.0 (2020-08-29) - 2447c3817212d0fd987a8fe749d181ba7073a978
+
+- #126    DOM-Query for ids
+- #188    DOM-Query for tags
+- #206    Add :all hint
+          (thanks to varac, Shaun Ruffell)
+- #241    Allow continue by tag.
+          (thanks to Christian Rösch)
+- #258    make error FS.cpp on freebsd 12.1
+          (thanks to choppy812, silent-at-gh, kbcb, Shaun Ruffell)
+- #307    Introduce 'journal.size' configuration item
+          (thanks to Shaun Ruffell)
+- #309    unicode input causes indefinite hang for commands like day or month
+          (thanks to sclee15, Shaun Ruffell)
+- #317    Fix memory leak in JSON parsing
+          (thanks to Shaun Ruffell)
+- #318    Speed up deserialization of Intervals
+          (thanks to Shaun Ruffell)
+- #331    start command adjust
+          (thanks to Shaun Ruffell)
+- #333    Summary command fails with `:all` hint
+- #335    Update docs links from taskwarrior.org to timewarrior.net
+          (thanks to George Buckingham)
+- #347    delete interval silently fails
+          (thanks to Shaun Ruffell)
+- #351    Stop failed to close currently tracking interval
+          (thanks to Shaun Ruffell)
+- #364    Entering an open interval with future date causes assertion error
+          (thanks to kbcb)
+- #370    Core dump on `timew week` when open interval overlaps into exclusion
+          (thanks to Maximilian Merz)
+- #367    CmdDiagnostics: Show per-file error messages.
+          (thanks to Shaun Ruffell)
+- #372    Empty intervals are not deleted in `:adjust` overlap resolution
+          (thanks to xerus2000)
+
+1.3.0 (2020-04-19) - 3de53d7599d1e4364c8aaaeb3c3ef1fe89ee3380
 
 - #155    Corrupts database when no disk space available
           (thanks to Shaun Ruffell, Tom Dörr)
@@ -32,8 +79,6 @@
 - #293    filtering by tag can produce wrong ids
           (thanks to Shaun Ruffell, Saulius Krasuckas)
 - #298    Add current version of bash-completion
-
------- old releases ------------------------------
 
 1.2.0 (2019-11-22) 1d271508a27b9d8a5211ae5b01c7a0583ff690fd
 

@@ -117,14 +117,14 @@ std::string TagInfoDatabase::toJson ()
     if (tagInfo.hasCount ())
     {
       json << (first ? "" : ",")
-         << "\"" << escape(pair.first, '"') << "\":"
+         << "\n  \"" << escape(pair.first, '"') << "\":"
          << tagInfo.toJson ();
 
       first = (first ? false : first);
     }
   }
 
-  json << "}";
+  json << "\n}";
 
   return json.str ();
 }

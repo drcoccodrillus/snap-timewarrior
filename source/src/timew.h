@@ -37,7 +37,6 @@
 #include <Color.h>
 
 // data.cpp
-Interval                getFilter         (const CLI&);
 std::vector <Range>     getHolidays       (const Rules&);
 std::vector <Range>     getAllExclusions  (const Rules&, const Range&);
 std::vector <Interval>  getIntervalsByIds (Database&, const Rules&, const std::set <int>&);
@@ -60,7 +59,7 @@ Range                   getFullDay        (const Datetime&);
 
 // validate.cpp
 void autoFill (const Rules&, Database&, Interval&);
-void validate (const CLI& cli, const Rules& rules, Database&, Interval&);
+bool validate (const CLI& cli, const Rules& rules, Database&, Interval&);
 
 // init.cpp
 bool lightweightVersionCheck (int, const char**);
@@ -72,7 +71,7 @@ int dispatchCommand (const CLI&, Database&, Journal&, Rules&, const Extensions&)
 // helper.cpp
 Color intervalColor (const std::set <std::string>&, const std::map <std::string, Color>&);
 Color tagColor (const Rules&, const std::string&);
-std::string intervalSummarize (Database&, const Rules&, const Interval&);
+std::string intervalSummarize (const Rules&, const Interval&);
 bool expandIntervalHint (const std::string&, Range&);
 std::string jsonFromIntervals (const std::vector <Interval>&);
 Palette createPalette (const Rules&);
@@ -81,7 +80,6 @@ int quantizeToNMinutes (int, int);
 
 bool findHint (const CLI&, const std::string&);
 std::string minimalDelta (const Datetime&, const Datetime&);
-std::vector <Interval> getOverlaps (Database&, const Rules&, const Interval&);
 
 // log.cpp
 void enableDebugMode (bool);
@@ -97,6 +95,6 @@ std::string joinQuotedIfNeeded(const std::string& glue, const std::set <std::str
 std::string joinQuotedIfNeeded(const std::string& glue, const std::vector <std::string>& array);
 
 // dom.cpp
-bool domGet (Database&, const Rules&, const std::string&, std::string&);
+bool domGet (Database&, Interval&, const Rules&, const std::string&, std::string&);
 
 #endif

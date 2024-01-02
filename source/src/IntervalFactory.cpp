@@ -29,20 +29,39 @@
 #include <IntervalFactory.h>
 #include <JSON.h>
 
-////////////////////////////////////////////////////////////////////////////////
-// Syntax:
-//   'inc' [ <iso> [ '-' <iso> ]] [ '#' <tag> [ <tag> ... ]]
-Interval IntervalFactory::fromSerialization (const std::string& line)
+static std::vector <std::string> tokenizeSerialization (const std::string& line) 
 {
-  Lexer lexer (line);
   std::vector <std::string> tokens;
+
+  Lexer lexer (line);
   std::string token;
   Lexer::Type type;
+  
+  // When parsing the serialization, we only need the lexer to look for strings
+  // and words since we're not using the provided type information
+  lexer.noDate ();
+  lexer.noDuration ();
+  lexer.noUUID ();
+  lexer.noHexNumber ();
+  lexer.noURL ();
+  lexer.noPath ();
+  lexer.noPattern ();
+  lexer.noOperator ();
 
   while (lexer.token (token, type))
   {
     tokens.push_back (Lexer::dequote (token));
   }
+
+  return tokens;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Syntax:
+//   'inc' [ <iso> [ '-' <iso> ]] [ '#' <tag> [ <tag> ... ]]
+Interval IntervalFactory::fromSerialization (const std::string& line)
+{
+  std::vector <std::string> tokens = tokenizeSerialization (line);
 
   // Minimal requirement 'inc'.
   if (!tokens.empty () && tokens[0] == "inc")
@@ -108,7 +127,7 @@ Interval IntervalFactory::fromJson (const std::string& jsonString)
 
   if (!jsonString.empty ())
   {
-    auto* json = (json::object*) json::parse (jsonString);
+    std::unique_ptr <json::object> json (dynamic_cast <json::object *> (json::parse (jsonString)));
 
     json::array* tags = (json::array*) json->_data["tags"];
 
