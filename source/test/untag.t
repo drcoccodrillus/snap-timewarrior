@@ -2,7 +2,7 @@
 
 ###############################################################################
 #
-# Copyright 2018 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+# Copyright 2018 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,10 +27,9 @@
 ###############################################################################
 
 import os
+import sys
 import unittest
 from datetime import datetime, timedelta
-
-import sys
 
 # Ensure python finds the local simpletap module
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -131,7 +130,7 @@ class TestUntag(TestCase):
         self.assertOpenInterval(j[0], expectedTags=["baz"])
 
     def test_remove_tags_from_closed_interval(self):
-        """Remove tags from an closed interval"""
+        """Remove tags from a closed interval"""
         now_utc = datetime.now().utcnow()
         one_hour_before_utc = now_utc - timedelta(hours=1)
 
@@ -155,7 +154,7 @@ class TestUntag(TestCase):
 
         code, out, err = self.t("untag @1 @2 foo")
 
-        self.assertIn('Removed foo from @1\nRemoved foo from @2', out)
+        self.assertIn('Removed foo from @2\nRemoved foo from @1', out)
 
         j = self.t.export()
         self.assertClosedInterval(j[0], expectedTags=["bar", "one"])
@@ -172,7 +171,7 @@ class TestUntag(TestCase):
 
         code, out, err = self.t("untag @1 @2 foo bar")
 
-        self.assertIn('Removed foo bar from @1\nRemoved foo bar from @2', out)
+        self.assertIn('Removed foo bar from @2\nRemoved foo bar from @1', out)
 
         j = self.t.export()
         self.assertClosedInterval(j[0], expectedTags=["one"])
@@ -218,6 +217,16 @@ class TestUntag(TestCase):
 
         self.assertEqual(len(j), 1)
         self.assertClosedInterval(j[0], expectedTags=["bar"])
+
+    def test_referencing_a_non_existent_interval_is_an_error(self):
+        """Calling untag with a non-existent interval reference is an error"""
+        code, out, err = self.t.runError("untag @1 @2 bar")
+        self.assertIn("ID '@1' does not correspond to any tracking.", err)
+
+        self.t("start 1h ago bar")
+
+        code, out, err = self.t.runError("untag @2 bar")
+        self.assertIn("ID '@2' does not correspond to any tracking.", err)
 
 
 if __name__ == "__main__":

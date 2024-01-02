@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
+import json
+import os
+import sys
+import unittest
+from datetime import datetime, timedelta
 
 ###############################################################################
 #
-# Copyright 2016 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+# Copyright 2016 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,11 +30,6 @@
 # https://www.opensource.org/licenses/mit-license.php
 #
 ###############################################################################
-
-import os
-import unittest
-
-import sys
 
 # Ensure python finds the local simpletap module
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -56,6 +56,58 @@ class TestExtensions(TestCase):
 
         code, out, err = self.t('report ext')
         self.assertIn('test works', out)
+
+    def test_default_range_is_applied_when_no_range_given_on_command_line(self):
+        """Default range is applied when no range is given on the command line"""
+        self.t.add_default_extension("debug.py")
+
+        self.t.config("reports.debug.range", "'day'")
+
+        now = datetime.now()
+        now_utc = now.utcnow()
+
+        yesterday_one_hour_before_utc = now_utc - timedelta(hours=1, days=1)
+        yesterday_two_hours_before_utc = now_utc - timedelta(hours=2, days=1)
+
+        self.t("track {:%Y-%m-%dT%H:%M:%S}Z - {:%Y-%m-%dT%H:%M:%S}Z foo".format(yesterday_two_hours_before_utc, yesterday_one_hour_before_utc))
+        self.t("track {:%Y-%m-%dT%H:%M:%S}Z bar".format(now_utc))
+
+        code, out, err = self.t("debug")
+
+        j = json.loads(out)
+
+        self.assertEqual(len(j), 1)
+        self.assertOpenInterval(j[0],
+                                  expectedStart="{:%Y%m%dT%H%M%S}Z".format(now_utc),
+                                  expectedTags=["bar"])
+
+    def test_default_range_is_overridden_when_range_given_on_command_line(self):
+        """Default range is overridden when range is given on the command line"""
+        self.t.add_default_extension("debug.py")
+
+        self.t.config("reports.debug.range", "'day'")
+
+        now = datetime.now()
+        now_utc = now.utcnow()
+
+        yesterday_one_hour_before_utc = now_utc - timedelta(hours=1, days=1)
+        yesterday_two_hours_before_utc = now_utc - timedelta(hours=2, days=1)
+
+        self.t("track {:%Y-%m-%dT%H:%M:%S}Z - {:%Y-%m-%dT%H:%M:%S}Z foo".format(yesterday_two_hours_before_utc, yesterday_one_hour_before_utc))
+        self.t("track {:%Y-%m-%dT%H:%M:%S}Z bar".format(now_utc))
+
+        code, out, err = self.t("debug :all")
+
+        j = json.loads(out)
+
+        self.assertEqual(len(j), 2)
+        self.assertClosedInterval(j[0],
+                                  expectedStart="{:%Y%m%dT%H%M%S}Z".format(yesterday_two_hours_before_utc),
+                                  expectedEnd="{:%Y%m%dT%H%M%S}Z".format(yesterday_one_hour_before_utc),
+                                  expectedTags=["foo"])
+        self.assertOpenInterval(j[1],
+                                expectedStart="{:%Y%m%dT%H%M%S}Z".format(now_utc),
+                                expectedTags=["bar"])
 
 
 if __name__ == "__main__":

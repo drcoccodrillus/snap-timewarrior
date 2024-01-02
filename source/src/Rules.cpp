@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2015 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -89,9 +89,6 @@ Rules::Rules ()
 
     // 'summary' report.
     {"reports.summary.holidays", "yes"},
-
-    // 'gaps' report.
-    {"reports.gaps.range",       ":day"},
 
     // Enough of a theme to make the charts work.
     {"theme.description",        "Built-in default"},
@@ -198,9 +195,10 @@ double Rules::getReal (const std::string& key) const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool Rules::getBoolean (const std::string& key) const
+bool Rules::getBoolean (const std::string& key, bool defaultValue) const
 {
   auto found = _settings.find (key);
+
   if (found != _settings.end ())
   {
     auto value = lowerCase (found->second);
@@ -209,10 +207,14 @@ bool Rules::getBoolean (const std::string& key) const
         value == "y"      ||
         value == "yes"    ||
         value == "on")
+    {
       return true;
+    }
+
+    return false;
   }
 
-  return false;
+  return defaultValue;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -604,7 +606,7 @@ bool Rules::setConfigVariable (
       {
         // Add blank line required by rules.
         if (lines.empty () || lines.back ().empty ())
-          lines.push_back ("");
+          lines.emplace_back("");
 
         // Add new line.
         lines.push_back (name + " = " + json::encode (value));
@@ -625,7 +627,7 @@ bool Rules::setConfigVariable (
 
       // Add blank line required by rules.
       if (lines.empty () || lines.back ().empty ())
-        lines.push_back ("");
+        lines.emplace_back("");
 
       // Add new line.
       lines.push_back (name + " = " + json::encode (value));

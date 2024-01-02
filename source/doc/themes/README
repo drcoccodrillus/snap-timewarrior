@@ -4,7 +4,8 @@ The theme files define colors that Timewarrior uses in various situations.
 There are several themes provided with Timewarrior, and you use a theme by importing it into your configuration file.
 Edit this file:
 
-    ~/.timewarrior/timewarrior.cfg
+    ~/.timewarrior/timewarrior.cfg (non-Unix systems or instalations using pre-XDG paths on Unix systems)
+    ${XDG_CONFIG_HOME:-$HOME/.config}/timewarrior/timewarrior.cfg (Unix systems)
 
 And add the import line, which looks like this:
 
@@ -35,7 +36,7 @@ Color settings include:
 
 The color palette is used to automatically color tagged time in reports.
 When creating a color theme, the palette should be larger rather than smaller.
-It is recommended that you provide at least 16 colors, otherwise Timewarrior cycles through them and you'll see repetitions.
+It is recommended that you provide at least 16 colors, otherwise Timewarrior cycles through them, and you'll see repetitions.
 
 ## Share Your Theme
 

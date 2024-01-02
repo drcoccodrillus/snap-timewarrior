@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,9 @@
 #include <timew.h>
 #include <iostream>
 #include <stdlib.h>
+#include <IntervalFilterAllWithIds.h>
+#include <IntervalFilterAllInRange.h>
+#include <IntervalFilterFirstOf.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 int CmdTag (
@@ -57,22 +60,45 @@ int CmdTag (
 
   if (ids.empty ())
   {
-    auto latest = getLatestInterval (database);
+    IntervalFilterFirstOf filtering {std::make_shared <IntervalFilterAllInRange> (Range {})};
+    auto latest = getTracked (database, rules, filtering);
 
     if (latest.empty ())
     {
       throw std::string ("There is no active time tracking.");
     }
-    else if (!latest.is_open ())
+    else if (!latest.at (0).is_open ())
     {
       throw std::string ("At least one ID must be specified. See 'timew help tag'.");
     }
 
-    intervals.push_back (latest);
+    intervals = latest;
   }
   else
   {
-    intervals = getIntervalsByIds (database, rules, ids);
+    auto filtering = IntervalFilterAllWithIds (ids);
+    intervals = getTracked (database, rules, filtering);
+
+    if (intervals.size () != ids.size ())
+    {
+      for (auto& id: ids)
+      {
+        bool found = false;
+
+        for (auto& interval: intervals)
+        {
+          if (interval.id == id)
+          {
+            found = true;
+            break;
+          }
+        }
+        if (!found)
+        {
+          throw format ("ID '@{1}' does not correspond to any tracking.", id);
+        }
+      }
+    }
   }
 
   // Apply tags to intervals.

@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,7 +24,6 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmake.h>
 #include <Range.h>
 #include <sstream>
 #include <cassert>
@@ -204,7 +203,7 @@ Range Range::intersect (const Range& other) const
 {
   if (overlaps (other))
   {
-    // Intersection is choosing the later of the two starts, and the earlier of
+    // Intersection is choosing the later one of the two starts, and the earlier one of
     // the two ends, provided the two ranges overlap.
     Range result;
     result.start = start > other.start ? start : other.start;
@@ -317,12 +316,12 @@ std::vector <Range> Range::subtract (const Range& other) const
   {
     if (start < other.start)
     {
-      results.push_back (Range (start, other.start));
+      results.emplace_back(start, other.start);
 
       if (other.is_ended () &&
           (! is_ended () || end > other.end))
       {
-        results.push_back (Range (other.end, end));
+        results.emplace_back(other.end, end);
       }
     }
     else
@@ -332,11 +331,11 @@ std::vector <Range> Range::subtract (const Range& other) const
         if (is_ended ())
         {
           if (end > other.end)
-            results.push_back (Range (other.end, end));
+            results.emplace_back(other.end, end);
         }
         else
         {
-          results.push_back (Range (other.end, end));
+          results.emplace_back(other.end, end);
         }
       }
     }

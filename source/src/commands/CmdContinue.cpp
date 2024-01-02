@@ -29,6 +29,10 @@
 #include <timew.h>
 #include <iostream>
 #include <cassert>
+#include <IntervalFilterAllWithIds.h>
+#include <IntervalFilterAllWithTags.h>
+#include <IntervalFilterFirstOf.h>
+#include <IntervalFilterAllInRange.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 int CmdContinue (
@@ -58,48 +62,46 @@ int CmdContinue (
     throw std::string ("You can only specify one ID to continue.");
   }
 
-  Interval to_copy;
+  std::vector <Interval> intervals;
 
   if (ids.size () == 1)
   {
-    auto intervals = getIntervalsByIds (database, rules, ids);
+    auto filtering = IntervalFilterAllWithIds (ids);
+    intervals = getTracked (database, rules, filtering);
 
     if (intervals.empty ())
     {
       throw format ("ID '@{1}' does not correspond to any tracking.", *ids.begin ());
     }
-
-    assert (intervals.size () == 1);
-    to_copy = intervals.front ();
   }
   else if (!filter.tags ().empty ())
   {
-    Interval tagFilter = {filter};
-    tagFilter.setRange (0, 0);
-    auto tracked = getTracked (database, rules, tagFilter);
+    IntervalFilterFirstOf filtering {std::make_shared <IntervalFilterAllWithTags> (filter.tags ())};
+    intervals = getTracked (database, rules, filtering);
 
-    if (tracked.empty())
+    if (intervals.empty ())
     {
       throw format ("Tags '{1}' do not correspond to any tracking.", joinQuotedIfNeeded (", ", filter.tags ()));
     }
-
-    to_copy = tracked.back();
   }
   else
   {
-    Interval latest = getLatestInterval (database);
+    IntervalFilterFirstOf filtering {std::make_shared <IntervalFilterAllInRange> ( Range {})};
+    intervals = getTracked (database, rules, filtering);
 
-    if (latest.empty ())
+    if (intervals.empty ())
     {
       throw std::string ("There is no previous tracking to continue.");
     }
-    if (latest.is_open ())
+
+    if (intervals.at (0).is_open ())
     {
       throw std::string ("There is already active tracking.");
     }
-
-    to_copy = latest;
   }
+
+  assert (intervals.size () == 1);
+  auto to_copy = intervals.back ();
 
   Datetime start_time;
   Datetime end_time;
@@ -120,11 +122,13 @@ int CmdContinue (
   to_copy.end = end_time;
 
   journal.startTransaction ();
+
   if (validate (cli, rules, database, to_copy))
   {
     database.addInterval (to_copy, verbose);
     journal.endTransaction ();
   }
+
   if (verbose)
   {
     std::cout << intervalSummarize (rules, to_copy);

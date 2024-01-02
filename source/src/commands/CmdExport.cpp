@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,10 @@
 #include <commands.h>
 #include <timew.h>
 #include <iostream>
+#include <IntervalFilterAllInRange.h>
+#include <IntervalFilterAllWithIds.h>
+#include <IntervalFilterAllWithTags.h>
+#include <IntervalFilterAndGroup.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 int CmdExport (
@@ -35,7 +39,32 @@ int CmdExport (
   Database& database)
 {
   auto filter = cli.getFilter ();
-  std::cout << jsonFromIntervals (getTracked (database, rules, filter));
+  std::set <int> ids = cli.getIds ();
+  std::shared_ptr <IntervalFilter> filtering;
+
+  if (!ids.empty ())
+  {
+    if (!filter.empty ())
+    {
+      throw std::string ("You cannot specify both id and tags/range to export intervals.");
+    }
+    filtering = std::make_shared <IntervalFilterAllWithIds> (ids);
+  }
+  else
+  {
+    filtering = std::make_shared <IntervalFilterAndGroup> (
+      std::vector <std::shared_ptr <IntervalFilter>> (
+        {
+          std::make_shared <IntervalFilterAllInRange> (Range{filter.start, filter.end}),
+          std::make_shared <IntervalFilterAllWithTags> (filter.tags ()),
+        }
+      )
+    );
+  }
+
+  auto intervals = getTracked (database, rules, *filtering);
+  std::cout << jsonFromIntervals (intervals);
+
   return 0;
 }
 

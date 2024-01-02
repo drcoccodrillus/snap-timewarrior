@@ -3,7 +3,7 @@
 set -e
 
 # Due to system integrity protection, macOS requires us to use a copy of date
-# if we want it to work with faketimea.
+# if we want it to work with faketime.
 DATE=$(command -v date)
 if [ $(uname -s) = "Darwin" ]; then
     TEMP_DATE=$(mktemp)
@@ -227,10 +227,10 @@ function test_performance_start()
 function test_performance_stop()
 {
   # setup
-  ${TIMEW_BIN} start "${ONE_HOUR_BEFORE}" TEST >/dev/null
+  ${TIMEW_BIN} start "${TWO_HOURS_BEFORE}" TEST >/dev/null
   # test
   ( ( time -p (
-      ${TIMEW_BIN} start "${TWO_HOURS_BEFORE}" TEST >/dev/null
+      ${TIMEW_BIN} stop "${ONE_HOUR_BEFORE}" TEST >/dev/null
   ) 2>&1 >/dev/null ) | awk '{a[NR]=$2}; END {for(i=1;i<=3;i++){printf "%s\t",a[i]}}')
   # cleanup
   ${TIMEW_BIN} delete @1 >/dev/null

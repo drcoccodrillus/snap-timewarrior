@@ -14,7 +14,7 @@ Here are the different ways you might conѕider contributing:
 
 Please read the respective section below about the details.
 
-Otherwise you can spread the word and recommend Timewarrior to your friends and colleagues.
+Otherwise, you can spread the word and recommend Timewarrior to your friends and colleagues.
 
 
 ## Reviews
@@ -29,7 +29,7 @@ It is also the quickest way to get help, or confirm a bug.
 
 Review documentation: there are man pages, online articles, tutorials and so on, and these may contain errors, or they may not convey ideas in the best way.
 You can help improve it.
-Documentation is a separate effort from the codebase, and includes all web sites, and all are available using git.
+Documentation is a separate effort from the codebase, and includes all websites, and all are available using git.
 
 Take a look at the bug database, and help triage the bug list.
 Bug triage is very useful and much needed.
@@ -43,7 +43,7 @@ Review the source code, and point out inefficiencies, problems, unreadable funct
 ## Bug reports
 
 Before you submit a bug report, make sure you are using the latest version of Timewarrior. 
-Also please take your time and scan the current bug tickets on our [Github issue tracker](https://github.com/GothenburgBitFactory/timewarrior/issues?utf8=%E2%9C%93&q=is%3Aissue+is%3Aopen+label%3Abug) whether your issue has already been reported.
+Also, please take your time and scan the current bug tickets on our [GitHub issue tracker](https://github.com/GothenburgBitFactory/timewarrior/issues?utf8=%E2%9C%93&q=is%3Aissue+is%3Aopen+label%3Abug) whether your issue has already been reported.
 
 When you submit a bug report, be precise and put as much information into your bug report as possible.
 You should at least provide
@@ -64,7 +64,7 @@ An example:
 
 ## Feature requests
 
-As for bug reports, you should check our [Github issue tracker](https://github.com/GothenburgBitFactory/timewarrior/issues?utf8=%E2%9C%93&q=is%3Aissue+is%3Aopen+label%3Aenhancement) whether your feature has already been requested.
+As for bug reports, you should check our [GitHub issue tracker](https://github.com/GothenburgBitFactory/timewarrior/issues?utf8=%E2%9C%93&q=is%3Aissue+is%3Aopen+label%3Aenhancement) whether your feature has already been requested.
 
 When you submit a feature request, provide a use case which captures the overall intention of your feature, not the technical implementation.
 
@@ -101,7 +101,7 @@ Consult the [documentation](https://timewarrior.net/docs/api.html) on how you ca
 
 ### Tests, Bug-fixes and Features
 
-In general your contributions have to be associated with an issue on our [Github issue tracker](https://github.com/GothenburgBitFactory/timewarrior/issues?utf8=%E2%9C%93&q=is%3Aissue+is%3Aopen).
+In general your contributions have to be associated with an issue on our [GitHub issue tracker](https://github.com/GothenburgBitFactory/timewarrior/issues?utf8=%E2%9C%93&q=is%3Aissue+is%3Aopen).
 See the sections above on how to submit bug reports and feature requests.
 
 Code contributions are only accepted as pull-requests.
@@ -128,9 +128,9 @@ This is the branch where your changes must go.
 The `master` branch always points to the latest release.
 No development takes place here.
 
-To make a pull request you need to have a Github account.
+To make a pull request you need to have a GitHub account.
 
-1. Fork the [Timewarrior repository](https://github.com/GothenburgBitFactory/timewarrior) on Github.
+1. Fork the [Timewarrior repository](https://github.com/GothenburgBitFactory/timewarrior) on GitHub.
 1. Checkout the development branch.
 
        $ git checkout dev
@@ -142,13 +142,13 @@ To make a pull request you need to have a Github account.
 1. Commit your changes, and finally push to the remote repository.
    Use a commit message that matches the prevailing format. (See `git log` for examples.)
    
-       $ git commit -am '<issue>: <description>'
+       $ git commit --signoff -am '<issue>: <description>'
        ...
        $ git push origin feature_branch
     
-    Furthermore, commits should be signed off according to the [DCO](DCO).
+    Furthermore, commits should be signed off according to the [DCO](DCO) (use `-s` / `--signoff` flag when committing).
     
-1. Create the pull request on Github.
+1. Create the pull request on GitHub.
 
 ## What happens next?
 

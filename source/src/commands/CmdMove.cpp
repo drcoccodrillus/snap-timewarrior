@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,7 @@
 #include <timew.h>
 #include <iostream>
 #include <stdlib.h>
+#include <IntervalFilterAllWithIds.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 int CmdMove (
@@ -67,13 +68,37 @@ int CmdMove (
     }
   }
 
-  std::vector <Interval> intervals = getIntervalsByIds (database, rules, ids);
+  auto filtering = IntervalFilterAllWithIds (ids);
+  auto intervals = getTracked (database, rules, filtering);
+
+  if (intervals.size () != ids.size ())
+  {
+    for (auto& id: ids)
+    {
+      bool found = false;
+
+      for (auto& interval: intervals)
+      {
+        if (interval.id == id)
+        {
+          found = true;
+          break;
+        }
+      }
+      if (!found)
+      {
+        throw format ("ID '@{1}' does not correspond to any tracking.", id);
+      }
+    }
+  }
+
   Interval interval = intervals.at (0);
 
   if (interval.synthetic)
   {
     flattenDatabase (database, rules);
-    intervals = getIntervalsByIds (database, rules, ids);
+    filtering.reset ();
+    intervals = getTracked (database, rules, filtering);
     interval = intervals.at (0);
   }
 

@@ -2,7 +2,7 @@
 
 ###############################################################################
 #
-# Copyright 2016 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+# Copyright 2016 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,10 +27,9 @@
 ###############################################################################
 
 import os
+import sys
 import unittest
 from datetime import datetime, timedelta
-
-import sys
 
 # Ensure python finds the local simpletap module
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -148,6 +147,16 @@ class TestDelete(TestCase):
         j = self.t.export()
 
         self.assertEqual(len(j), 0)
+
+    def test_referencing_a_non_existent_interval_is_an_error(self):
+        """Calling delete with a non-existent interval reference is an error"""
+        code, out, err = self.t.runError("delete @1")
+        self.assertIn("ID '@1' does not correspond to any tracking.", err)
+
+        self.t("start 1h ago bar")
+
+        code, out, err = self.t.runError("delete @2")
+        self.assertIn("ID '@2' does not correspond to any tracking.", err)
 
 
 if __name__ == "__main__":

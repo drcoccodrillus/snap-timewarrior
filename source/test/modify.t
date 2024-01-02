@@ -2,7 +2,7 @@
 
 ###############################################################################
 #
-# Copyright 2018 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+# Copyright 2018 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,10 +27,9 @@
 ###############################################################################
 
 import os
+import sys
 import unittest
 from datetime import datetime, timedelta
-
-import sys
 
 # Ensure python finds the local simpletap module
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -273,6 +272,13 @@ class TestModify(TestCase):
         self.assertOpenInterval(j[0],
                                 expectedStart=four_hours_before_utc + timedelta(minutes=10),
                                 expectedTags=['foo'])
+
+    def test_referencing_a_non_existent_interval_is_an_error(self):
+        """Calling modify with a non-existent interval reference is an error"""
+        self.t("start 1h ago bar")
+
+        code, out, err = self.t.runError("modify start @2")
+        self.assertIn("ID '@2' does not correspond to any tracking.", err)
 
 
 if __name__ == "__main__":

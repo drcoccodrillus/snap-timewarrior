@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2018 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2018 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -53,7 +53,7 @@ public:
 private:
   void recordUndoAction (const std::string &, const std::string &, const std::string &);
 
-  std::string _location {"~/.timewarrior/data/undo.data"};
+  std::string _location {};
   std::shared_ptr <Transaction> _currentTransaction = nullptr;
   int _size {0};
 };

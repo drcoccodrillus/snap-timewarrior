@@ -16,6 +16,12 @@ set (timew_SRCS AtomicFile.cpp AtomicFile.h
                 Extensions.cpp Extensions.h
                 Interval.cpp   Interval.h
                 IntervalFactory.cpp IntervalFactory.h
+                IntervalFilter.cpp IntervalFilter.h
+                IntervalFilterAndGroup.cpp IntervalFilterAndGroup.h
+                IntervalFilterAllInRange.cpp IntervalFilterAllInRange.h
+                IntervalFilterAllWithIds.cpp IntervalFilterAllWithIds.h
+                IntervalFilterAllWithTags.cpp IntervalFilterAllWithTags.h
+                IntervalFilterFirstOf.cpp IntervalFilterFirstOf.h
                 Journal.cpp    Journal.h
                 Range.cpp      Range.h
                 Rules.cpp      Rules.h
@@ -28,6 +34,7 @@ set (timew_SRCS AtomicFile.cpp AtomicFile.h
                 dom.cpp
                 init.cpp
                 helper.cpp
+                paths.cpp      paths.h
                 log.cpp
                 util.cpp
                 validate.cpp)

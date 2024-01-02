@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -49,7 +49,7 @@ public:
   void setRange (const Datetime& start, const Datetime& end);
 
   void setAnnotation(const std::string& annotation);
-  std::string getAnnotation();
+  std::string getAnnotation() const;
 
   std::string serialize () const;
   std::string json () const;
