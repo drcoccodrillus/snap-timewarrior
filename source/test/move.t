@@ -2,7 +2,7 @@
 
 ###############################################################################
 #
-# Copyright 2016 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+# Copyright 2016 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +29,6 @@
 import os
 import sys
 import unittest
-
 from datetime import datetime, timedelta
 
 # Ensure python finds the local simpletap module
@@ -222,7 +221,7 @@ class TestMove(TestCase):
         # Place a non-synthetic interval in the history
         self.t("track {:%Y-%m-%dT%H:%M:%S}Z - {:%Y-%m-%dT%H:%M:%S}Z bar".format(day_before, day_before + timedelta(minutes=30)))
 
-        # Now create an open interval that crosses the exlusions added
+        # Now create an open interval that crosses the exclusions added
         # previously, which will result in synthetic intervals
         self.t("start {:%Y-%m-%dT%H:%M:%S}Z foo".format(five_hours_before_utc))
 
@@ -286,7 +285,6 @@ class TestMove(TestCase):
                                 expectedTags=[],
                                 description="unmodified interval")
 
-
     def test_move_interval_to_enclose_a_month_border(self):
         """Move an interval to enclose a month border"""
         self.t("track 20180831T180000 - 20180831T230000 foo")
@@ -297,7 +295,15 @@ class TestMove(TestCase):
         self.assertEqual(len(j), 1)
         self.assertClosedInterval(j[0])
 
-    # TODO Add :adjust tests.
+    def test_referencing_a_non_existent_interval_is_an_error(self):
+        """Calling move with a non-existent interval reference is an error"""
+        code, out, err = self.t.runError("move @1 2h ago")
+        self.assertIn("ID '@1' does not correspond to any tracking.", err)
+
+        self.t("start 1h ago bar")
+
+        code, out, err = self.t.runError("move @2 2h ago")
+        self.assertIn("ID '@2' does not correspond to any tracking.", err)
 
 
 if __name__ == "__main__":

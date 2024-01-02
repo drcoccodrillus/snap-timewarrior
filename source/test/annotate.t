@@ -2,7 +2,7 @@
 
 ###############################################################################
 #
-# Copyright 2018 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+# Copyright 2018 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,10 +27,9 @@
 ###############################################################################
 
 import os
+import sys
 import unittest
 from datetime import datetime, timedelta
-
-import sys
 
 # Ensure python finds the local simpletap module
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -130,7 +129,7 @@ class TestAnnotate(TestCase):
 
         code, out, err = self.t("annotate @1 @2 foo")
 
-        self.assertIn("Annotated @1 with \"foo\"\nAnnotated @2 with \"foo\"", out)
+        self.assertIn("Annotated @2 with \"foo\"\nAnnotated @1 with \"foo\"", out)
 
         j = self.t.export()
         self.assertClosedInterval(j[0], expectedAnnotation="foo")
@@ -232,6 +231,17 @@ class TestAnnotate(TestCase):
                                 expectedStart="{:%Y%m%dT%H%M%S}Z".format(three_hours_before_utc),
                                 expectedAnnotation="",
                                 description="unmodified interval")
+
+    def test_referencing_a_non_existent_interval_is_an_error(self):
+        """Calling annotate with a non-existent interval reference is an error"""
+        code, out, err = self.t.runError("annotate @1 foo")
+        self.assertIn("ID '@1' does not correspond to any tracking.", err)
+
+        self.t("start 1h ago bar")
+
+        code, out, err = self.t.runError("annotate @2 foo")
+        self.assertIn("ID '@2' does not correspond to any tracking.", err)
+
 
 if __name__ == "__main__":
     from simpletap import TAPTestRunner

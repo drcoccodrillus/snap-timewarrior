@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -38,6 +38,13 @@ int CmdTrack (
   const bool verbose = rules.getBoolean ("verbose");
 
   auto filter = cli.getFilter ();
+
+  // We expect no ids
+  if (! cli.getIds ().empty ())
+  {
+    throw std::string ("The track command does not accept ids. "
+                       "Perhaps you want the continue command?");
+  }
 
   // If this is not a proper closed interval, then the user is trying to make
   // the 'track' command behave like 'start', so delegate to CmdStart.

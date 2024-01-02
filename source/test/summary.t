@@ -2,7 +2,7 @@
 
 ###############################################################################
 #
-# Copyright 2017 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+# Copyright 2017 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -208,22 +208,22 @@ W10 2017-03-09 Thu @4 Tag1        8:43:08  9:38:15 0:55:07
         week_now = now.isocalendar()[1]
         week_tomorrow = tomorrow.isocalendar()[1]
 
-        two_digit_week = (week_yesterday > 9 or week_now > 9 or week_tomorrow > 9)
+        week_col_padding = 2 if (week_yesterday > 9 or week_now > 9 or week_tomorrow > 9) else 1
 
         self.assertIn("""
-Wk{6} Date       Day ID Tags    Start      End    Time   Total
---{7} ---------- --- -- ---- -------- -------- ------- -------
-W{3} {0:%Y-%m-%d} {0:%a} @3 FOO  10:00:00 11:00:00 1:00:00 1:00:00
-W{4} {1:%Y-%m-%d} {1:%a} @2 BAR  10:00:00 11:00:00 1:00:00 1:00:00
-W{5} {2:%Y-%m-%d} {2:%a} @1 BAZ  10:00:00 11:00:00 1:00:00 1:00:00
+Wk{7: <{width}}Date       Day ID Tags    Start      End    Time   Total
+-{6:-<{width}} ---------- --- -- ---- -------- -------- ------- -------
+W{3: <{width}} {0:%Y-%m-%d} {0:%a} @3 FOO  10:00:00 11:00:00 1:00:00 1:00:00
+W{4: <{width}} {1:%Y-%m-%d} {1:%a} @2 BAR  10:00:00 11:00:00 1:00:00 1:00:00
+W{5: <{width}} {2:%Y-%m-%d} {2:%a} @1 BAZ  10:00:00 11:00:00 1:00:00 1:00:00
 
-{6}                                                    3:00:00
+ {7: <{width}}                                                  3:00:00
 """.format(yesterday, now, tomorrow,
            week_yesterday, week_now, week_tomorrow,
-           " " if two_digit_week is True else "", "-" if two_digit_week is True else ""), out)
+           "-", " ", width=week_col_padding), out)
 
     def test_with_all_hint_and_first_interval_later_in_day(self):
-        """Summary should handle :all hint with first interval that starts later in day than latest interval"""
+        """Summary should handle :all hint with first interval that starts later in day than the latest interval"""
         now = datetime.now()
         yesterday = now - timedelta(days=1)
 

@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016, 2018 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016, 2018 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,10 @@
 #include <format.h>
 #include <vector>
 #include <iostream>
+#include <IntervalFilterAllInRange.h>
+#include <IntervalFilterAllWithTags.h>
+#include <IntervalFilterAndGroup.h>
+#include <IntervalFilterFirstOf.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 bool domGet (
@@ -46,14 +50,22 @@ bool domGet (
     // dom.active
     if (pig.skipLiteral ("active"))
     {
-      auto latest = getLatestInterval (database);
+      IntervalFilterFirstOf filtering {std::make_shared <IntervalFilterAllInRange> (Range {})};
+      auto intervals = getTracked (database, rules, filtering);
 
       // dom.active
       if (pig.eos ())
       {
-        value = latest.is_open () ? "1" : "0";
+        value = !intervals.empty () && intervals.at (0).is_open () ? "1" : "0";
         return true;
       }
+
+      if (intervals.empty ())
+      {
+        return false;
+      }
+
+      auto latest = intervals.at (0);
 
       // dom.active.start
       if (pig.skipLiteral (".start") &&
@@ -107,7 +119,12 @@ bool domGet (
     // dom.tracked.<...>
     else if (pig.skipLiteral ("tracked."))
     {
-      auto tracked = getTracked (database, rules, filter);
+      IntervalFilterAndGroup filtering ({
+        std::make_shared <IntervalFilterAllInRange> ( Range { filter.start, filter.end }),
+        std::make_shared <IntervalFilterAllWithTags> (filter.tags())
+      });
+
+      auto tracked = getTracked (database, rules, filtering);
       int count = static_cast <int> (tracked.size ());
 
       // dom.tracked.tags

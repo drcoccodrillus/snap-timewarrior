@@ -2,7 +2,7 @@
 
 ###############################################################################
 #
-# Copyright 2016 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+# Copyright 2016 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,10 +27,9 @@
 ###############################################################################
 
 import os
+import sys
 import unittest
 from datetime import datetime, timedelta
-
-import sys
 
 # Ensure python finds the local simpletap module
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -103,7 +102,7 @@ class TestTag(TestCase):
         self.assertIn("At least one tag must be specified.", err)
 
     def test_add_tag_to_closed_interval(self):
-        """Add a tag to an closed interval"""
+        """Add a tag to a closed interval"""
         now_utc = datetime.now().utcnow()
         one_hour_before_utc = now_utc - timedelta(hours=1)
 
@@ -131,7 +130,7 @@ class TestTag(TestCase):
         self.assertOpenInterval(j[0], expectedTags=["bar", "foo"])
 
     def test_add_tags_to_closed_interval(self):
-        """Add tags to an closed interval"""
+        """Add tags to a closed interval"""
         now_utc = datetime.now().utcnow()
         one_hour_before_utc = now_utc - timedelta(hours=1)
 
@@ -155,7 +154,7 @@ class TestTag(TestCase):
 
         code, out, err = self.t("tag @1 @2 foo")
 
-        self.assertIn("Added foo to @1\nAdded foo to @2", out)
+        self.assertIn("Added foo to @2\nAdded foo to @1", out)
 
         j = self.t.export()
         self.assertClosedInterval(j[0], expectedTags=["foo", "one"])
@@ -172,7 +171,7 @@ class TestTag(TestCase):
 
         code, out, err = self.t("tag @1 @2 foo bar")
 
-        self.assertIn("Added foo bar to @1\nAdded foo bar to @2", out)
+        self.assertIn("Added foo bar to @2\nAdded foo bar to @1", out)
 
         j = self.t.export()
         self.assertClosedInterval(j[0], expectedTags=["bar", "foo", "one"])
@@ -261,6 +260,16 @@ class TestTag(TestCase):
         self.assertIn("Note: '\"this is a \\\"test\\\"\"' is a new tag", out)
         self.t("stop")
         self.t("delete @1")
+
+    def test_referencing_a_non_existent_interval_is_an_error(self):
+        """Calling tag with a non-existent interval reference is an error"""
+        code, out, err = self.t.runError("tag @1 @2 foo")
+        self.assertIn("ID '@1' does not correspond to any tracking.", err)
+
+        self.t("start 1h ago bar")
+
+        code, out, err = self.t.runError("tag @2 foo")
+        self.assertIn("ID '@2' does not correspond to any tracking.", err)
 
 
 if __name__ == "__main__":

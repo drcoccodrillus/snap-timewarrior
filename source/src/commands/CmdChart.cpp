@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -34,6 +34,9 @@
 #include <format.h>
 #include <iostream>
 #include <iomanip>
+#include <IntervalFilterAllInRange.h>
+#include <IntervalFilterAllWithTags.h>
+#include <IntervalFilterAndGroup.h>
 
 int renderChart (const CLI&, const std::string&, Interval&, Rules&, Database&);
 
@@ -45,8 +48,11 @@ int CmdChartDay (
   Rules& rules,
   Database& database)
 {
+  auto default_hint = rules.get ("reports.range", "day");
+  auto report_hint = rules.get ("reports.day.range", default_hint);
+
   Range default_range = {};
-  expandIntervalHint (rules.get ("reports.day.range", ":day"), default_range);
+  expandIntervalHint (":" + report_hint, default_range);
 
   // Create a filter, and if empty, choose the current day.
   auto filter = cli.getFilter (default_range);
@@ -60,8 +66,11 @@ int CmdChartWeek (
   Rules& rules,
   Database& database)
 {
+  auto default_hint = rules.get ("reports.range", "week");
+  auto report_hint = rules.get ("reports.week.range", default_hint);
+
   Range default_range = {};
-  expandIntervalHint (rules.get ("reports.week.range", ":week"), default_range);
+  expandIntervalHint (":" + report_hint, default_range);
 
   // Create a filter, and if empty, choose the current week.
   auto filter = cli.getFilter (default_range);
@@ -75,8 +84,11 @@ int CmdChartMonth (
   Rules& rules,
   Database& database)
 {
+  auto default_hint = rules.get ("reports.range", "month");
+  auto report_hint = rules.get ("reports.month.range", default_hint);
+
   Range default_range = {};
-  expandIntervalHint (rules.get ("reports.month.range", ":month"), default_range);
+  expandIntervalHint (":" + report_hint, default_range);
 
   // Create a filter, and if empty, choose the current month.
   auto filter = cli.getFilter (default_range);
@@ -95,7 +107,12 @@ int renderChart (
   const bool verbose = rules.getBoolean ("verbose");
 
   // Load the data.
-  const auto tracked = getTracked (database, rules, filter);
+  IntervalFilterAndGroup filtering ({
+    std::make_shared <IntervalFilterAllInRange> ( Range { filter.start, filter.end }),
+    std::make_shared <IntervalFilterAllWithTags> (filter.tags())
+  });
+
+  auto tracked = getTracked (database, rules, filtering);
 
   if (tracked.empty ())
   {
@@ -144,12 +161,12 @@ int renderChart (
   configuration.with_label_week = rules.getBoolean ("reports." + type + ".week");
   configuration.with_label_weekday = rules.getBoolean ("reports." + type + ".weekday");
   configuration.with_label_day = rules.getBoolean ("reports." + type + ".day");
-  configuration.with_ids = findHint (cli, ":ids");
+  configuration.with_ids = cli.getHint ("ids", false);
   configuration.with_summary = rules.getBoolean ("reports." + type + ".summary");
   configuration.with_holidays = rules.getBoolean ("reports." + type + ".holidays");
   configuration.with_totals = rules.getBoolean ("reports." + type + ".totals");
   configuration.with_internal_axis = rules.get ("reports." + type + ".axis") == "internal";
-  configuration.show_intervals = findHint (cli, ":blank");
+  configuration.show_intervals = cli.getHint ("blank", false);
   configuration.determine_hour_range = rules.get ("reports." + type + ".hours") == "auto";
   configuration.minutes_per_char = minutes_per_char;
   configuration.spacing = rules.getInteger ("reports." + type + ".spacing", 1);

@@ -1,6 +1,56 @@
 ------ current release ---------------------------
 
-1.4.3 (2021-05-28) -
+1.5.0 (2023-04-02) -
+
+- #361    Improve documentation
+          (thanks to xeruf)
+- #389    Extend summary configuration
+          (thanks to Davide Crucitti)
+- #489    First execution creates database regardless of confirmation response
+          (thanks to Rafael Oliveira)
+- #403    Remove incorrect output stating that an empty interval was recorded
+          (thanks to xeruf)
+- #406    Clarify minimal value for 'epoch' as date value
+          (thanks to Daniel Hornung)
+- #408    Update documentation of hint `:all`
+          (thanks to quazgar)
+- #437    Minor AtomicFile cleanup
+          (thanks to Shaun Ruffel)
+- #439    Show error message if command track is called with an id
+- #441    Return report return code
+          (thanks to lospatchos)
+- #444    Improve documentation on annotations
+          (Thanks to apkawel, Shaun Ruffel)
+- #450    Report 'totals.py' does not display data when no time range specified
+          (thanks to squirrellyDave)
+- #458    Add man documentation for configuring tag colors.
+          (thanks to Lim Ding Wen)
+- #463    Add colors to summary
+          (thanks to Lim Ding Wen)
+- #466    Ignore empty exclusion ranges
+- #468    Refactor interval filtering
+- #469    Do not leak IntervalFilters in IntervalFilterAndGroup
+          (thanks to Shaun Ruffel)
+- #470    Do not leak filter in IntervalFilterFirstOf
+          (thanks to Shaun Ruffel)
+- #474    Make display of ids and annotations in summary report configurable
+- #477    Add configurable default range for reports
+          (thanks to Oivvio Polite, Christian Kohlstedde)
+- #478    Add support for XDG Base Directory specification on Unixes
+          (Thanks to Stanisław Wysocki)
+- #491    Tracking an interval in the future while actively tracking time results in a database inconsistency
+          (thanks to agentcoffee)
+- #505    Report 'totals.py' does not truncate intervals to report range
+          (thanks to eq0cdk)
+- #510    Export intervals by IDs
+          (thanks to Scott Mcdermott)
+- #512    help.t fails on alpine with mandoc package
+          (thanks to Edd Salkield)
+-         Add option '--details' to 'test/problems' script
+
+------ old releases ------------------------------
+
+1.4.3 (2021-05-28) - fc618636aacba6e52d447b482aeef58b375dfc8c
 
 - #159    Tags enclosed in escaped double-quotes are not handled correctly
           (thanks to Shaun Ruffell)
@@ -15,7 +65,7 @@
 - #398    test: Thread.isAlive() -> Thread.is_alive()
           (thanks to Shaun Ruffell)
 - #410    Replace roff man pages with asciidoctor
-- #411    Transfer platform testing from Travis CI to Github Actions
+- #411    Transfer platform testing from Travis CI to GitHub Actions
 - #416    Internal error. Failed encode / decode check when doing undo
           (thanks to narudarurarasya, Shaun Ruffel)
 - #419    Links not preserved over linebreaks in man page
@@ -25,8 +75,6 @@
 -         Width determination of Unicode characters now works for up to
           Unicode 11 (from Unicode 5). Emojis are correctly displayed.
 -         Fix test `summary.t` for single-digit weeks
-
------- old releases ------------------------------
 
 1.4.2 (2020-08-29) - 4aa8489243adb69958d7717fb2f010c72fd4505a
 
@@ -71,7 +119,7 @@
 - #367    CmdDiagnostics: Show per-file error messages.
           (thanks to Shaun Ruffell)
 - #372    Empty intervals are not deleted in `:adjust` overlap resolution
-          (thanks to xerus2000)
+          (thanks to xeruf)
 
 1.3.0 (2020-04-19) - 3de53d7599d1e4364c8aaaeb3c3ef1fe89ee3380
 

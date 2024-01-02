@@ -36,8 +36,8 @@ class Timew(object):
         # Configuration of the isolated environment
         self._original_pwd = os.getcwd()
         self.datadir = tempfile.mkdtemp(prefix="timew_")
-        self.timewrc = os.path.join (self.datadir, 'timewarrior.cfg')
-        self.extdir = os.path.join(self.datadir, 'extensions')
+        self.timewrc = os.path.join(self.datadir, "timewarrior.cfg")
+        self.extdir = os.path.join(self.datadir, "extensions")
 
         # Ensure any instance is properly destroyed at session end
         atexit.register(lambda: self.destroy())
@@ -160,7 +160,7 @@ class Timew(object):
         *not* fail if program finishes abnormally.
 
         If you wish to pass instructions to timew such as confirmations or other
-        input via stdin, you can do so by providing a input string.
+        input via stdin, you can do so by providing an input string.
         Such as input="y\ny\n".
 
         If merge_streams=True stdout and stderr will be merged into stdout.
@@ -195,7 +195,7 @@ class Timew(object):
         *fail* if program finishes abnormally.
 
         If you wish to pass instructions to timew such as confirmations or other
-        input via stdin, you can do so by providing a input string.
+        input via stdin, you can do so by providing an input string.
         Such as input="y\ny\n".
 
         If merge_streams=True stdout and stderr will be merged into stdout.

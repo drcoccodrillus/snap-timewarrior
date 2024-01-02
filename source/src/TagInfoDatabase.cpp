@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2018 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2018 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,7 @@
 #include <TagInfoDatabase.h>
 #include <format.h>
 #include <TagInfo.h>
-#include "timew.h"
+#include <timew.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Increment tag count

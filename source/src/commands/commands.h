@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -41,7 +41,7 @@ int CmdDefault       (            Rules&, Database&                             
 int CmdDelete        (const CLI&, Rules&, Database&, Journal&                   );
 int CmdDiagnostics   (            Rules&, Database&,           const Extensions&);
 int CmdExport        (const CLI&, Rules&, Database&                             );
-int CmdExtensions    (            Rules&,                      const Extensions&);
+int CmdExtensions    (                                         const Extensions&);
 int CmdFill          (const CLI&, Rules&, Database&, Journal&                   );
 int CmdGaps          (const CLI&, Rules&, Database&                             );
 int CmdGet           (const CLI&, Rules&, Database&                             );

@@ -1,4 +1,0 @@
-#!/bin/sh
-for line in "${@}" ; do
-  echo "${line}"
-done

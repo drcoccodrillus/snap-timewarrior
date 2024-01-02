@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,7 @@
 #include <format.h>
 #include <timew.h>
 #include <iostream>
+#include <IntervalFilterAllInRange.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 // :fill
@@ -44,7 +45,7 @@ void autoFill (
   Interval& interval)
 {
   // An empty filter allows scanning beyond interval range.
-  Interval range_filter;
+  auto range_filter = IntervalFilterAllInRange ({0, 0});
 
   // Look backwards from interval.start to a boundary.
   auto tracked = getTracked (database, rules, range_filter);
@@ -99,9 +100,10 @@ static bool autoAdjust (
 {
   const bool verbose = rules.getBoolean ("verbose");
 
-  // We do not need the adjust flag set to "flatten" the database if the last
+  // We do not need the :adjust flag set to "flatten" the database if the last
   // interval is open and encloses the current interval that we're adding.
   Interval latest = getLatestInterval (database);
+
   if (interval.is_open () && latest.encloses (interval))
   {
     if (latest.tags () == interval.tags ())
@@ -113,9 +115,16 @@ static bool autoAdjust (
 
     database.deleteInterval (latest);
     latest.end = interval.start;
+
     for (auto& interval : flatten (latest, getAllExclusions (rules, latest)))
     {
+      if (interval.is_empty ())
+      {
+        continue;
+      }
+
       database.addInterval (interval, verbose);
+
       if (verbose)
       {
         std::cout << intervalSummarize (rules, interval);
@@ -123,7 +132,7 @@ static bool autoAdjust (
     }
   }
 
-  Interval overlaps_filter {interval.start, interval.end};
+  auto overlaps_filter = IntervalFilterAllInRange ({interval.start, interval.end});
   auto overlaps = getTracked (database, rules, overlaps_filter);
 
   if (overlaps.empty ())
@@ -222,12 +231,12 @@ bool validate (
   Interval& interval)
 {
   // All validation performed here.
-  if (findHint (cli, ":fill"))
+  if (cli.getHint ("fill", false))
   {
     autoFill (rules, database, interval);
   }
 
-  return autoAdjust (findHint (cli, ":adjust"), rules, database, interval);
+  return autoAdjust (cli.getHint ("adjust", false), rules, database, interval);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

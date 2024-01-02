@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,7 @@
 #include <set>
 #include <Duration.h>
 #include <timew.h>
-#include "DatetimeParser.h"
+#include <DatetimeParser.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 A2::A2 (const std::string& raw, Lexer::Type lextype)
@@ -667,16 +667,16 @@ Interval CLI::getFilter (const Range& default_range) const
         {
           if (range.is_empty ())
           {
-            args.push_back ("<all>");
+            args.emplace_back("<all>");
           }
           else
           {
             start = range.start.toISO ();
             end   = range.end.toISO ();
 
-            args.push_back ("<date>");
-            args.push_back ("-");
-            args.push_back ("<date>");
+            args.emplace_back("<date>");
+            args.emplace_back("-");
+            args.emplace_back("<date>");
           }
         }
 
@@ -689,14 +689,14 @@ Interval CLI::getFilter (const Range& default_range) const
         else if (end.empty ())
           end = raw;
 
-        args.push_back ("<date>");
+        args.emplace_back("<date>");
       }
       else if (arg._lextype == Lexer::Type::duration)
       {
         if (duration.empty ())
           duration = raw;
 
-        args.push_back ("<duration>");
+        args.emplace_back("<duration>");
       }
       else if (arg.hasTag ("KEYWORD"))
       {
@@ -730,14 +730,14 @@ Interval CLI::getFilter (const Range& default_range) const
     filter.setRange (range);
   }
 
-    // from <date>
+  // from <date>
   else if (args.size () == 2 &&
            args[0] == "from" &&
            args[1] == "<date>")
   {
     filter.setRange ({Datetime (start), 0});
   }
-    // <date> to/- <date>
+  // <date> to/- <date>
   else if (args.size () == 3                   &&
            args[0] == "<date>"                 &&
            (args[1] == "to" || args[1] == "-") &&
@@ -746,7 +746,7 @@ Interval CLI::getFilter (const Range& default_range) const
     filter.setRange ({Datetime (start), Datetime (end)});
   }
 
-    // from <date> to/- <date>
+  // from <date> to/- <date>
   else if (args.size () == 4                   &&
            args[0] == "from"                   &&
            args[1] == "<date>"                 &&
@@ -756,7 +756,7 @@ Interval CLI::getFilter (const Range& default_range) const
     filter.setRange ({Datetime (start), Datetime (end)});
   }
 
-    // <date> for <duration>
+  // <date> for <duration>
   else if (args.size () == 3   &&
            args[0] == "<date>" &&
            args[1] == "for"    &&
@@ -765,7 +765,7 @@ Interval CLI::getFilter (const Range& default_range) const
     filter.setRange ({Datetime (start), Datetime (start) + Duration (duration).toTime_t ()});
   }
 
-    // from <date> for <duration>
+  // from <date> for <duration>
   else if (args.size () == 4       &&
            args[0] == "from"       &&
            args[1] == "<date>"     &&
@@ -775,7 +775,7 @@ Interval CLI::getFilter (const Range& default_range) const
     filter.setRange ({Datetime (start), Datetime (start) + Duration (duration).toTime_t ()});
   }
 
-    // <duration> before <date>
+  // <duration> before <date>
   else if (args.size () == 3       &&
            args[0] == "<duration>" &&
            args[1] == "before"     &&
@@ -784,7 +784,7 @@ Interval CLI::getFilter (const Range& default_range) const
     filter.setRange ({Datetime (start) - Duration (duration).toTime_t (), Datetime (start)});
   }
 
-    // <duration> after <date>
+  // <duration> after <date>
   else if (args.size () == 3       &&
            args[0] == "<duration>" &&
            args[1] == "after"      &&
@@ -793,7 +793,7 @@ Interval CLI::getFilter (const Range& default_range) const
     filter.setRange ({Datetime (start), Datetime (start) + Duration (duration).toTime_t ()});
   }
 
-    // <duration> ago
+  // <duration> ago
   else if (args.size () == 2       &&
            args[0] == "<duration>" &&
            args[1] == "ago")
@@ -801,7 +801,7 @@ Interval CLI::getFilter (const Range& default_range) const
     filter.setRange ({now - Duration (duration).toTime_t (), 0});
   }
 
-    // for <duration>
+  // for <duration>
   else if (args.size () == 2       &&
            args[0] == "for"        &&
            args[1] == "<duration>")
@@ -809,7 +809,7 @@ Interval CLI::getFilter (const Range& default_range) const
     filter.setRange ({now - Duration (duration).toTime_t (), now});
   }
 
-    // <duration>
+  // <duration>
   else if (args.size () == 1 &&
            args[0] == "<duration>")
   {
@@ -832,4 +832,45 @@ Interval CLI::getFilter (const Range& default_range) const
     throw std::string ("The end of a date range must be after the start.");
 
   return filter;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool CLI::findHint (const std::string& hint) const
+{
+  for (auto& arg : _args)
+  {
+    if (arg.hasTag ("HINT") &&
+        arg.getToken () == ":" + hint)
+    {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool CLI::getComplementaryHint (const std::string& base, const bool default_value) const
+{
+  if (findHint (base))
+  {
+    return true;
+  }
+  else if (findHint ("no-" + base))
+  {
+    return false;
+  }
+
+  return default_value;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool CLI::getHint (const std::string &base, const bool default_value) const
+{
+  if (findHint (base))
+  {
+    return true;
+  }
+
+  return default_value;
 }

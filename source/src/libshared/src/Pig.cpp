@@ -103,13 +103,15 @@ bool Pig::skipLiteral (const std::string& literal)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool Pig::skipPartial (const std::string& reference, std::string& result)
+bool Pig::skipPartial (const std::string& reference, std::string& result,
+                       bool ignore_case)
 {
   // Walk the common substring.
   auto pos = 0;
   while (reference[pos] &&
          (*_text)[_cursor + pos] &&
-         reference[pos] == (*_text)[_cursor + pos])
+         ((reference[pos] == (*_text)[_cursor + pos] && !ignore_case) ||
+          (reference[pos] == tolower((*_text)[_cursor + pos]) && ignore_case)))
     ++pos;
 
   if (pos > 0)
@@ -120,6 +122,28 @@ bool Pig::skipPartial (const std::string& reference, std::string& result)
   }
 
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// ASCII-only version of getUntil. Has better performance characteristics at
+// the cost of not considering utf-8 characters correctly. Use with caution.
+bool Pig::getUntilAscii (char end, std::string& result)
+{
+  auto save = _cursor;
+  auto found = _text->find (end, _cursor + 1);
+
+  if (found == std::string::npos)
+  {
+    found = _text->size ();
+    result = _text->substr (_cursor, found - _cursor);
+    _cursor = found;
+    return true;
+  }
+
+  result = _text->substr (_cursor, found - _cursor);
+  _cursor = _cursor + result.size();
+
+  return _cursor > save;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

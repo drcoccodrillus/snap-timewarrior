@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -38,8 +38,24 @@
 #include <vector>
 
 ////////////////////////////////////////////////////////////////////////////////
-// Select a color to represent the interval.
-Color intervalColor (
+// Select a color to represent the interval in a summary report.
+Color summaryIntervalColor (
+  const Rules& rules,
+  const std::set <std::string>& tags)
+{
+  Color c;
+
+  for (auto& tag : tags)
+  {
+      c.blend (tagColor (rules, tag));
+  }
+
+  return c;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Select a color to represent the interval on a chart.
+Color chartIntervalColor (
   const std::set <std::string>& tags,
   const std::map <std::string, Color>& tag_colors)
 {
@@ -95,10 +111,20 @@ std::string intervalSummarize (const Rules& rules, const Interval& interval)
     // Interval open.
     if (interval.is_open ())
     {
-      out << "Tracking " << tags << '\n'
-          << "  Started " << interval.start.toISOLocalExtended () << '\n'
-          << "  Current " << minimalDelta (interval.start, Datetime ()) << '\n'
-          << "  Total   " << std::setw (19) << std::setfill (' ') << total.formatHours () << '\n';
+      auto now = Datetime ();
+
+      if (interval.start <= now )
+      {
+        out << "Tracking " << tags << '\n'
+            << "  Started " << interval.start.toISOLocalExtended () << '\n'
+            << "  Current " << minimalDelta (interval.start, now) << '\n'
+            << "  Total   " << std::setw (19) << std::setfill (' ') << total.formatHours () << '\n';
+      }
+      else
+      {
+        out << "Tracking " << tags << '\n'
+            << "  Starting " << interval.start.toISOLocalExtended () << '\n';
+      }
     }
 
     // Interval closed.
@@ -122,13 +148,13 @@ bool expandIntervalHint (
 {
   static std::map <std::string, std::vector <std::string>> hints
   {
-    {":yesterday",   {"yesterday", "today"}},
-    {":day",         {"today",     "eod"}},
-    {":week",        {"sow",       "eow"}},
-    {":fortnight",   {"sopw",      "eow"}},
-    {":month",       {"som",       "eom"}},
-    {":quarter",     {"soq",       "eoq"}},
-    {":year",        {"soy",       "eoy"}},
+    {":yesterday", {"sopd", "sod" }},
+    {":day",       {"sod",  "sond"}},
+    {":week",      {"sow",  "sonw"}},
+    {":fortnight", {"sopw", "sonw"}},
+    {":month",     {"som",  "sonm"}},
+    {":quarter",   {"soq",  "sonq"}},
+    {":year",      {"soy",  "sony"}},
   };
 
   static std::vector <std::string> dayNames
@@ -397,9 +423,13 @@ int quantizeToNMinutes (const int minutes, const int N)
 bool findHint (const CLI& cli, const std::string& hint)
 {
   for (auto& arg : cli._args)
+  {
     if (arg.hasTag ("HINT") &&
         arg.getToken () == hint)
+    {
       return true;
+    }
+  }
 
   return false;
 }

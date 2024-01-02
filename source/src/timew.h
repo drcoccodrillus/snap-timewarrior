@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,12 +35,11 @@
 #include <Exclusion.h>
 #include <Palette.h>
 #include <Color.h>
+#include <IntervalFilter.h>
 
 // data.cpp
 std::vector <Range>     getHolidays       (const Rules&);
 std::vector <Range>     getAllExclusions  (const Rules&, const Range&);
-std::vector <Interval>  getIntervalsByIds (Database&, const Rules&, const std::set <int>&);
-std::vector <Interval>  subset            (const Interval&, const std::vector <Interval>&);
 std::vector <Range>     subset            (const Range&, const std::vector <Range>&);
 std::vector <Interval>  subset            (const Range&, const std::vector <Interval>&);
 void                    flattenDatabase   (Database&, const Rules&);
@@ -52,7 +51,7 @@ Range                   outerRange        (const std::vector <Interval>&);
 bool                    matchesRange      (const Interval&, const Range&);
 bool                    matchesFilter     (const Interval&, const Interval&);
 Interval                clip              (const Interval&, const Range&);
-std::vector <Interval>  getTracked        (Database&, const Rules&, Interval&);
+std::vector <Interval>  getTracked        (Database&, const Rules&, IntervalFilter&);
 std::vector <Range>     getUntracked      (Database&, const Rules&, Interval&);
 Interval                getLatestInterval (Database&);
 Range                   getFullDay        (const Datetime&);
@@ -69,7 +68,8 @@ void initializeExtensions (CLI&, const Rules&, Extensions&);
 int dispatchCommand (const CLI&, Database&, Journal&, Rules&, const Extensions&);
 
 // helper.cpp
-Color intervalColor (const std::set <std::string>&, const std::map <std::string, Color>&);
+Color summaryIntervalColor (const Rules&, const std::set <std::string>&);
+Color chartIntervalColor (const std::set <std::string>&, const std::map <std::string, Color>&);
 Color tagColor (const Rules&, const std::string&);
 std::string intervalSummarize (const Rules&, const Interval&);
 bool expandIntervalHint (const std::string&, Range&);

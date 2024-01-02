@@ -2,7 +2,7 @@
 
 ###############################################################################
 #
-# Copyright 2017 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+# Copyright 2017 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,9 +28,8 @@
 
 import datetime
 import os
-import unittest
-
 import sys
+import unittest
 
 # Ensure python finds the local simpletap module
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -54,7 +53,7 @@ class TestTotals(TestCase):
 
         out = calculate_totals(input_stream)
 
-        self.assertEqual(['There is no data in the database'], out)
+        self.assertEqual(['No data to display'], out)
 
     def test_totals_with_filled_database(self):
         """totals extension should print report for filled database"""
@@ -255,7 +254,7 @@ class TestTotals(TestCase):
 
         out = calculate_totals(input_stream)
 
-        self.assertEqual(['There is no data in the database'], out)
+        self.assertEqual(['No data to display'], out)
 
     def test_totals_colored_with_filled_database(self):
         """totals extension should print report for filled database (colored)"""
@@ -356,7 +355,7 @@ class TestTotals(TestCase):
             'temp.report.start: {:%Y%m%dT%H%M%S}Z\n'.format(one_hour_before_utc),
             'temp.report.end: {:%Y%m%dT%H%M%S}Z\n'.format(now_utc),
             '\n',
-            '[{"start":"20160101T070000Z","end":"20160101T080000Z","tags":[]}]',
+            '[{{"start":"{:%Y%m%dT%H%M%S}Z","end":"{:%Y%m%dT%H%M%S}Z","tags":[]}}]'.format(one_hour_before_utc, now_utc)
         ]
 
         out = calculate_totals(input_stream)

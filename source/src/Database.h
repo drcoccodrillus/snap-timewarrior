@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016, 2018 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016, 2018 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -120,7 +120,7 @@ private:
   void initializeTagDatabase ();
 
 private:
-  std::string               _location {"~/.timewarrior/data"};
+  std::string               _location {};
   std::vector <Datafile>    _files    {};
   TagInfoDatabase           _tagInfoDatabase {};
   Journal*                  _journal {};

@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, 2018 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2015 - 2016, 2018 - 2019, 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -45,7 +45,7 @@ public:
   std::string get (const std::string &key, const std::string &defaultValue = "") const;
   int         getInteger (const std::string&, int defaultValue = 0) const;
   double      getReal    (const std::string&) const;
-  bool        getBoolean (const std::string&) const;
+  bool        getBoolean (const std::string&, bool defaultValue = false) const;
 
   void set (const std::string&, const int);
   void set (const std::string&, const double);

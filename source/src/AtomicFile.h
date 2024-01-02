@@ -56,24 +56,19 @@ public:
   void append (const std::string& content);
   void write_raw (const std::string& content);
 
-  static void append (const std::string& path, const std::string& data);
   static void append (const Path& path, const std::string& data);
 
-  static void write (const std::string& path, const std::string& data);
   static void write (const Path& path, const std::string& data);
   static void write (const Path& path, const std::vector <std::string>& lines);
 
-  static void read (const std::string& path, std::string& content);
   static void read (const Path& path, std::string& content);
   static void read (const Path& path, std::vector <std::string>& lines);
 
   static void finalize_all ();
   static void reset ();
 
-public:
-  struct impl;
-
 private:
+  struct impl;
   std::shared_ptr <impl> pimpl;
 };
 

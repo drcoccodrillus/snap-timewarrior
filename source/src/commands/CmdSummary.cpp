@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,9 @@
 #include <commands.h>
 #include <timew.h>
 #include <iostream>
+#include <IntervalFilterAndGroup.h>
+#include <IntervalFilterAllWithTags.h>
+#include <IntervalFilterAllInRange.h>
 
 // Implemented in CmdChart.cpp.
 std::map <Datetime, std::string> createHolidayMap (Rules&, Interval&);
@@ -44,11 +47,21 @@ int CmdSummary (
 {
   const bool verbose = rules.getBoolean ("verbose");
 
-  // Create a filter, and if empty, choose 'today'.
-  auto filter = cli.getFilter (Range { Datetime ("today"), Datetime ("tomorrow") });
+  auto default_hint = rules.get ("reports.range", "day");
+  auto report_hint = rules.get ("reports.summary.range", default_hint);
+
+  Range default_range = {};
+  expandIntervalHint (":" + report_hint, default_range);
+
+  auto filter = cli.getFilter (default_range);
 
   // Load the data.
-  auto tracked = getTracked (database, rules, filter);
+  IntervalFilterAndGroup filtering ({
+    std::make_shared <IntervalFilterAllInRange> ( Range { filter.start, filter.end }),
+    std::make_shared <IntervalFilterAllWithTags> (filter.tags())
+  });
+
+  auto tracked = getTracked (database, rules, filtering);
 
   if (tracked.empty ())
   {
@@ -75,33 +88,66 @@ int CmdSummary (
   }
 
   // Map tags to colors.
-  auto palette = createPalette (rules);
-  auto tag_colors = createTagColorMap (rules, palette, tracked);
   Color colorID (rules.getBoolean ("color") ? rules.get ("theme.colors.ids") : "");
 
-  auto ids = findHint (cli, ":ids");
-  auto show_annotation = findHint (cli, ":annotations");
+  const auto week_fmt = "W{1}";
+  const auto date_fmt = "Y-M-D";
+  const auto time_fmt = "h:N:S";
+
+  const auto show_weeks = rules.getBoolean ("reports.summary.weeks", true);
+  const auto show_weekdays = rules.getBoolean ("reports.summary.weekdays", true);
+  const auto show_ids = cli.getComplementaryHint ("ids", rules.getBoolean ("reports.summary.ids"));
+  const auto show_tags = cli.getComplementaryHint ("tags", rules.getBoolean ("reports.summary.tags", true));
+  const auto show_annotations = cli.getComplementaryHint ("annotations", rules.getBoolean ("reports.summary.annotations"));
+  const auto show_holidays = cli.getComplementaryHint ("holidays", rules.getBoolean ("reports.summary.holidays"));
+
+  const auto dates_col_offset = show_weeks ? 1 : 0;
+  const auto weekdays_col_offset = dates_col_offset;
+  const auto ids_col_offset = weekdays_col_offset + (show_weekdays ? 1: 0);
+  const auto tags_col_offset = ids_col_offset + (show_ids ? 1 : 0);
+  const auto annotation_col_offset = tags_col_offset + (show_tags ? 1 : 0);
+  const auto start_col_offset = annotation_col_offset + (show_annotations ? 1 : 0);
+
+  const auto weeks_col_index = 0;
+  const auto dates_col_index = 0 + dates_col_offset;
+  const auto weekdays_col_index = 1 + weekdays_col_offset;
+  const auto ids_col_index = 1 + ids_col_offset;
+  const auto tags_col_index = 1 + tags_col_offset;
+  const auto annotation_col_index = 1 + annotation_col_offset;
+  const auto start_col_index = 1 + start_col_offset;
+  const auto end_col_index = 2 + start_col_offset;
+  const auto duration_col_index = 3 + start_col_offset;
+  const auto total_col_index = 4 + start_col_offset;
 
   Table table;
   table.width (1024);
   table.colorHeader (Color ("underline"));
-  table.add ("Wk");
-  table.add ("Date");
-  table.add ("Day");
 
-  if (ids)
+  if (show_weeks)
+  {
+    table.add ("Wk");
+  }
+
+  table.add ("Date");
+
+  if (show_weekdays)
+  {
+    table.add ("Day");
+  }
+
+  if (show_ids)
   {
     table.add ("ID");
   }
 
-  table.add ("Tags");
+  if (show_tags)
+  {
+    table.add ("Tags");
+  }
 
-  auto offset = 0;
-
-  if (show_annotation)
+  if (show_annotations)
   {
     table.add ("Annotation");
-    offset = 1;
   }
 
   table.add ("Start", false);
@@ -116,9 +162,11 @@ int CmdSummary (
   auto days_start = filter.is_started() ? filter.start : tracked.front ().start;
   auto days_end   = filter.is_ended()   ? filter.end   : tracked.back ().end;
 
+  const auto now = Datetime ();
+
   if (days_end == 0)
   {
-    days_end = Datetime ();
+    days_end = now;
   }
 
   for (Datetime day = days_start.startOfDay (); day < days_end; ++day)
@@ -130,65 +178,89 @@ int CmdSummary (
     for (auto& track : subset (day_range, tracked))
     {
       // Make sure the track only represents one day.
-      if ((track.is_open () && day > Datetime ()))
+      if ((track.is_open () && day > now))
+      {
         continue;
+      }
 
       row = table.addRow ();
 
       if (day != previous)
       {
-        table.set (row, 0, format ("W{1}", day.week ()));
-        table.set (row, 1, day.toString ("Y-M-D"));
-        table.set (row, 2, day.dayNameShort (day.dayOfWeek ()));
+        if (show_weeks)
+        {
+          table.set (row, weeks_col_index, format (week_fmt, day.week ()));
+        }
+
+        table.set (row, dates_col_index, day.toString (date_fmt));
+
+        if (show_weekdays)
+        {
+          table.set (row, weekdays_col_index, Datetime::dayNameShort (day.dayOfWeek ()));
+        }
+
         previous = day;
       }
 
       // Intersect track with day.
       auto today = day_range.intersect (track);
-      if (track.is_open () && day <= Datetime () && today.end > Datetime ())
-        today.end = Datetime ();
 
-      std::string tags = join(", ", track.tags());
-
-      if (ids)
+      if (track.is_open() && track.start > now)
       {
-        table.set (row, 3, format ("@{1}", track.id), colorID);
+        today.end = track.start;
+      }
+      else if (track.is_open () && day <= now && today.end > now)
+      {
+        today.end = now;
       }
 
-      table.set (row, (ids ? 4 : 3), tags);
+      if (show_ids)
+      {
+        table.set (row, ids_col_index, format ("@{1}", track.id), colorID);
+      }
 
-      if (show_annotation)
+      if (show_tags)
+      {
+        std::string tags = join (", ", track.tags ());
+        table.set (row, tags_col_index, tags, summaryIntervalColor (rules, track.tags ()));
+      }
+
+      if (show_annotations)
       {
         auto annotation = track.getAnnotation ();
 
         if (annotation.length () > 15)
+        {
           annotation = annotation.substr (0, 12) + "...";
+        }
 
-        table.set (row, (ids ? 5 : 4), annotation);
+        table.set (row, annotation_col_index, annotation);
       }
 
-      table.set (row, (ids ? 5 : 4) + offset, today.start.toString ("h:N:S"));
-      table.set (row, (ids ? 6 : 5) + offset, (track.is_open () ? "-" : today.end.toString ("h:N:S")));
-      table.set (row, (ids ? 7 : 6) + offset, Duration (today.total ()).formatHours ());
+      const auto total = today.total ();
 
-      daily_total += today.total ();
+      table.set (row, start_col_index, today.start.toString (time_fmt));
+      table.set (row, end_col_index, (track.is_open () ? "-" : today.end.toString (time_fmt)));
+      table.set (row, duration_col_index, Duration (total).formatHours ());
+
+      daily_total += total;
     }
 
     if (row != -1)
-      table.set (row, (ids ? 8 : 7) + offset, Duration (daily_total).formatHours ());
+    {
+      table.set (row, total_col_index, Duration (daily_total).formatHours ());
+    }
 
     grand_total += daily_total;
   }
 
   // Add the total.
-  table.set (table.addRow (), (ids ? 8 : 7) + offset, " ", Color ("underline"));
-  table.set (table.addRow (), (ids ? 8 : 7) + offset, Duration (grand_total).formatHours ());
-
-  const auto with_holidays = rules.getBoolean ("reports.summary.holidays");
+  table.set (table.addRow (), total_col_index, " ", Color ("underline"));
+  table.set (table.addRow (), total_col_index, Duration (grand_total).formatHours ());
 
   std::cout << '\n'
             << table.render ()
-            << (with_holidays ? renderHolidays (createHolidayMap (rules, filter)) : "")
+            << (show_holidays ? renderHolidays (createHolidayMap (rules, filter)) : "")
             << '\n';
 
   return 0;

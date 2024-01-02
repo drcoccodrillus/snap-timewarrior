@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@
 #include <cstring>
 #include <unistd.h>
 #include <iostream>
+#include <paths.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 bool lightweightVersionCheck (int argc, const char** argv)
@@ -80,8 +81,7 @@ void initializeEntities (CLI& cli)
   cli.entity ("command", "undo");
   cli.entity ("command", "untag");
 
-  // Some command list themselves as extensions, to integrate with the real
-  // extensions.
+  // Some command list themselves as extensions, to integrate with the real extensions.
   cli.entity ("extension", "day");
   cli.entity ("extension", "month");
   cli.entity ("extension", "summary");
@@ -96,7 +96,13 @@ void initializeEntities (CLI& cli)
   cli.entity ("hint", ":debug");
   cli.entity ("hint", ":fill");
   cli.entity ("hint", ":ids");
+  cli.entity ("hint", ":no-ids");
+  cli.entity ("hint", ":tags");
+  cli.entity ("hint", ":no-tags");
   cli.entity ("hint", ":annotations");
+  cli.entity ("hint", ":no-annotations");
+  cli.entity ("hint", ":holidays");
+  cli.entity ("hint", ":no-holidays");
   cli.entity ("hint", ":lastmonth");
   cli.entity ("hint", ":lastquarter");
   cli.entity ("hint", ":lastweek");
@@ -148,62 +154,7 @@ void initializeDataJournalAndRules (
   }
 
   enableDebugMode (rules.getBoolean ("debug"));
-
-  // The $TIMEWARRIORDB environment variable overrides the default value of
-  // ~/.timewarrior‥
-  Directory dbLocation;
-  char* override = getenv ("TIMEWARRIORDB");
-  dbLocation = Directory (override ? override : "~/.timewarrior");
-
-  // If dbLocation exists, but is not readable/writable/executable, error.
-  if (dbLocation.exists () &&
-      (! dbLocation.readable () ||
-       ! dbLocation.writable () ||
-       ! dbLocation.executable ()))
-  {
-    throw format ("Database is not readable at '{1}'", dbLocation._data);
-  }
-
-  // If dbLocation does not exist, ask whether it should be created.
-  bool shinyNewDatabase = false;
-  if (! dbLocation.exists () &&
-      (findHint (cli, ":yes") ||
-       confirm ("Create new database in " + dbLocation._data + "?")))
-  {
-    dbLocation.create (0700);
-    shinyNewDatabase = true;
-  }
-
-  // Create extensions subdirectory if necessary.
-  Directory extensions (dbLocation);
-  extensions += "extensions";
-  if (! extensions.exists ())
-    extensions.create (0700);
-
-  // Create data subdirectory if necessary.
-  Directory data (dbLocation);
-  data += "data";
-  if (! data.exists ())
-    data.create (0700);
-
-  // Load the configuration data.
-  Path configFile (dbLocation);
-  configFile += "timewarrior.cfg";
-  if (! configFile.exists ())
-  {
-    File (configFile).create (0600);
-  }
-  rules.load (configFile._data);
-
-  // This value is not written out to disk, as there would be no point. Having
-  // located the config file, the 'db' location is already known. This is just
-  // for subsequent internal use.
-  rules.set ("temp.db", dbLocation._data);
-
-  // Perhaps some subsequent code would like to know this is a new db and
-  // possibly a first run.
-  if (shinyNewDatabase)
-    rules.set ("temp.shiny", 1);
+  paths::initializeDirs (cli, rules);
 
   if (rules.has ("debug.indicator"))
     setDebugIndicator (rules.get ("debug.indicator"));
@@ -221,9 +172,10 @@ void initializeDataJournalAndRules (
     }
   }
 
-  journal.initialize (data._data + "/undo.data", rules.getInteger ("journal.size"));
+  std::string dbDataDir = paths::dbDataDir ();
+  journal.initialize (dbDataDir + "/undo.data", rules.getInteger ("journal.size"));
   // Initialize the database (no data read), but files are enumerated.
-  database.initialize (data._data, journal);
+  database.initialize (dbDataDir, journal);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -232,8 +184,7 @@ void initializeExtensions (
   const Rules& rules,
   Extensions& extensions)
 {
-  Directory extDir (rules.get ("temp.db"));
-  extDir += "extensions";
+  Directory extDir (paths::extensionsDir ());
 
   extensions.initialize (extDir._data);
 
@@ -265,8 +216,7 @@ int dispatchCommand (
 
   if (! command.empty ())
   {
-    // These signatures are expected to be all different, therefore no
-    // command to fn mapping.
+    // These signatures are expected to be all different, therefore no command to fn mapping.
          if (command == "annotate")    status = CmdAnnotate      (cli, rules, database, journal            );
     else if (command == "cancel")      status = CmdCancel        (     rules, database, journal            );
     else if (command == "config")      status = CmdConfig        (cli, rules,           journal            );
@@ -275,7 +225,7 @@ int dispatchCommand (
     else if (command == "delete")      status = CmdDelete        (cli, rules, database, journal            );
     else if (command == "diagnostics") status = CmdDiagnostics   (     rules, database,          extensions);
     else if (command == "export")      status = CmdExport        (cli, rules, database                     );
-    else if (command == "extensions")  status = CmdExtensions    (     rules,                    extensions);
+    else if (command == "extensions")  status = CmdExtensions    (                               extensions);
 /*
     else if (command == "fill")        status = CmdFill          (cli, rules, database, journal            );
 //*/

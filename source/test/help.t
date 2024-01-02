@@ -2,7 +2,7 @@
 
 ###############################################################################
 #
-# Copyright 2019 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+# Copyright 2019 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -34,6 +34,7 @@ import unittest
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from basetest import Timew, TestCase
+from basetest.utils import run_cmd_wait_nofail
 
 
 class TestHelp(TestCase):
@@ -43,43 +44,51 @@ class TestHelp(TestCase):
 
     def test_help_without_command_should_print_usage(self):
         """timew help without command should print usage"""
-        code, out, err = self.t("help")
+        _, out, _ = self.t("help")
+
         self.assertRegex(out, r"Usage: timew [--version]")
 
     def test_help_long_option_should_print_usage(self):
         """timew --help should print usage"""
-        code, out1, err1 = self.t("help")
-        code, out2, err2 = self.t("--help")
-        self.assertEqual(out1, out2)
+        _, expected, _ = self.t("help")
+        _, actual, _ = self.t("--help")
+
+        self.assertEqual(actual, expected)
 
     def test_help_short_option_should_print_usage(self):
         """timew -h should print usage"""
-        code, out1, err1 = self.t("help")
-        code, out2, err2 = self.t("-h")
-        self.assertEqual(out1, out2)
+        _, expected, _ = self.t("help")
+        _, actual, _ = self.t("-h")
+
+        self.assertEqual(actual, expected)
 
     def test_help_with_command_should_show_man_page(self):
         """timew help with command should show man page"""
-        code, out, err = self.t("help start")
+        _, expected, _ = run_cmd_wait_nofail(["man", "timew-start"])
+        _, actual, _ = self.t("help start")
 
-        self.assertRegex(out, r"TIMEW-START\(1\)\s+User Manuals\s+TIMEW-START\(1\)")
+        self.assertEqual(actual, expected)
 
     def test_help_with_unknown_argument_should_show_error_message(self):
         """timew help with unknown argument should show error message"""
-        code, out, err = self.t.runError("help bogus")
-        self.assertRegex(err, r"No manual entry for timew-bogus")
+        _, _, expected = run_cmd_wait_nofail(["man", "timew-bogus"])
+        _, _, actual = self.t.runError("help bogus")
+
+        self.assertEqual(actual, expected)
 
     def test_command_with_help_long_option_should_show_help_page(self):
         """timew command with --help should show help page"""
-        code, out1, err1 = self.t("help track")
-        code, out2, err2 = self.t("track --help")
-        self.assertEqual(out1, out2)
+        _, expected, _ = self.t("help track")
+        _, actual, _ = self.t("track --help")
+
+        self.assertEqual(actual, expected)
 
     def test_command_with_help_short_option_should_show_help_page(self):
         """timew command with -h should show help page"""
-        code, out1, err1 = self.t("help track")
-        code, out2, err2 = self.t("track -h")
-        self.assertEqual(out1, out2)
+        _, expected, _ = self.t("help track")
+        _, actual, _ = self.t("track -h")
+
+        self.assertEqual(actual, expected)
 
 
 if __name__ == "__main__":

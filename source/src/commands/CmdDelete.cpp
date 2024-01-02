@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,7 @@
 #include <format.h>
 #include <iostream>
 #include <src/Journal.h>
+#include <IntervalFilterAllWithIds.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 int CmdDelete (
@@ -49,7 +50,30 @@ int CmdDelete (
   journal.startTransaction ();
 
   flattenDatabase (database, rules);
-  auto intervals = getIntervalsByIds (database, rules, ids);
+  auto filtering = IntervalFilterAllWithIds (ids);
+  auto intervals = getTracked (database, rules, filtering);
+
+
+  if (intervals.size () != ids.size ())
+  {
+    for (auto& id: ids)
+    {
+      bool found = false;
+
+      for (auto& interval: intervals)
+      {
+        if (interval.id == id)
+        {
+          found = true;
+          break;
+        }
+      }
+      if (!found)
+      {
+        throw format ("ID '@{1}' does not correspond to any tracking.", id);
+      }
+    }
+  }
 
   for (const auto& interval : intervals)
   {

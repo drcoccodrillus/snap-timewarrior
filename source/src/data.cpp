@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -25,8 +25,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <algorithm>
-#include <cassert>
-
 #include <cmake.h>
 #include <shared.h>
 #include <format.h>
@@ -36,6 +34,7 @@
 #include <algorithm>
 #include <iostream>
 #include <IntervalFactory.h>
+#include <IntervalFilter.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 // Read rules and extract all holiday definitions. Create a Range for each
@@ -84,7 +83,7 @@ std::vector <Range> getAllExclusions (
   // Load all exclusions from configuration.
   std::vector <Exclusion> exclusions;
   for (auto& name : rules.all ("exclusions."))
-    exclusions.push_back (Exclusion (lowerCase (name), rules.get (name)));
+    exclusions.emplace_back(lowerCase (name), rules.get (name));
   debug (format ("Found {1} exclusions", exclusions.size ()));
 
   // Find exclusions 'exc day on <date>' and remove from holidays.
@@ -118,9 +117,18 @@ std::vector <Range> getAllExclusions (
   // overlap with range.
   std::vector <Range> exclusionRanges;
   for (auto& exclusion : exclusions)
+  {
     if (exclusion.tokens ()[1] != "day")
+    {
       for (auto& r : exclusion.ranges (range))
-        exclusionRanges.push_back (r);
+      {
+        if (!r.is_empty ())
+        {
+          exclusionRanges.push_back (r);
+        }
+      }
+    }
+  }
 
   return merge (addRanges (range, results, exclusionRanges));
 }
@@ -142,7 +150,7 @@ std::vector <Interval> expandLatest (const Interval& latest, const Rules& rules)
 
       // If flatten() converted the latest interval into a group of synthetic
       // intervals, the number of returned intervals will be greater than 1,
-      // otherwise, it just returned the non-synthetic latest interval.
+      // otherwise, it just returned the non-synthetic, latest interval.
       if (flattened.size () > 1)
       {
         std::reverse (flattened.begin (), flattened.end ());
@@ -181,83 +189,6 @@ void flattenDatabase (Database& database, const Rules& rules)
       database.addInterval (*it, verbose);
     }
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Return collection of intervals (synthetic included) sorted by id
-std::vector <Interval> getIntervalsByIds (
-  Database& database,
-  const Rules& rules,
-  const std::set <int>& ids)
-{
-  std::vector <Interval> intervals;
-  intervals.reserve (ids.size ());
-
-  int current_id = 0;
-  auto id_it = ids.begin ();
-  auto id_end = ids.end ();
-
-  auto it = database.begin ();
-  auto end = database.end ();
-
-  // Because the latest recorded interval may be expanded into synthetic
-  // intervals, we'll handle it specially
-  if (it != end )
-  {
-    Interval latest = IntervalFactory::fromSerialization (*it);
-    ++it;
-
-    for (auto& interval : expandLatest (latest, rules))
-    {
-      ++current_id;
-
-      if (id_it == id_end)
-      {
-        break;
-      }
-
-      if (interval.id == *id_it)
-      {
-        intervals.push_back (interval);
-        ++id_it;
-      }
-    }
-  }
-
-  // We'll find remaining intervals from the normal recorded intervals
-  for ( ; (it != end) && (id_it != id_end); ++it)
-  {
-    ++current_id;
-
-    if (current_id == *id_it)
-    {
-      Interval interval = IntervalFactory::fromSerialization (*it);
-      interval.id = current_id;
-      intervals.push_back (interval);
-      ++id_it;
-    }
-  }
-
-  // We did not find all the ids we were looking for.
-  if (id_it != id_end)
-  {
-    throw format("ID '@{1}' does not correspond to any tracking.", *id_it);
-  }
-
-  return intervals;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-std::vector <Interval> subset (
-  const Interval& filter,
-  const std::vector <Interval>& intervals)
-{
-  std::vector <Interval> all;
-  for (auto& interval : intervals)
-    if (matchesFilter (interval, filter))
-      all.push_back (interval);
-
-  return all;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -330,7 +261,7 @@ static bool rangeCompare (Range left, Range right)
 std::vector <Range> merge (
   const std::vector <Range>& ranges)
 {
-  // Short cut.
+  // Shortcut.
   if (ranges.size () < 2)
     return ranges;
 
@@ -486,7 +417,7 @@ Interval clip (const Interval& interval, const Range& range)
 std::vector <Interval> getTracked (
   Database& database,
   const Rules& rules,
-  Interval& filter)
+  IntervalFilter& filter)
 {
   int current_id = 0;
   std::vector <Interval> intervals;
@@ -504,10 +435,14 @@ std::vector <Interval> getTracked (
     for (auto& interval : expandLatest (latest, rules))
     {
       ++current_id;
-      if (matchesFilter (interval, filter))
+      if (filter.accepts (interval))
       {
         interval.id = current_id;
         intervals.push_back (interval);
+      }
+      else if (filter.is_done ())
+      {
+        break;
       }
     }
   }
@@ -517,11 +452,11 @@ std::vector <Interval> getTracked (
     Interval interval = IntervalFactory::fromSerialization(*it);
     interval.id = ++current_id;
 
-    if (matchesFilter (interval, filter))
+    if (filter.accepts (interval))
     {
       intervals.push_back (std::move (interval));
     }
-    else if ((interval.start < filter.start) && ! interval.intersects (filter))
+    else if (filter.is_done ())
     {
       // Since we are moving backwards in time, and the intervals are in sorted
       // order, if the filter is after the interval, we know there will be no
@@ -532,9 +467,10 @@ std::vector <Interval> getTracked (
 
   debug (format ("Loaded {1} tracked intervals", intervals.size ()));
 
-  // By default intervals are sorted by id, but getTracked needs to return the
+  // By default, intervals are sorted by id, but getTracked needs to return the
   // intervals sorted by date, which are ids in reverse order.
   std::reverse (intervals.begin (), intervals.end ());
+
   return intervals;
 }
 
@@ -558,7 +494,7 @@ std::vector <Range> getUntracked (
     else if (found_match)
     {
       // If we already had a match, and now we do not, since the database is in
-      // order from most recent to oldest inclusion, we can be sure that there
+      // order from most recent to the oldest inclusion, we can be sure that there
       // will not be any further matches.
       break;
     }

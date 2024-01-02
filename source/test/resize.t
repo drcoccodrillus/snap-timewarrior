@@ -2,7 +2,7 @@
 
 ###############################################################################
 #
-# Copyright 2017 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+# Copyright 2017 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,9 +27,8 @@
 ###############################################################################
 
 import os
-import unittest
-
 import sys
+import unittest
 
 # Ensure python finds the local simpletap module
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -70,6 +69,16 @@ class TestResize(TestCase):
 
         self.assertEqual(len(j), 1)
         self.assertClosedInterval(j[0])
+
+    def test_referencing_a_non_existent_interval_is_an_error(self):
+        """Calling resize with a non-existent interval reference is an error"""
+        code, out, err = self.t.runError("resize @1 @2 10min")
+        self.assertIn("ID '@1' does not correspond to any tracking.", err)
+
+        self.t("start 1h ago bar")
+
+        code, out, err = self.t.runError("resize @2 10min")
+        self.assertIn("ID '@2' does not correspond to any tracking.", err)
 
 
 if __name__ == "__main__":

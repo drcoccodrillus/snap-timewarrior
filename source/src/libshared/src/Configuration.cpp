@@ -126,7 +126,10 @@ bool unsetVariableInFile (
 // Nested files are now supported, with the following construct:
 //   include /absolute/path/to/file
 //
-void Configuration::load (const std::string& file, int nest /* = 1 */)
+void Configuration::load (
+  const std::string& file,
+  int nest /* = 1 */,
+  const std::vector <std::string>& search_paths /* = {} */)
 {
   if (nest > 10)
     throw std::string ("Configuration files may only be nested to 10 levels.");
@@ -142,7 +145,7 @@ void Configuration::load (const std::string& file, int nest /* = 1 */)
   {
     std::string contents;
     if (File::read (file, contents) && contents.length ())
-      parse (contents, nest);
+      parse (contents, nest, search_paths, file);
   }
 }
 
@@ -159,7 +162,11 @@ void Configuration::save ()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void Configuration::parse (const std::string& input, int nest /* = 1 */)
+void Configuration::parse (
+  const std::string& input,
+  int nest /* = 1 */,
+  const std::vector <std::string>& search_paths /* = {} */,
+  const std::string& file_path /* = {} */)
 {
   // Shortcut case for default constructor.
   if (input.length () == 0)
@@ -182,6 +189,7 @@ void Configuration::parse (const std::string& input, int nest /* = 1 */)
       {
         std::string key   = trim (line.substr (0, equal));
         std::string value = trim (line.substr (equal+1, line.length () - equal));
+        value = Path::expand(value);
 
         (*this)[key] = json::decode (value);
       }
@@ -191,15 +199,51 @@ void Configuration::parse (const std::string& input, int nest /* = 1 */)
         if (include != std::string::npos)
         {
           Path included (trim (line.substr (include + 7)));
-          if (included.is_absolute ())
+
+          do
           {
-            if (included.readable ())
-              load (included, nest + 1);
-            else
-              throw format ("Could not read include file '{1}'.", included._data);
+            // 0. Absolute path is not searched.
+            if (included.is_absolute ())
+              break;
+
+            // 1. Try relative to CWD first, break if exists. This is the legacy behavior.
+            if (included.exists ())
+              break;
+
+            // 2. Try path relative to the config file itself.
+            if (!file_path.empty ())
+            {
+              std::string file_dir = Path(file_path).realpath();
+              auto slash = file_dir.rfind('/');
+              file_dir.resize (slash != std::string::npos ? slash + 1 : 0); // `/` is kept.
+              Path file_relative (file_dir + included._data);
+              if (file_relative.exists ())
+              {
+                included = file_relative;
+                break;
+              }
+            }
+
+            // 3. Try search paths.
+            for (auto &search: search_paths)
+            {
+              Path concated (search + "/" + included._data);
+              if (concated.exists ()) {
+                included = concated;
+                break;
+              }
+            }
+            if (!included.exists ())
+              throw format (
+                  "Could not find file in CWD, directory of config file or search paths '{1}'.",
+                  included._data);
           }
-          else
-            throw format ("Can only include files with absolute paths, not '{1}'", included._data);
+          while (0);
+
+          if (!included.readable ())
+            throw format ("Could not read include file '{1}'.", included._data);
+
+          load (included, nest + 1, search_paths);
         }
         else
           throw format ("Malformed entry '{1}' in config file.", line);
@@ -213,14 +257,30 @@ void Configuration::parse (const std::string& input, int nest /* = 1 */)
 ////////////////////////////////////////////////////////////////////////////////
 bool Configuration::has (const std::string& key) const
 {
-  return (*this).find (key) != (*this).end ();
+  auto ckey = key;
+  auto itContext = find ("context");
+  if(itContext != end() && key.rfind("context.", 0) != 0) {
+    ckey = "context." + itContext->second + ".rc." + key;
+  }
+  if (find (ckey) != end ()) 
+    return true;
+  return find (key) != end ();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Return the configuration value given the specified key.
-std::string Configuration::get (const std::string& key) const
+std::string Configuration::get (const std::string& key, bool getFromContext) const
 {
-  auto found = find (key);
+  auto ckey = key;
+  auto itContext = find ("context");
+  if(itContext != end() && getFromContext && key.rfind("context.", 0) != 0) {
+    ckey = "context." + itContext->second + ".rc." + key;
+  }
+  auto found = find (ckey);
+  if (found != end ())
+    return found->second;
+  // Fallback - use global config value
+  found = find (key);
   if (found != end ())
     return found->second;
 
@@ -228,32 +288,32 @@ std::string Configuration::get (const std::string& key) const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-int Configuration::getInteger (const std::string& key) const
+int Configuration::getInteger (const std::string& key, bool getFromContext) const
 {
-  auto found = find (key);
-  if (found != end ())
-    return strtoimax (found->second.c_str (), nullptr, 10);
+  auto val = get(key, getFromContext);
+  if (val.length() > 0)
+    return strtoimax (val.c_str (), nullptr, 10);
 
   return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-double Configuration::getReal (const std::string& key) const
+double Configuration::getReal (const std::string& key, bool getFromContext) const
 {
-  auto found = find (key);
-  if (found != end ())
-    return strtod (found->second.c_str (), nullptr);
+  auto val = get(key, getFromContext);
+  if (val.length() > 0)
+    return strtod (val.c_str (), nullptr);
 
   return 0.0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool Configuration::getBoolean (const std::string& key) const
+bool Configuration::getBoolean (const std::string& key, bool getFromContext) const
 {
-  auto found = find (key);
-  if (found != end ())
+  auto val = get(key, getFromContext);
+  if (val.length() > 0)
   {
-    auto value = lowerCase (found->second);
+    auto value = lowerCase (val);
     if (value == "true"   ||
         value == "1"      ||
         value == "y"      ||

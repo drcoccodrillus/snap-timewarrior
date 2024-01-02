@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,11 +24,8 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <FS.h>
 #include <JSON.h>
-#include <shared.h>
 #include <format.h>
-#include <timew.h>
 #include <commands.h>
 #include <iostream>
 
@@ -86,6 +83,8 @@ int CmdConfig (
       value += words[i];
     }
 
+    value = Lexer::dequote (value);
+
     change = Rules::setConfigVariable (journal, rules, name, value, confirmation);
 
     if (!change)
@@ -120,7 +119,7 @@ int CmdConfig (
   {
     if (change)
     {
-      std::cout << "Config file " << rules.file () << " modified.\n";
+      std::cout << "Config file '" << rules.file () << "' modified.\n";
     }
     else
     {

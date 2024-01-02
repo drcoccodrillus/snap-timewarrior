@@ -189,9 +189,9 @@ bool Datetime::parse (
                                             parse_time_utc_ext  (pig)  ||
                                             parse_time_utc      (pig)  ||
                                             parse_time_off_ext  (pig)  ||
-                                            parse_time_off      (pig)  ||
                                             parse_time_ext      (pig)  ||
-        (Datetime::standaloneTimeEnabled && parse_time          (pig)) // Time last, as it is the most permissive.
+        (Datetime::standaloneTimeEnabled && parse_time          (pig)) || // Time last, as it is the most permissive.
+        (Datetime::standaloneTimeEnabled && parse_time_off      (pig))
        )
       )
      )
@@ -567,39 +567,39 @@ bool Datetime::parse_formatted (Pig& pig, const std::string& format)
 //   sopd           2017-03-04T00:00:00  Unaffected
 //   sod            2017-03-05T00:00:00  Unaffected
 //   sond           2017-03-06T00:00:00  Unaffected
-//   eopd           2017-03-05T00:00:00  Unaffected
-//   eod            2017-03-06T00:00:00  Unaffected
-//   eond           2017-03-07T00:00:00  Unaffected
+//   eopd           2017-03-04T23:59:59  Unaffected
+//   eod            2017-03-05T23:59:59  Unaffected
+//   eond           2017-03-06T23:59:59  Unaffected
 //   sopw           2017-02-26T00:00:00  Unaffected
 //   sow            2017-03-05T00:00:00  Unaffected
 //   sonw           2017-03-12T00:00:00  Unaffected
-//   eopw           2017-03-05T00:00:00  Unaffected
-//   eow            2017-03-12T00:00:00  Unaffected
-//   eonw           2017-03-19T00:00:00  Unaffected
+//   eopw           2017-02-26T23:59:59  Unaffected
+//   eow            2017-03-05T23:59:59  Unaffected
+//   eonw           2017-03-12T23:59:59  Unaffected
 //   sopww          2017-02-27T00:00:00  Unaffected
 //   soww           2017-03-06T00:00:00
 //   sonww          2017-03-06T00:00:00  Unaffected
-//   eopww          2017-03-03T00:00:00  Unaffected
-//   eoww           2017-03-10T00:00:00
-//   eonww          2017-03-17T00:00:00  Unaffected
+//   eopww          2017-03-03T23:59:59  Unaffected
+//   eoww           2017-03-10T23:59:59
+//   eonww          2017-03-17T23:59:59  Unaffected
 //   sopm           2017-02-01T00:00:00  Unaffected
 //   som            2017-03-01T00:00:00  Unaffected
 //   sonm           2017-04-01T00:00:00  Unaffected
-//   eopm           2017-03-01T00:00:00  Unaffected
-//   eom            2017-04-01T00:00:00  Unaffected
-//   eonm           2017-05-01T00:00:00  Unaffected
+//   eopm           2017-02-28T23:59:59  Unaffected
+//   eom            2017-03-31T23:59:59  Unaffected
+//   eonm           2017-04-30T23:59:59  Unaffected
 //   sopq           2017-10-01T00:00:00  Unaffected
 //   soq            2017-01-01T00:00:00  Unaffected
 //   sonq           2017-04-01T00:00:00  Unaffected
-//   eopq           2017-01-01T00:00:00  Unaffected
-//   eoq            2017-04-01T00:00:00  Unaffected
-//   eonq           2017-07-01T00:00:00  Unaffected
+//   eopq           2016-12-31T23:59:59  Unaffected
+//   eoq            2017-03-31T23:59:59  Unaffected
+//   eonq           2017-06-30T23:59:59  Unaffected
 //   sopy           2016-01-01T00:00:00  Unaffected
 //   soy            2017-01-01T00:00:00  Unaffected
 //   sony           2018-01-01T00:00:00  Unaffected
-//   eopy           2017-01-01T00:00:00  Unaffected
-//   eoy            2018-01-01T00:00:00  Unaffected
-//   eony           2020-01-01T00:00:00  Unaffected
+//   eopy           2016-12-31T23:59:59  Unaffected
+//   eoy            2017-12-31T23:59:59  Unaffected
+//   eony           2018-12-31T23:59:59  Unaffected
 //   easter         2017-04-16T00:00:00
 //   eastermonday   2017-04-16T00:00:00
 //   ascension      2017-05-25T00:00:00
@@ -1041,7 +1041,7 @@ bool Datetime::parse_time_utc (Pig& pig)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// <time> <off>
+// <time><off>
 bool Datetime::parse_time_off (Pig& pig)
 {
   auto checkpoint = pig.cursor ();
@@ -1505,7 +1505,7 @@ bool Datetime::initializeDayName (Pig& pig)
   std::string token;
   for (int day = 0; day <= 7; ++day)   // Deliberate <= so that 'sunday' is either 0 or 7.
   {
-    if (pig.skipPartial (dayNames[day % 7], token) &&
+    if (pig.skipPartial (dayNames[day % 7], token, true) &&
         token.length () >= static_cast <std::string::size_type> (Datetime::minimumMatchLength))
     {
       auto following = pig.peek ();
@@ -1548,7 +1548,7 @@ bool Datetime::initializeMonthName (Pig& pig)
   std::string token;
   for (int month = 0; month < 12; ++month)
   {
-    if (pig.skipPartial (monthNames[month], token) &&
+    if (pig.skipPartial (monthNames[month], token, true) &&
         token.length () >= static_cast <std::string::size_type> (Datetime::minimumMatchLength))
     {
       auto following = pig.peek ();
@@ -1712,7 +1712,8 @@ bool Datetime::initializeEopd (Pig& pig)
       time_t now = time (nullptr);
       struct tm* t = localtime (&now);
 
-      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_hour = t->tm_min = 0;
+      t->tm_sec = -1;
       t->tm_isdst = -1;
       _date = mktime (t);
       return true;
@@ -1739,7 +1740,8 @@ bool Datetime::initializeEod (Pig& pig)
       struct tm* t = localtime (&now);
 
       t->tm_mday++;
-      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_hour = t->tm_min = 0;
+      t->tm_sec = -1;
       t->tm_isdst = -1;
       _date = mktime (t);
       return true;
@@ -1766,7 +1768,8 @@ bool Datetime::initializeEond (Pig& pig)
       struct tm* t = localtime (&now);
 
       t->tm_mday += 2;
-      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_hour = t->tm_min = 0;
+      t->tm_sec = -1;
       t->tm_isdst = -1;
       _date = mktime (t);
       return true;
@@ -1880,7 +1883,8 @@ bool Datetime::initializeEopw (Pig& pig)
     {
       time_t now = time (nullptr);
       struct tm* t = localtime (&now);
-      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_hour = t->tm_min = 0;
+      t->tm_sec = -1;
 
       int extra = (t->tm_wday + 6) % 7;
       t->tm_mday -= extra;
@@ -1909,7 +1913,8 @@ bool Datetime::initializeEow (Pig& pig)
     {
       time_t now = time (nullptr);
       struct tm* t = localtime (&now);
-      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_hour = t->tm_min = 0;
+      t->tm_sec = -1;
 
       int extra = (t->tm_wday + 6) % 7;
       t->tm_mday -= extra;
@@ -1939,9 +1944,12 @@ bool Datetime::initializeEonw (Pig& pig)
     {
       time_t now = time (nullptr);
       struct tm* t = localtime (&now);
+      t->tm_hour = t->tm_min = 0;
+      t->tm_sec = -1;
 
-      t->tm_mday += 15 - t->tm_wday;
-      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      int extra = (t->tm_wday + 6) % 7;
+      t->tm_mday += 14 - extra;
+
       t->tm_isdst = -1;
       _date = mktime (t);
       return true;
@@ -1994,7 +2002,7 @@ bool Datetime::initializeSoww (Pig& pig)
       time_t now = time (nullptr);
       struct tm* t = localtime (&now);
 
-      t->tm_mday += 8 - t->tm_wday;
+      t->tm_mday += 1 - t->tm_wday;
       t->tm_hour = t->tm_min = t->tm_sec = 0;
       t->tm_isdst = -1;
       _date = mktime (t);
@@ -2049,7 +2057,8 @@ bool Datetime::initializeEopww (Pig& pig)
       struct tm* t = localtime (&now);
 
       t->tm_mday -= (t->tm_wday + 1) % 7;
-      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_hour = t->tm_min = 0;
+      t->tm_sec = -1;
       t->tm_isdst = -1;
       _date = mktime (t);
       return true;
@@ -2076,7 +2085,8 @@ bool Datetime::initializeEoww (Pig& pig)
       struct tm* t = localtime (&now);
 
       t->tm_mday += 6 - t->tm_wday;
-      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_hour = t->tm_min = 0;
+      t->tm_sec = -1;
       t->tm_isdst = -1;
       _date = mktime (t);
       return true;
@@ -2103,7 +2113,8 @@ bool Datetime::initializeEonww (Pig& pig)
       struct tm* t = localtime (&now);
 
       t->tm_mday += 13 - t->tm_wday;
-      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_hour = t->tm_min = 0;
+      t->tm_sec = -1;
       t->tm_isdst = -1;
       _date = mktime (t);
       return true;
@@ -2227,7 +2238,8 @@ bool Datetime::initializeEopm (Pig& pig)
       time_t now = time (nullptr);
       struct tm* t = localtime (&now);
 
-      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_hour = t->tm_min = 0;
+      t->tm_sec = -1;
       t->tm_mday = 1;
       t->tm_isdst = -1;
       _date = mktime (t);
@@ -2254,7 +2266,8 @@ bool Datetime::initializeEom (Pig& pig)
       time_t now = time (nullptr);
       struct tm* t = localtime (&now);
 
-      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_hour = t->tm_min = 0;
+      t->tm_sec = -1;
 
       t->tm_mon++;
       if (t->tm_mon > 11)
@@ -2289,7 +2302,8 @@ bool Datetime::initializeEonm (Pig& pig)
       time_t now = time (nullptr);
       struct tm* t = localtime (&now);
 
-      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_hour = t->tm_min = 0;
+      t->tm_sec = -1;
       t->tm_mday = 1;
       t->tm_mon += 2;
       if (t->tm_mon > 11)
@@ -2420,7 +2434,8 @@ bool Datetime::initializeEopq (Pig& pig)
       time_t now = time (nullptr);
       struct tm* t = localtime (&now);
 
-      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_hour = t->tm_min = 0;
+      t->tm_sec = -1;
       t->tm_mon -= t->tm_mon % 3;
       t->tm_mday = 1;
       t->tm_isdst = -1;
@@ -2455,7 +2470,8 @@ bool Datetime::initializeEoq (Pig& pig)
         ++t->tm_year;
       }
 
-      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_hour = t->tm_min = 0;
+      t->tm_sec = -1;
       t->tm_mday = 1;
       t->tm_isdst = -1;
       _date = mktime (t);
@@ -2482,7 +2498,8 @@ bool Datetime::initializeEonq (Pig& pig)
       time_t now = time (nullptr);
       struct tm* t = localtime (&now);
 
-      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_hour = t->tm_min = 0;
+      t->tm_sec = -1;
       t->tm_mon += 6 - (t->tm_mon % 3);
       if (t->tm_mon > 11)
       {
@@ -2602,7 +2619,8 @@ bool Datetime::initializeEopy (Pig& pig)
       time_t now = time (nullptr);
       struct tm* t = localtime (&now);
 
-      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_hour = t->tm_min = 0;
+      t->tm_sec = -1;
       t->tm_mon = 0;
       t->tm_mday = 1;
       t->tm_isdst = -1;
@@ -2630,7 +2648,8 @@ bool Datetime::initializeEoy (Pig& pig)
       time_t now = time (nullptr);
       struct tm* t = localtime (&now);
 
-      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_hour = t->tm_min = 0;
+      t->tm_sec = -1;
       t->tm_mon = 0;
       t->tm_mday = 1;
       t->tm_year++;
@@ -2659,7 +2678,8 @@ bool Datetime::initializeEony (Pig& pig)
       time_t now = time (nullptr);
       struct tm* t = localtime (&now);
 
-      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_hour = t->tm_min = 0;
+      t->tm_sec = -1;
       t->tm_mon = 0;
       t->tm_mday = 1;
       t->tm_year += 2;
