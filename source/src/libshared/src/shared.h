@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2006 - 2019, Paul Beckingham, Federico Hernandez.
+// Copyright 2006 - 2021, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,7 @@
 void wrapText (std::vector <std::string>&, const std::string&, const int, bool);
 int longestWord (const std::string&);
 int longestLine (const std::string&);
-bool extractLine (std::string&, const std::string&, int, bool, unsigned int&);
+bool extractLine (std::string&, const std::string&, int, bool, unsigned int&, char = '.');
 std::vector <std::string> split (const std::string&, const char);
 std::vector <std::string> split (const std::string&);
 std::string join (const std::string&, const std::vector<int>&);

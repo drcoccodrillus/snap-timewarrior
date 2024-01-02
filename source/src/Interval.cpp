@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -143,7 +143,7 @@ std::string Interval::json () const
         if (tags[0])
           tags += ',';
 
-        tags += "\"" + escape (tag, '"') + "\"";
+        tags += "\"" + json::encode (tag) + "\"";
       }
 
       out << ",\"tags\":["
@@ -153,7 +153,7 @@ std::string Interval::json () const
 
     if (!annotation.empty ())
     {
-      out << ",\"annotation\":\"" << escape (annotation, '"') << "\"";
+      out << ",\"annotation\":\"" << json::encode (annotation) << "\"";
     }
   }
   out << "}";

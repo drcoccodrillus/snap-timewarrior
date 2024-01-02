@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -219,7 +219,7 @@ void CLI::lexArguments ()
     if (lex.token (lexeme, type) &&
         lex.isEOS ())
     {
-      A2 a (Lexer::dequote (_original_args[i].attribute ("raw")), type);
+      A2 a (_original_args[i].attribute ("raw"), type);
       if (quoted)
         a.tag ("QUOTED");
 

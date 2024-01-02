@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016, 2018 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016, 2018 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -108,7 +108,7 @@ void Datafile::addInterval (const Interval& interval)
     if (interval != test)
     {
       throw (format ("Encode / decode check failed:\n  {1}\nis not equal to:\n  {2}",
-                     serialization, test.serialize ()));
+                     interval.dump (), test.dump ()));
     }
 
     _lines.push_back (serialization);

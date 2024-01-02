@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -54,11 +54,6 @@ std::string escape (const std::string& input, int c)
 ////////////////////////////////////////////////////////////////////////////////
 std::string quoteIfNeeded (const std::string& input)
 {
-  if (input[0] == '"' || input[0] == '\'')
-  {
-    return input;
-  }
-
   auto quote = input.find ('"');
   auto space = input.find (' ');
   auto op    = input.find_first_of ("+-/()<^!=~_%");

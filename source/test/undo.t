@@ -1,0 +1,723 @@
+#!/usr/bin/env python3
+
+###############################################################################
+#
+# Copyright 2018 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+# https://www.opensource.org/licenses/mit-license.php
+#
+###############################################################################
+
+import os
+import unittest
+from datetime import datetime, timedelta
+
+import sys
+
+# Ensure python finds the local simpletap module
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from basetest import Timew, TestCase
+
+
+class TestUndo(TestCase):
+    def setUp(self):
+        """Executed before each test in the class"""
+        self.t = Timew()
+
+    def test_undo_annotate(self):
+        """Test undo of command 'annotate'"""
+        now_utc = datetime.now().utcnow()
+        one_hour_before_utc = now_utc - timedelta(hours=1)
+        two_hours_before_utc = now_utc - timedelta(hours=2)
+
+        self.t("track {:%Y%m%dT%H%M%SZ} - {:%Y%m%dT%H%M%SZ} foo".format(two_hours_before_utc, one_hour_before_utc))
+        self.t("annotate @1 \"lorem ipsum\"")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 1, msg="Expected 1 interval before, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=two_hours_before_utc,
+                                  expectedEnd=one_hour_before_utc,
+                                  expectedAnnotation="lorem ipsum")
+
+        self.t("undo")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 1, msg="Expected 1 interval afterwards, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=two_hours_before_utc,
+                                  expectedEnd=one_hour_before_utc,
+                                  expectedAnnotation="")
+
+    def test_undo_annotate_with_embedded_quotes(self):
+        """Test undo of command 'annotate' with embedded quotes"""
+        now_utc = datetime.now().utcnow()
+        one_hour_before_utc = now_utc - timedelta(hours=1)
+        two_hours_before_utc = now_utc - timedelta(hours=2)
+
+        self.t("start {:%Y%m%dT%H%M%SZ} foo".format(two_hours_before_utc))
+        self.t("start {:%Y%m%dT%H%M%SZ} bar".format(one_hour_before_utc))
+        self.t("annotate 'foo \"bar\"'")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 2, msg="Expected 2 intervals before, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=two_hours_before_utc,
+                                  expectedEnd=one_hour_before_utc,
+                                  expectedTags=["foo"])
+        self.assertOpenInterval(j[1],
+                                expectedStart=one_hour_before_utc,
+                                expectedTags=["bar"],
+                                expectedAnnotation="foo \"bar\"")
+
+        self.t("undo")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 2, msg="Expected 2 intervals afterwards, got {}".format(len(j)))
+        self.assertOpenInterval(j[1],
+                                expectedStart=one_hour_before_utc,
+                                expectedTags=["bar"],
+                                expectedAnnotation="")
+
+    def test_undo_cancel(self):
+        """Test undo of command 'cancel'"""
+        one_hour_before_utc = datetime.now().utcnow() - timedelta(hours=1)
+
+        self.t("start {:%Y%m%dT%H%M%SZ} foo".format(one_hour_before_utc))
+        self.t("cancel")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 0, msg="Expected 0 interval before, got {}".format(len(j)))
+
+        self.t("undo")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 1, msg="Expected 1 interval afterwards, got {}".format(len(j)))
+        self.assertOpenInterval(j[0],
+                                expectedStart=one_hour_before_utc,
+                                expectedTags=["foo"])
+
+    def test_undo_config_add_name(self):
+        """Test undo of command 'config' (add name)"""
+        self.t("config foo bar :yes")
+
+        before = [x for x in self.t.timewrc_content if x != '\n']
+
+        self.t("undo")
+
+        after = [x for x in self.t.timewrc_content if x != '\n']
+
+        self.assertNotEqual(before, after)
+        self.assertEqual([], after)
+
+    def test_undo_config_remove_name(self):
+        """Test undo of command 'config' (remove name)"""
+        self.t("config foo bar :yes")
+        self.t("config foo :yes")
+
+        before = self.t.timewrc_content[:]
+
+        self.t("undo")
+
+        after = self.t.timewrc_content[:]
+
+        self.assertNotEqual(before, after)
+
+    def test_undo_config_set_value(self):
+        """Test undo of command 'config' (set value)"""
+        self.t("config foo bar :yes")
+        self.t("config foo baz :yes")
+
+        before = self.t.timewrc_content[:]
+
+        self.t("undo")
+
+        after = self.t.timewrc_content[:]
+
+        self.assertNotEqual(before, after)
+
+    def test_undo_config_remove_value(self):
+        """Test undo of command 'config' (remove value)"""
+        self.t("config foo bar :yes")
+        self.t("config foo '' :yes")
+
+        before = self.t.timewrc_content[:]
+
+        self.t("undo")
+
+        after = self.t.timewrc_content[:]
+
+        self.assertNotEqual(before, after)
+
+    def test_undo_continue(self):
+        """Test undo of command 'continue'"""
+        now_utc = datetime.now().utcnow()
+        one_hour_before_utc = now_utc - timedelta(hours=1)
+        two_hours_before_utc = now_utc - timedelta(hours=2)
+
+        self.t("track {:%Y%m%dT%H%M%SZ} - {:%Y%m%dT%H%M%SZ} foo".format(two_hours_before_utc, one_hour_before_utc))
+        self.t("continue @1 {:%Y%m%dT%H%M%SZ}".format(now_utc))
+
+        j = self.t.export()
+        self.assertEqual(len(j), 2, msg="Expected 2 interval before, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=two_hours_before_utc,
+                                  expectedEnd=one_hour_before_utc,
+                                  expectedTags=["foo"])
+        self.assertOpenInterval(j[1],
+                                expectedStart=now_utc,
+                                expectedTags=["foo"])
+
+        self.t("undo")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 1, msg="Expected 1 interval afterwards, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=two_hours_before_utc,
+                                  expectedEnd=one_hour_before_utc,
+                                  expectedTags=["foo"])
+
+    def test_undo_delete(self):
+        """Test undo of command 'delete'"""
+        now_utc = datetime.now().utcnow()
+        one_hour_before_utc = now_utc - timedelta(hours=1)
+        two_hours_before_utc = now_utc - timedelta(hours=2)
+
+        self.t("track {:%Y%m%dT%H%M%SZ} - {:%Y%m%dT%H%M%SZ} foo".format(two_hours_before_utc, one_hour_before_utc))
+        self.t("delete @1")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 0, msg="Expected 0 intervals before, got {}".format(len(j)))
+
+        self.t("undo")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 1, msg="Expected 1 interval afterwards, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=two_hours_before_utc,
+                                  expectedEnd=one_hour_before_utc,
+                                  expectedTags=["foo"])
+
+    # def test_undo_fill(self):
+    # """Test undo of command 'fill 'Not yet implemented
+    #   self.t("track {:%Y%m%dT%H%M%SZ} - {:%Y%m%dT%H%M%SZ} foo bar")
+    #   self.t("untag @1 bar")
+    #
+    #   j = self.t.export()
+    #   self.assertEqual(len(j), 1, msg="Expected 1 interval before, got {}".format(len(j)))
+    #   self.assertClosedInterval(j[0],
+    #                             expectedStart="20180101T060000",
+    #                             expectedEnd="20180101T070000",
+    #                             expectedTags=["foo"])
+    #
+    #   self.t("undo")
+    #
+    #   j = self.t.export()
+    #   self.assertEqual(len(j), 1, msg="Expected 1 interval afterwards, got {}".format(len(j)))
+    #   self.assertClosedInterval(j[0],
+    #                             expectedStart="20180101T060000",
+    #                             expectedEnd="20180101T070000",
+    #                             expectedTags=["foo bar"])
+
+    def test_undo_join(self):
+        """Test undo of command 'join'"""
+        now_utc = datetime.now().utcnow()
+        one_hour_before_utc = now_utc - timedelta(hours=1)
+        two_hours_before_utc = now_utc - timedelta(hours=2)
+        three_hours_before_utc = now_utc - timedelta(hours=3)
+        four_hours_before_utc = now_utc - timedelta(hours=4)
+
+        self.t("track {:%Y%m%dT%H%M%SZ} - {:%Y%m%dT%H%M%SZ} bar".format(four_hours_before_utc, three_hours_before_utc))
+        self.t("track {:%Y%m%dT%H%M%SZ} - {:%Y%m%dT%H%M%SZ} foo".format(two_hours_before_utc, one_hour_before_utc))
+        self.t("join @1 @2")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 1, msg="Expected 1 interval before, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=four_hours_before_utc,
+                                  expectedEnd=one_hour_before_utc,
+                                  expectedTags=["bar", "foo"],
+                                  description="joined interval")
+
+        self.t("undo")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 2, msg="Expected 2 interval afterwards, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=four_hours_before_utc,
+                                  expectedEnd=three_hours_before_utc,
+                                  expectedTags=["bar"],
+                                  description="first interval")
+        self.assertClosedInterval(j[1],
+                                  expectedStart=two_hours_before_utc,
+                                  expectedEnd=one_hour_before_utc,
+                                  expectedTags=["foo"],
+                                  description="second interval")
+
+    def test_undo_lengthen(self):
+        """Test undo of command 'lengthen'"""
+        now_utc = datetime.now().utcnow()
+        one_hour_before_utc = now_utc - timedelta(hours=1)
+        two_hours_before_utc = now_utc - timedelta(hours=2)
+        three_hours_before_utc = now_utc - timedelta(hours=3)
+
+        self.t("track {:%Y%m%dT%H%M%SZ} - {:%Y%m%dT%H%M%SZ} foo".format(three_hours_before_utc, two_hours_before_utc))
+        self.t("lengthen @1 1h")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 1, msg="Expected 1 interval before, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=three_hours_before_utc,
+                                  expectedEnd=one_hour_before_utc,
+                                  expectedTags=["foo"])
+
+        self.t("undo")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 1, msg="Expected 1 interval afterwards, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=three_hours_before_utc,
+                                  expectedEnd=two_hours_before_utc,
+                                  expectedTags=["foo"])
+
+    def test_undo_move(self):
+        """Test undo of command 'move'"""
+        now_utc = datetime.now().utcnow()
+        one_hour_before_utc = now_utc - timedelta(hours=1)
+        two_hours_before_utc = now_utc - timedelta(hours=2)
+        three_hours_before_utc = now_utc - timedelta(hours=3)
+
+        self.t("track {:%Y%m%dT%H%M%SZ} - {:%Y%m%dT%H%M%SZ} foo".format(two_hours_before_utc, one_hour_before_utc))
+        self.t("move @1 {:%Y%m%dT%H%M%SZ}".format(three_hours_before_utc))
+
+        j = self.t.export()
+        self.assertEqual(len(j), 1, msg="Expected 1 interval before, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=three_hours_before_utc,
+                                  expectedEnd=two_hours_before_utc,
+                                  expectedTags=["foo"])
+
+        self.t("undo")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 1, msg="Expected 1 interval afterwards, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=two_hours_before_utc,
+                                  expectedEnd=one_hour_before_utc,
+                                  expectedTags=["foo"])
+
+    def test_undo_resize(self):
+        """Test undo of command 'resize'"""
+        now_utc = datetime.now().utcnow()
+        one_hour_before_utc = now_utc - timedelta(hours=1)
+        two_hours_before_utc = now_utc - timedelta(hours=2)
+        three_hours_before_utc = now_utc - timedelta(hours=3)
+
+        self.t("track {:%Y%m%dT%H%M%SZ} - {:%Y%m%dT%H%M%SZ} foo".format(three_hours_before_utc, one_hour_before_utc))
+        self.t("resize @1 1h")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 1, msg="Expected 1 interval before, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=three_hours_before_utc,
+                                  expectedEnd=two_hours_before_utc,
+                                  expectedTags=["foo"])
+
+        self.t("undo")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 1, msg="Expected 1 interval afterwards, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=three_hours_before_utc,
+                                  expectedEnd=one_hour_before_utc,
+                                  expectedTags=["foo"])
+
+    def test_undo_shorten(self):
+        """Test undo of command 'shorten'"""
+        now_utc = datetime.now().utcnow()
+        one_hour_before_utc = now_utc - timedelta(hours=1)
+        two_hours_before_utc = now_utc - timedelta(hours=2)
+        three_hours_before_utc = now_utc - timedelta(hours=3)
+
+        self.t("track {:%Y%m%dT%H%M%SZ} - {:%Y%m%dT%H%M%SZ} foo".format(three_hours_before_utc, one_hour_before_utc))
+        self.t("shorten @1 1h")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 1, msg="Expected 1 interval before, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=three_hours_before_utc,
+                                  expectedEnd=two_hours_before_utc,
+                                  expectedTags=["foo"])
+
+        self.t("undo")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 1, msg="Expected 1 interval afterwards, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=three_hours_before_utc,
+                                  expectedEnd=one_hour_before_utc,
+                                  expectedTags=["foo"])
+
+    def test_undo_split(self):
+        """Test undo of command 'split'"""
+        now_utc = datetime.now().utcnow()
+        one_hour_before_utc = now_utc - timedelta(hours=1)
+        two_hours_before_utc = now_utc - timedelta(hours=2)
+        three_hours_before_utc = now_utc - timedelta(hours=3)
+
+        self.t("track {:%Y%m%dT%H%M%SZ} - {:%Y%m%dT%H%M%SZ} foo".format(three_hours_before_utc, one_hour_before_utc))
+        self.t("split @1")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 2, msg="Expected 2 intervals before, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=three_hours_before_utc,
+                                  expectedEnd=two_hours_before_utc,
+                                  expectedTags=["foo"])
+        self.assertClosedInterval(j[1],
+                                  expectedStart=two_hours_before_utc,
+                                  expectedEnd=one_hour_before_utc,
+                                  expectedTags=["foo"])
+
+        self.t("undo")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 1, msg="Expected 1 interval afterwards, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=three_hours_before_utc,
+                                  expectedEnd=one_hour_before_utc,
+                                  expectedTags=["foo"])
+
+    def test_undo_start(self):
+        """Test undo of command 'start'"""
+        now_utc = datetime.now().utcnow()
+        one_hour_before_utc = now_utc - timedelta(hours=1)
+
+        self.t("start {:%Y%m%dT%H%M%SZ} foo".format(one_hour_before_utc))
+
+        j = self.t.export()
+        self.assertEqual(len(j), 1, msg="Expected 1 interval before, got {}".format(len(j)))
+        self.assertOpenInterval(j[0],
+                                expectedStart=one_hour_before_utc,
+                                expectedTags=["foo"])
+
+        self.t("undo")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 0, msg="Expected 0 interval afterwards, got {}".format(len(j)))
+
+    def test_undo_consecutive_start(self):
+        """Test undo of consecutive commands 'start'"""
+        now_utc = datetime.now().utcnow()
+        one_hour_before_utc = now_utc - timedelta(hours=1)
+        two_hours_before_utc = now_utc - timedelta(hours=2)
+
+        self.t("start {:%Y%m%dT%H%M%SZ} foo".format(two_hours_before_utc))
+        self.t("start {:%Y%m%dT%H%M%SZ} bar".format(one_hour_before_utc))
+
+        j = self.t.export()
+        self.assertEqual(len(j), 2, msg="Expected 2 intervals before, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=two_hours_before_utc,
+                                  expectedEnd=one_hour_before_utc,
+                                  expectedTags=["foo"])
+        self.assertOpenInterval(j[1],
+                                expectedStart=one_hour_before_utc,
+                                expectedTags=["bar"])
+
+        self.t("undo")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 1, msg="Expected 1 interval afterwards, got {}".format(len(j)))
+        self.assertOpenInterval(j[0],
+                                expectedStart=two_hours_before_utc,
+                                expectedTags=["foo"])
+
+    def test_undo_start_with_embedded_quotes_in_tag(self):
+        """Test undo of 'start' with embedded quotes in tag"""
+        now_utc = datetime.now().utcnow()
+        one_hour_before_utc = now_utc - timedelta(hours=1)
+        two_hours_before_utc = now_utc - timedelta(hours=2)
+
+        self.t("start {:%Y%m%dT%H%M%SZ} foo".format(two_hours_before_utc))
+        self.t("start {:%Y%m%dT%H%M%SZ} 'test \"this quoted\" string'".format(one_hour_before_utc))
+
+        j = self.t.export()
+        self.assertEqual(len(j), 2, msg="Expected 2 intervals before, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=two_hours_before_utc,
+                                  expectedEnd=one_hour_before_utc,
+                                  expectedTags=["foo"])
+        self.assertOpenInterval(j[1],
+                                expectedStart=one_hour_before_utc,
+                                expectedTags=["test \"this quoted\" string"])
+
+        self.t("undo")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 1, msg="Expected 1 interval afterwards, got {}".format(len(j)))
+        self.assertOpenInterval(j[0],
+                                expectedStart=two_hours_before_utc,
+                                expectedTags=["foo"])
+
+    def test_undo_start_with_tag_enclosed_in_backslashes(self):
+        """Test undo of 'start' with tag enclosed in backslashes"""
+        now_utc = datetime.now().utcnow()
+        one_hour_before_utc = now_utc - timedelta(hours=1)
+
+        self.t("start {:%Y%m%dT%H%M%SZ} '\\foo\\'".format(one_hour_before_utc))
+
+        j = self.t.export()
+        self.assertEqual(len(j), 1, msg="Expected 1 intervals before, got {}".format(len(j)))
+        self.assertOpenInterval(j[0],
+                                  expectedStart=one_hour_before_utc,
+                                  expectedTags=["\\foo\\"])
+
+        self.t("undo")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 0, msg="Expected 0 interval afterwards, got {}".format(len(j)))
+
+    def test_undo_stop(self):
+        """Test undo of command 'stop'"""
+        now_utc = datetime.now().utcnow()
+        one_hour_before_utc = now_utc - timedelta(hours=1)
+
+        self.t("start {:%Y%m%dT%H%M%SZ} foo".format(one_hour_before_utc))
+        self.t("stop {:%Y%m%dT%H%M%SZ}".format(now_utc))
+
+        j = self.t.export()
+        self.assertEqual(len(j), 1, msg="Expected 1 interval before, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=one_hour_before_utc,
+                                  expectedEnd=now_utc,
+                                  expectedTags=["foo"])
+
+        self.t("undo")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 1, msg="Expected 1 interval afterwards, got {}".format(len(j)))
+        self.assertOpenInterval(j[0],
+                                expectedStart=one_hour_before_utc,
+                                expectedTags=["foo"])
+
+    def test_undo_tag(self):
+        """Test undo of command 'tag'"""
+        now_utc = datetime.now().utcnow()
+        one_hour_before_utc = now_utc - timedelta(hours=1)
+        two_hours_before_utc = now_utc - timedelta(hours=2)
+
+        self.t("track {:%Y%m%dT%H%M%SZ} - {:%Y%m%dT%H%M%SZ} foo".format(two_hours_before_utc, one_hour_before_utc))
+        self.t("tag @1 bar")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 1, msg="Expected 1 interval before, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=two_hours_before_utc,
+                                  expectedEnd=one_hour_before_utc,
+                                  expectedTags=["bar", "foo"])
+
+        self.t("undo")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 1, msg="Expected 1 interval afterwards, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=two_hours_before_utc,
+                                  expectedEnd=one_hour_before_utc,
+                                  expectedTags=["foo"])
+
+    def test_undo_track(self):
+        """Test undo of command 'track'"""
+        now_utc = datetime.now().utcnow()
+        one_hour_before_utc = now_utc - timedelta(hours=1)
+        two_hours_before_utc = now_utc - timedelta(hours=2)
+        three_hours_before_utc = now_utc - timedelta(hours=3)
+        four_hours_before_utc = now_utc - timedelta(hours=4)
+
+        self.t("track {:%Y%m%dT%H%M%SZ} - {:%Y%m%dT%H%M%SZ} foo".format(four_hours_before_utc, three_hours_before_utc))
+        self.t("track {:%Y%m%dT%H%M%SZ} - {:%Y%m%dT%H%M%SZ} bar".format(two_hours_before_utc, one_hour_before_utc))
+
+        j = self.t.export()
+        self.assertEqual(len(j), 2, msg="Expected 2 intervals before, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=four_hours_before_utc,
+                                  expectedEnd=three_hours_before_utc,
+                                  expectedTags=["foo"])
+        self.assertClosedInterval(j[1],
+                                  expectedStart=two_hours_before_utc,
+                                  expectedEnd=one_hour_before_utc,
+                                  expectedTags=["bar"])
+
+        self.t("undo")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 1, msg="Expected 1 interval afterwards, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=four_hours_before_utc,
+                                  expectedEnd=three_hours_before_utc,
+                                  expectedTags=["foo"])
+
+    def test_undo_track_with_adjust_hint(self):
+        """Test undo of command 'track' with adjust hint"""
+        now_utc = datetime.now().utcnow()
+        one_hour_before_utc = now_utc - timedelta(hours=1)
+        two_hours_before_utc = now_utc - timedelta(hours=2)
+        three_hours_before_utc = now_utc - timedelta(hours=3)
+        four_hours_before_utc = now_utc - timedelta(hours=4)
+        six_hours_before_utc = now_utc - timedelta(hours=6)
+
+        self.t("track {:%Y%m%dT%H%M%SZ} - {:%Y%m%dT%H%M%SZ} foo".format(four_hours_before_utc, three_hours_before_utc))
+        self.t("track {:%Y%m%dT%H%M%SZ} - {:%Y%m%dT%H%M%SZ} bar".format(two_hours_before_utc, one_hour_before_utc))
+
+        self.t("track {:%Y%m%dT%H%M%SZ} - {:%Y%m%dT%H%M%SZ} xyz :adjust".format(six_hours_before_utc, now_utc))
+
+        j = self.t.export()
+        self.assertEqual(len(j), 1, msg="Expected 2 intervals before, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=six_hours_before_utc,
+                                  expectedEnd=now_utc,
+                                  expectedTags=["xyz"])
+
+        self.t("undo")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 2, msg="Expected 2 interval afterwards, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=four_hours_before_utc,
+                                  expectedEnd=three_hours_before_utc,
+                                  expectedTags=["foo"])
+        self.assertClosedInterval(j[1],
+                                  expectedStart=two_hours_before_utc,
+                                  expectedEnd=one_hour_before_utc,
+                                  expectedTags=["bar"])
+
+    def test_undo_untag(self):
+        """Test undo of command 'untag'"""
+        now_utc = datetime.now().utcnow()
+        one_hour_before_utc = now_utc - timedelta(hours=1)
+        two_hours_before_utc = now_utc - timedelta(hours=2)
+
+        self.t("track {:%Y%m%dT%H%M%SZ} - {:%Y%m%dT%H%M%SZ} foo bar".format(two_hours_before_utc, one_hour_before_utc))
+        self.t("untag @1 bar")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 1, msg="Expected 1 interval before, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=two_hours_before_utc,
+                                  expectedEnd=one_hour_before_utc,
+                                  expectedTags=["foo"])
+
+        self.t("undo")
+
+        j = self.t.export()
+        self.assertEqual(len(j), 1, msg="Expected 1 interval afterwards, got {}".format(len(j)))
+        self.assertClosedInterval(j[0],
+                                  expectedStart=two_hours_before_utc,
+                                  expectedEnd=one_hour_before_utc,
+                                  expectedTags=["bar", "foo"])
+
+    def test_undo_journal_size_equals_one(self):
+        """Test undo only stores the last entry when journal.size == 1"""
+
+        self.t("config journal.size 1 :yes")
+        self.t("start 16h ago proja")
+        self.t("start 15h ago projb")
+        before = self.t.export()
+        self.t("start 14h ago projc")
+        self.t("undo")
+        # since we set the journal size to 1, these undos should not have any
+        # effect since we have already undone the one entry we saved
+        self.t("undo")
+        self.t("undo")
+        self.assertEqual(before, self.t.export())
+
+    def test_undo_journal_size_equals_two(self):
+        """Test undo only stores two entries when journal.size == 2"""
+        
+        self.t("config journal.size 2 :yes")
+        self.t("start 16h ago proja")
+        before_b = self.t.export()
+        self.t("start 15h ago projb")
+        before_c = self.t.export()
+        self.t("start 14h ago projc")
+        self.t("undo")
+        self.assertEqual(before_c, self.t.export())
+        self.t("undo")
+        self.t("undo") # This undo should not have any effect
+        self.assertEqual(before_b, self.t.export())
+
+    def test_undo_journal_size_equals_zero(self):
+        """Test undo does not save any entries when journal.size == 0"""
+
+        self.t("config journal.size 0 :yes")
+        before_a = self.t.export()
+        self.t("start 16h ago proja")
+        before_b = self.t.export()
+        self.t("start 15h ago projb")
+        before_c = self.t.export()
+        self.t("start 14h ago projc")
+        end = self.t.export()
+
+        # Check that any undo commands do not change the results of the export
+        self.t("undo")
+        self.assertEqual(end, self.t.export())
+        self.t("undo")
+        self.assertEqual(end, self.t.export())
+        self.t("undo")
+        self.assertEqual(end, self.t.export())
+
+    def test_undo_journal_size_unlimited(self):
+        """Test undo handles more than two entries when journal.size == -1 """
+
+        # This should error since 0 should be the default value
+        self.t.runError("config journal.size -1 :yes")
+        before_a = self.t.export()
+        self.t("start 16h ago proja")
+        before_b = self.t.export()
+        self.t("start 15h ago projb")
+        before_c = self.t.export()
+        self.t("start 14h ago projc")
+        self.t("undo")
+        self.assertEqual(before_c, self.t.export())
+        self.t("undo")
+        self.assertEqual(before_b, self.t.export())
+        self.t("undo")
+        self.assertEqual(before_a, self.t.export())
+
+    def test_undo_process_commands_when_disabled(self):
+        """Test that disabling the journal clears it."""
+
+        self.t("start 16h ago proja")
+        self.t("start 15h ago projb")
+        self.t("start 14h ago projc")
+        after_c = self.t.export ();
+        self.t("config journal.size 0 :yes")
+        after_config = self.t("config")
+        code, out, error = self.t("undo") # This change will not change the config or the entries
+        self.assertIn("Nothing", out)
+        self.assertEqual(after_config, self.t("config"))
+        self.assertEqual(after_c, self.t.export())
+
+if __name__ == "__main__":
+    from simpletap import TAPTestRunner
+
+    unittest.main(testRunner=TAPTestRunner())

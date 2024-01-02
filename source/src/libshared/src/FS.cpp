@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2006 - 2019, Paul Beckingham, Federico Hernandez.
+// Copyright 2006 - 2021, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -822,14 +822,14 @@ bool File::remove (const std::string& name)
 ////////////////////////////////////////////////////////////////////////////////
 bool File::copy (const std::string& from, const std::string& to)
 {
-  // 'from' must exist.
-  if (! access (from.c_str (), F_OK))
-  {
-    std::ifstream src (from, std::ios::binary);
-    std::ofstream dst (to,   std::ios::binary);
+  std::ifstream src (from, std::ios::binary);
 
+  if (! src.fail ())
+  {
+    std::ofstream dst (to,   std::ios::binary);
     dst << src.rdbuf ();
-    return true;
+    dst.close ();
+    return dst.good () && ! src.bad ();
   }
 
   return false;
@@ -889,7 +889,15 @@ bool Directory::create (int mode /* = 0755 */)
 {
   // No error handling because we want failure to be silent, somewhat emulating
   // "mkdir -p".
-  return mkdir (_data.c_str (), mode) == 0 ? true : false;
+  Directory parent_dir = parent ();
+  if (! parent_dir.exists ())
+  {
+      if (! parent_dir.create (mode))
+      {
+          return false;
+      }
+  }
+  return mkdir (_data.c_str (), mode) == 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
