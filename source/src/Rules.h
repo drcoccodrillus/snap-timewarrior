@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2015 - 2016, 2018 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -31,6 +31,8 @@
 #include <map>
 #include <vector>
 #include <string>
+#include <Database.h>
+#include <Journal.h>
 
 class Rules
 {
@@ -40,7 +42,7 @@ public:
   std::string file () const;
 
   bool        has        (const std::string&) const;
-  std::string get        (const std::string&) const;
+  std::string get (const std::string &key, const std::string &defaultValue = "") const;
   int         getInteger (const std::string&, int defaultValue = 0) const;
   double      getReal    (const std::string&) const;
   bool        getBoolean (const std::string&) const;
@@ -53,6 +55,16 @@ public:
   bool isRuleType (const std::string&) const;
 
   std::string dump () const;
+
+  static bool setConfigVariable (Journal& journal,
+                                 const Rules& rules,
+                                 std::string name,
+                                 std::string value,
+                                 bool confirmation /* = false */);
+  static int unsetConfigVariable (Journal& journal,
+                                  const Rules& rules,
+                                  std::string name,
+                                  bool confirmation /* = false */);
 
 private:
   void parse               (const std::string&, int next = 1);
@@ -67,6 +79,7 @@ private:
   std::string                         _original_file {};
   std::map <std::string, std::string> _settings      {};
   std::vector <std::string>           _rule_types    {"tags", "reports", "theme", "holidays", "exclusions"};
+
 };
 
 #endif

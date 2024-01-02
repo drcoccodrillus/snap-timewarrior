@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -36,14 +36,17 @@
 int CmdJoin (
   const CLI& cli,
   Rules& rules,
-  Database& database)
+  Database& database,
+  Journal& journal)
 {
   // Gather IDs and TAGs.
-  std::vector <int> ids = cli.getIds();
+  std::set <int> ids = cli.getIds ();
 
   // Only 2 IDs allowed in a join.
   if (ids.size () != 2)
+  {
     throw std::string ("Two IDs must be specified. See 'timew help join'.");
+  }
 
   // Load the data.
   // Note: There is no filter.
@@ -52,28 +55,44 @@ int CmdJoin (
 
   // ID values must be in range.
   for (auto& id : ids)
+  {
     if (id > static_cast <int> (tracked.size ()))
+    {
       throw format ("ID '@{1}' does not correspond to any tracking.", id);
+    }
 
-  auto first_id  = std::max (ids[0], ids[1]);
-  auto second_id = std::min (ids[0], ids[1]);
+  }
+
+  journal.startTransaction ();
+
+  auto first_id  = *ids.begin ();
+  auto second_id = *ids.rbegin ();
+
   Interval first  = tracked[tracked.size () - first_id];
   Interval second = tracked[tracked.size () - second_id];
 
   // TODO Require confirmation if intervals are not consecutive.
-  // TODO Require confirmation if tags don't match.
 
-  auto combined = first;
-  combined.range.end = second.range.end;
+  auto combined = second;
+  combined.end = first.end;
+
+  for (auto& tag: first.tags ())
+  {
+    combined.tag (tag);
+  }
 
   database.deleteInterval (first);
   database.deleteInterval (second);
 
   validate (cli, rules, database, combined);
-  database.addInterval (combined);
+  database.addInterval (combined, rules.getBoolean ("verbose"));
+
+  journal.endTransaction ();
 
   if (rules.getBoolean ("verbose"))
-    std::cout << "Joined @" << ids[0] << " and @" << ids[1] << '\n';
+  {
+    std::cout << "Joined @" << first_id << " and @" << second_id << '\n';
+  }
 
   return 0;
 }

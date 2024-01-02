@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2016, 2018 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -49,29 +49,29 @@ bool domGet (
       // dom.active
       if (pig.eos ())
       {
-        value = latest.range.is_open () ? "1" : "0";
+        value = latest.is_open () ? "1" : "0";
         return true;
       }
 
       // dom.active.start
       if (pig.skipLiteral (".start") &&
-          latest.range.is_open ())
+          latest.is_open ())
       {
-        value = latest.range.start.toISOLocalExtended ();
+        value = latest.start.toISOLocalExtended ();
         return true;
       }
 
       // dom.active.duration
       if (pig.skipLiteral (".duration") &&
-          latest.range.is_open ())
+          latest.is_open ())
       {
-        value = Duration (latest.range.total ()).formatISO ();
+        value = Duration (latest.total ()).formatISO ();
         return true;
       }
 
       // dom.active.tag.count
       if (pig.skipLiteral (".tag.count") &&
-          latest.range.is_open ())
+          latest.is_open ())
       {
         value = format ("{1}", latest.tags ().size ());
         return true;
@@ -79,7 +79,7 @@ bool domGet (
 
       // dom.active.json
       if (pig.skipLiteral (".json") &&
-          latest.range.is_open ())
+          latest.is_open ())
       {
         value = latest.json ();
         return true;
@@ -90,7 +90,7 @@ bool domGet (
       if (pig.skipLiteral (".tag.") &&
           pig.getDigits (n))
       {
-        if (n <= static_cast <int> (latest.tags ().size ()))
+        if (1 <= n && n <= static_cast <int> (latest.tags ().size ()))
         {
           std::vector <std::string> tags;
           for (auto& tag : latest.tags ())
@@ -130,24 +130,24 @@ bool domGet (
         // dom.tracked.N.start
         if (pig.skipLiteral ("start"))
         {
-          value = tracked[count - n].range.start.toISOLocalExtended ();
+          value = tracked[count - n].start.toISOLocalExtended ();
           return true;
         }
 
         // dom.tracked.N.end
         if (pig.skipLiteral ("end"))
         {
-          if (tracked[count -n].range.is_open ())
+          if (tracked[count -n].is_open ())
             value = "";
           else
-            value = tracked[count - n].range.end.toISOLocalExtended ();
+            value = tracked[count - n].end.toISOLocalExtended ();
           return true;
         }
 
         // dom.tracked.N.duration
         if (pig.skipLiteral ("duration"))
         {
-          value = Duration (tracked[count - n].range.total ()).formatISO ();
+          value = Duration (tracked[count - n].total ()).formatISO ();
           return true;
         }
 

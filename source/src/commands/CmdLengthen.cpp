@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -36,10 +36,11 @@
 int CmdLengthen (
   const CLI& cli,
   Rules& rules,
-  Database& database)
+  Database& database,
+  Journal& journal)
 {
   // Gather IDs and TAGs.
-  std::vector <int> ids = cli.getIds();
+  std::set <int> ids = cli.getIds ();
 
   if (ids.empty ())
     throw std::string ("IDs must be specified. See 'timew help lengthen'.");
@@ -52,6 +53,8 @@ int CmdLengthen (
         arg._lextype == Lexer::Type::duration)
       delta = arg.attribute ("raw");
   }
+
+  journal.startTransaction ();
 
   // Load the data.
   // Note: There is no filter.
@@ -68,14 +71,14 @@ int CmdLengthen (
     if (tracked[tracked.size () - id].synthetic && dirty)
     {
       auto latest = getLatestInterval (database);
-      auto exclusions = getAllExclusions (rules, filter.range);
+      auto exclusions = getAllExclusions (rules, filter);
 
       Interval modified {latest};
 
       // Update database.
       database.deleteInterval (latest);
       for (auto& interval : flatten (modified, exclusions))
-        database.addInterval (interval);
+        database.addInterval (interval, rules.getBoolean ("verbose"));
 
       dirty = false;
     }
@@ -88,19 +91,21 @@ int CmdLengthen (
       throw format ("ID '@{1}' does not correspond to any tracking.", id);
 
     Interval i = tracked[tracked.size () - id];
-    if (i.range.is_open ())
+    if (i.is_open ())
       throw format ("Cannot lengthen open interval @{1}", id);
 
     database.deleteInterval (tracked[tracked.size () - id]);
 
     Duration dur (delta);
-    i.range.end += dur.toTime_t ();
+    i.end += dur.toTime_t ();
     validate (cli, rules, database, i);
-    database.addInterval (i);
+    database.addInterval (i, rules.getBoolean ("verbose"));
 
     if (rules.getBoolean ("verbose"))
       std::cout << "Lengthened @" << id << " by " << dur.formatHours () << '\n';
   }
+
+  journal.endTransaction ();
 
   return 0;
 }

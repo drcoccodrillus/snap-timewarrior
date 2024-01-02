@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -33,7 +33,8 @@
 #include <iostream>
 
 // Implemented in CmdChart.cpp.
-std::string renderHolidays (const std::string&, const Rules&, const Interval&);
+std::map <Datetime, std::string> createHolidayMap (Rules&, Interval&);
+std::string renderHolidays (const std::map <Datetime, std::string>&);
 
 ////////////////////////////////////////////////////////////////////////////////
 int CmdSummary (
@@ -43,14 +44,38 @@ int CmdSummary (
 {
   // Create a filter, and if empty, choose 'today'.
   auto filter = getFilter (cli);
-  if (! filter.range.is_started ())
-    filter.range = Range (Datetime ("today"), Datetime ("tomorrow"));
+  if (! filter.is_started ())
+    filter.setRange (Datetime ("today"), Datetime ("tomorrow"));
 
-  if (! filter.range.is_ended())
-    filter.range.end = filter.range.start + Duration("1d").toTime_t();
+  if (! filter.is_ended())
+    filter.end = filter.start + Duration("1d").toTime_t();
 
   // Load the data.
   auto tracked = getTracked (database, rules, filter);
+
+  if (tracked.empty ())
+  {
+    if (rules.getBoolean ("verbose"))
+    {
+      std::cout << "No filtered data found";
+
+      if (filter.is_started ())
+      {
+        std::cout << " in the range " << filter.start.toISOLocalExtended ();
+        if (filter.is_ended ())
+          std::cout << " - " << filter.end.toISOLocalExtended ();
+      }
+
+      if (! filter.tags ().empty ())
+      {
+        std::cout << " tagged with " << joinQuotedIfNeeded (", ", filter.tags ());
+      }
+
+      std::cout << ".\n";
+    }
+
+    return 0;
+  }
 
   // Map tags to colors.
   auto palette = createPalette (rules);
@@ -58,6 +83,7 @@ int CmdSummary (
   Color colorID (rules.getBoolean ("color") ? rules.get ("theme.colors.ids") : "");
 
   auto ids = findHint (cli, ":ids");
+  auto show_annotation = findHint (cli, ":annotations");
 
   Table table;
   table.width (1024);
@@ -67,9 +93,20 @@ int CmdSummary (
   table.add ("Day");
 
   if (ids)
+  {
     table.add ("ID");
+  }
 
   table.add ("Tags");
+
+  auto offset = 0;
+
+  if (show_annotation)
+  {
+    table.add ("Annotation");
+    offset = 1;
+  }
+
   table.add ("Start", false);
   table.add ("End", false);
   table.add ("Time", false);
@@ -78,7 +115,7 @@ int CmdSummary (
   // Each day is rendered separately.
   time_t grand_total = 0;
   Datetime previous;
-  for (Datetime day = filter.range.start; day < filter.range.end; day++)
+  for (Datetime day = filter.start; day < filter.end; day++)
   {
     auto day_range = getFullDay (day);
     time_t daily_total = 0;
@@ -87,7 +124,7 @@ int CmdSummary (
     for (auto& track : subset (day_range, tracked))
     {
       // Make sure the track only represents one day.
-      if ((track.range.is_open () && day > Datetime ()))
+      if ((track.is_open () && day > Datetime ()))
         continue;
 
       row = table.addRow ();
@@ -101,63 +138,70 @@ int CmdSummary (
       }
 
       // Intersect track with day.
-      auto today = day_range.intersect (track.range);
-      if (track.range.is_open () && day <= Datetime ())
+      auto today = day_range.intersect (track);
+      if (track.is_open () && day <= Datetime () && today.end > Datetime ())
         today.end = Datetime ();
 
       std::string tags = join(", ", track.tags());
 
       if (ids)
+      {
         table.set (row, 3, format ("@{1}", track.id), colorID);
+      }
 
       table.set (row, (ids ? 4 : 3), tags);
-      table.set (row, (ids ? 5 : 4), today.start.toString ("h:N:S"));
-      table.set (row, (ids ? 6 : 5), (track.range.is_open () ? "-" : today.end.toString ("h:N:S")));
-      table.set (row, (ids ? 7 : 6), Duration (today.total ()).formatHours ());
+
+      if (show_annotation)
+      {
+        auto annotation = track.getAnnotation ();
+
+        if (annotation.length () > 15)
+          annotation = annotation.substr (0, 12) + "...";
+
+        table.set (row, (ids ? 5 : 4), annotation);
+      }
+
+      table.set (row, (ids ? 5 : 4) + offset, today.start.toString ("h:N:S"));
+      table.set (row, (ids ? 6 : 5) + offset, (track.is_open () ? "-" : today.end.toString ("h:N:S")));
+      table.set (row, (ids ? 7 : 6) + offset, Duration (today.total ()).formatHours ());
 
       daily_total += today.total ();
     }
 
     if (row != -1)
-      table.set (row, (ids ? 8 : 7), Duration (daily_total).formatHours ());
+      table.set (row, (ids ? 8 : 7) + offset, Duration (daily_total).formatHours ());
 
     grand_total += daily_total;
   }
 
   // Add the total.
-  table.set (table.addRow (), (ids ? 8 : 7), " ", Color ("underline"));
-  table.set (table.addRow (), (ids ? 8 : 7), Duration (grand_total).formatHours ());
+  table.set (table.addRow (), (ids ? 8 : 7) + offset, " ", Color ("underline"));
+  table.set (table.addRow (), (ids ? 8 : 7) + offset, Duration (grand_total).formatHours ());
 
-  if (table.rows () > 2)
-  {
-    std::cout << '\n'
-              << table.render ()
-              << renderHolidays ("summary", rules, filter)
-              << '\n';
-  }
-  else
-  {
-    if (rules.getBoolean ("verbose"))
-    {
-      std::cout << "No filtered data found";
+  const auto with_holidays = rules.getBoolean ("reports.summary.holidays");
 
-      if (filter.range.is_started ())
-      {
-        std::cout << " in the range " << filter.range.start.toISOLocalExtended ();
-        if (filter.range.is_ended ())
-          std::cout << " - " << filter.range.end.toISOLocalExtended ();
-      }
-
-      if (filter.tags ().size ())
-      {
-        std::cout << " tagged with " << joinQuotedIfNeeded (", ", filter.tags ());
-      }
-
-      std::cout << ".\n";
-    }
-  }
+  std::cout << '\n'
+            << table.render ()
+            << (with_holidays ? renderHolidays (createHolidayMap (rules, filter)) : "")
+            << '\n';
 
   return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+std::string renderHolidays (const std::map<Datetime, std::string> &holidays)
+{
+  std::stringstream out;
+
+  for (auto &entry : holidays)
+  {
+    out << entry.first.toString ("Y-M-D")
+        << " "
+        << entry.second
+        << '\n';
+  }
+
+  return out.str ();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

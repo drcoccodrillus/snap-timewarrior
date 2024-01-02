@@ -1,9 +1,111 @@
-1.1.1 (2018-02-03) -
+------ current release ---------------------------
 
+1.2.0 (2019-11-22) -
+
+- #2      Generate a warning when a new tag is used on the command line
+- #9      Add an 'undo' command (TI-1)
+- #11     The month report shows multi-days current task truncated (TI-3)
+- #21     Add/Remove tag to/from current activity (TI-13)
+          (thanks to lumbric)
+- #22     Warn when new tags are being created (TI-14)
+- #42     No warning about new tags (TI-37)
+- #62     `timew track` with future interval records nothing or incomplete interval (TI-57)
+- #68     Add annotations to time intervals (TI-63)
+- #77     Support non-tag interval data storage (TI-72)
+          (thanks to Tomas Babej)
+- #96     Include Bash completion for timewarrior (TI-92)
+- #97     tag command duplicates entry if same id is passed twice (TI-93)
+- #98     Command Injection Security Vulnerability in on-modify.timewarrior (TI-94)
+          (thanks to Aaron Fields)
+- #101    timew assertion error on delete (TI-97)
+          (thanks to janikrabe)
+- #104    :lastquarter throws exception in first quarter (TI-100)
+          (thanks to Andreas Poisel)
+- #105    Keeps tracking renamed and stopped task (TI-101)
+          (thanks to Antanas B.)
+- #107    Fix autorange in chart (TI-103)
+          (thanks to Fabian Pflug)
+- #109    No rule to make target: test
+          (thanks to tecfu)
+- #111    Some tests fail depending on the time of day
+          (thanks to chronitis)
+- #112    Monday, 1st and others does not work in recent versions
+          (thanks to sgf-dma)
+- #113    summary does not display correctly open intervals spanning day border
+          (thanks to janikrabe)
+- #116    "Recorded" message displayed twice when stopping
+          (thanks to real-or-random)
+- #135    Task at month end not getting displayed
+          (thanks to towo)
+- #138    Entering an escaped quote in a tag name causes incorrect JSON to be generated
+          (thanks to bognolo)
+- #139    month 1st responds with "Time tracking cannot be set in the future"
+          (thanks to ddombrowsky, triclops200)
+- #142    allow setting end of task in future
+          (thanks to sclo)
+- #157    CLI: Ensure IDs are non-zero
+          (thanks to janikrabe)
+- #165    CmdSummary does not show empty intervals at midnight
+          (thanks to janikrabe)
+- #166    getTracked behaves incorrectly when latest interval is empty
+          (thanks to janikrabe)
+- #167    Cannot shorten interval to zero length
+          (thanks to janikrabe)
+- #174    Interval is split in two when it encloses month border
+- #183    Hyphen in annotation gets padded with spaces
+- #185    Introduce 'modify' to adjust historical records to fixed date/time.
+          (thanks to svenXY, sruffell)
+- #189    segfault on timew get dom.active.tag.0
+          (thanks to Valodim)
+- #191    `timew day` aborts when exclusions are configured and a time is specified
+          (thanks to OddBloke)
+- #194    Weekdays get expanded into future ranges
+- #198    Problem with `%` symbol in tag
+          (thanks to sruffel, AlexLov)
+- #200    Fix on-modify.timewarrior hook for tasks with multi line description
+          (thanks to Dennis Schridde)
+- #216    on-modify.timewarrior assumes python is python 3
+          (thanks to somospocos, quazgar)
+- #219    "--help" should show help, not considered to be a tag.
+          (thanks to varac, sruffel)
+- #220    Tag containing double quotes breaks TimeWarrior v1.2.0
+          (thanks to sskras)
+- #222    Taskwarrior hook doesn't work with Portuguese accentuated characters
+          (thanks to mrbig033, Dennis Schridde)
+- #224    Create tag database from existing interval database on startup
+- #227    MAINT: on-modify.timewarrior imports from future
+          (thanks to quazgar)
+- #228    Using those date aliases don't function as intended
+          (thanks to RainbowSwirls)
+- #232    on-modify.timewarrior: Fix "from __future__ imports must occur at the beginning of the file"
+          (thanks to Dennis Schridde)
+- #237    on-modify.timewarrior: Deal with non-UTF-8 characters in input data from taskwarrior
+          (thanks to Dennis Schridde)
+- #240    Core dump when specifying a start time in the past
+          (thanks to OddBloke)
+- #247    Remove annotation from interval
+- #254    Quotes in annotations are not escaped
+          (thanks to bzed, sruffell)
+- #260    Tests with synthetic interval fail when test intervals cross day border
+          (thanks to sruffell)
+- #261    Double quotes in annotations and tags not handled.
+          (thanks to sruffell)
+- #262    Allow tests to use manpages in source tree
+          (thanks to sruffell)
+-         Fixed error from totals.py while timer is active
+          (thanks to davisdude)
+-         Refactoring of Interval and Range
+-         Refactoring of CmdChart
+-         Let command join merge tags of given intervals
+
+------ old releases ------------------------------
+
+1.1.1 (2018-02-03) ef26ebd6fec8472d4b91644806f48b546bb35747
+
+- TI-76   Shortening an interval over an exclusion makes the exclusion no longer apply
+          (thanks to A M)
 - TI-102  Exclusions stopped working
           (thanks to Christian Decker)
-
------- current release ---------------------------
 
 1.1.0 (2018-01-13) 836bc41014018ab333e6ea73412ee09d015beb4e
 
@@ -85,8 +187,6 @@
 - Named dates 'socw', 'socm', 'socq' and 'socy' are now named 'sow', 'som',
   'soq' and 'soy'. Similarly the 'eocw' etc are modified. The 'c' is now
   implicit.
-
------- old release -------------------------------
 
 1.0.0 (2016-08-17) 6428ce89fcf2a5665d9351c50c2a84c98543206c
 

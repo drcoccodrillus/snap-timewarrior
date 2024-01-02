@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -33,227 +33,6 @@
 #include <iostream>
 
 ////////////////////////////////////////////////////////////////////////////////
-// Note that because this function does not recurse with includes, it therefore
-// only sees the top-level settings. This has the desirable effect of adding as
-// an override any setting which resides in an imported file.
-static bool setConfigVariable (Database& database, const Rules& rules, std::string name, std::string value, bool confirmation /* = false */)
-{
-  // Read config file as lines of text.
-  std::vector <std::string> lines;
-  File::read (rules.file (), lines);
-
-  bool change = false;
-
-  if (rules.has (name))
-  {
-    // No change.
-    if (rules.get (name) == value)
-      return false;
-
-    // If there is a non-comment line containing the entry in flattened form:
-    //   a.b.c = value
-    bool found = false;
-    for (auto& line : lines)
-    {
-      auto comment = line.find ('#');
-      auto pos     = line.find (name);
-      if (pos != std::string::npos &&
-          (comment == std::string::npos || comment > pos))
-      {
-        found = true;
-
-        // Modify value
-        if (! confirmation ||
-            confirm (format ("Are you sure you want to change the value of '{1}' from '{2}' to '{3}'?",
-                             name,
-                             rules.get (name),
-                             value)))
-        {
-          auto before = line;
-          line = line.substr (0, pos) + name + " = " + value;
-
-          database.undoTxnStart ();
-          database.undoTxn ("config", before, line);
-          database.undoTxnEnd ();
-
-          change = true;
-        }
-      }
-    }
-
-    // If it was not found, then retry in hierarchical form∴
-    //   a:
-    //     b:
-    //       c = value
-    if (! found)
-    {
-      auto leaf = split (name, '.').back () + ":";
-      for (auto& line : lines)
-      {
-        auto comment = line.find ('#');
-        auto pos     = line.find (leaf);
-        if (pos != std::string::npos &&
-            (comment == std::string::npos || comment > pos))
-        {
-          found = true;
-
-          // Remove name
-          if (! confirmation ||
-              confirm (format ("Are you sure you want to change the value of '{1}' from '{2}' to '{3}'?",
-                               name,
-                               rules.get (name),
-                               value)))
-          {
-            auto before = line;
-            line = line.substr (0, pos) + leaf + " " + value;
-
-            database.undoTxnStart ();
-            database.undoTxn ("config", before, line);
-            database.undoTxnEnd ();
-
-            change = true;
-          }
-        }
-      }
-    }
-    if (! found)
-    {
-      // Remove name
-      if (! confirmation ||
-          confirm (format ("Are you sure you want to change the value of '{1}' from '{2}' to '{3}'?",
-                           name,
-                           rules.get (name),
-                           value)))
-      {
-        // Add blank line required by rules.
-        if (lines.size () &&
-            lines.back () != "")
-          lines.push_back ("");
-
-        // Add new line.
-        lines.push_back (name + " = " + json::encode (value));
-
-        database.undoTxnStart ();
-        database.undoTxn ("config", "", lines.back());
-        database.undoTxnEnd ();
-
-        change = true;
-      }
-    }
-  }
-  else
-  {
-    if (! confirmation ||
-        confirm (format ("Are you sure you want to add '{1}' with a value of '{2}'?", name, value)))
-    {
-      // TODO Ideally, this would locate an existing hierarchy and insert the
-      //      new leaf/value properly. But that's non-trivial.
-
-      // Add blank line required by rules.
-      if (lines.size () &&
-          lines.back () != "")
-        lines.push_back ("");
-
-      // Add new line.
-      lines.push_back (name + " = " + json::encode (value));
-
-      database.undoTxnStart ();
-      database.undoTxn ("config", "", lines.back ());
-      database.undoTxnEnd ();
-
-      change = true;
-    }
-  }
-
-  if (change)
-    File::write (rules.file (), lines);
-
-  return change;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Removes lines from configuration but leaves comments intact.
-//
-// Return codes:
-//   0 - found and removed
-//   1 - found and not removed
-//   2 - not found
-static int unsetConfigVariable (Database& database, const Rules& rules, std::string name, bool confirmation /* = false */)
-{
-  // Setting not found.
-  if (! rules.has (name))
-    return 2;
-
-  // Read config file as lines of text.
-  std::vector <std::string> lines;
-  File::read (rules.file (), lines);
-
-  // If there is a non-comment line containing the entry in flattened form:
-  //   a.b.c = value
-  bool found = false;
-  bool change = false;
-  for (auto& line : lines)
-  {
-    auto comment = line.find ('#');
-    auto pos     = line.find (name);
-    if (pos != std::string::npos &&
-        (comment == std::string::npos || comment > pos))
-    {
-      found = true;
-
-      // Remove name
-      if (! confirmation ||
-          confirm (format ("Are you sure you want to remove '{1}'?", name)))
-      {
-        database.undoTxnStart ();
-        database.undoTxn ("config", line, "");
-        database.undoTxnEnd ();
-
-        line = "";
-        change = true;
-      }
-    }
-  }
-
-  // If it was not found, then retry in hierarchical form∴
-  //   a:
-  //     b:
-  //       c = value
-  if (! found)
-  {
-    auto leaf = split (name, '.').back () + ":";
-    for (auto& line : lines)
-    {
-      auto comment = line.find ('#');
-      auto pos     = line.find (leaf);
-      if (pos != std::string::npos &&
-          (comment == std::string::npos || comment > pos))
-      {
-        found = true;
-
-        // Remove name
-        if (! confirmation ||
-            confirm (format ("Are you sure you want to remove '{1}'?", name)))
-        {
-          line = "";
-          change = true;
-        }
-      }
-    }
-  }
-
-  if (change)
-    File::write (rules.file (), lines);
-
-  if (change && found)
-    return 0;
-  else if (found)
-    return 1;
-
-  return 2;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // timew config name value       Set name=value
 // timew config name ''          Set name=''
 // timew config name             Remove name
@@ -261,7 +40,7 @@ static int unsetConfigVariable (Database& database, const Rules& rules, std::str
 int CmdConfig (
   const CLI& cli,
   Rules& rules,
-  Database& database)
+  Journal& journal)
 {
   int rc = 0;
 
@@ -269,70 +48,83 @@ int CmdConfig (
   auto words = cli.getWords ();
 
   // Support:
-  //   task config name value    # set name to value
-  //   task config name ""       # set name to blank
-  //   task config name          # remove name
-  if (words.size ())
+  //   timew config name value    # set name to value
+  //   timew config name ""       # set name to blank
+  //   timew config name          # remove name
+  if (words.empty ())
   {
-    bool confirmation = rules.getBoolean ("confirmation");
-    std::string name = words[0];
-    std::string value = "";
+    return CmdShow (rules);
+  }
 
+  bool confirmation = rules.getBoolean ("confirmation");
+  std::string name = words[0];
+  std::string value;
+
+  if (name.empty ()) // is this possible?
+  {
+    return CmdShow (rules);
+  }
+
+  bool change = false;
+
+  journal.startTransaction ();
+
+  // timew config name value
+  // timew config name ""
+  if (words.size () > 1)
+  {
     // Join the remaining words into config variable's value
-    if (words.size () > 1)
+    for (unsigned int i = 1; i < words.size (); ++i)
     {
-      for (unsigned int i = 1; i < words.size (); ++i)
+      if (i > 1)
       {
-        if (i > 1)
-          value += " ";
-
-        value += words[i];
+        value += " ";
       }
+
+      value += words[i];
     }
 
-    if (name != "")
+    change = Rules::setConfigVariable (journal, rules, name, value, confirmation);
+
+    if (!change)
     {
-      bool change = false;
+      rc = 1;
+    }
+  }
+  // timew config name
+  else
+  {
+    bool found = false;
+    rc = Rules::unsetConfigVariable (journal, rules, name, confirmation);
+    if (rc == 0)
+    {
+      change = true;
+      found = true;
+    }
+    else if (rc == 1)
+    {
+      found = true;
+    }
 
-      // task config name value
-      // task config name ""
-      if (words.size () > 1)
-      {
-        change = setConfigVariable (database, rules, name, value, confirmation);
-        if (! change)
-          rc = 1;
-      }
+    if (!found)
+    {
+      throw format ("No entry named '{1}' found.", name);
+    }
+  }
 
-      // task config name
-      else
-      {
-        bool found = false;
-        rc = unsetConfigVariable (database, rules, name, confirmation);
-        if (rc == 0)
-        {
-          change = true;
-          found = true;
-        }
-        else if (rc == 1)
-          found = true;
+  journal.endTransaction ();
 
-        if (!found)
-          throw format ("No entry named '{1}' found.", name);
-      }
-
-      if (rules.getBoolean ("verbose"))
-      {
-        if (change)
-          std::cout << "Config file " << rules.file () << " modified.\n";
-        else
-          std::cout << "No changes made.\n";
-      }
+  if (rules.getBoolean ("verbose"))
+  {
+    if (change)
+    {
+      std::cout << "Config file " << rules.file () << " modified.\n";
     }
     else
-      CmdShow (rules);
+    {
+      std::cout << "No changes made.\n";
+    }
   }
-  else
-    CmdShow (rules);
 
   return rc;
 }

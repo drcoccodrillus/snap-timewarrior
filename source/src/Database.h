@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2016, 2018 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -30,27 +30,26 @@
 #include <Datafile.h>
 #include <Interval.h>
 #include <Range.h>
+#include <Transaction.h>
 #include <vector>
 #include <string>
+#include <TagInfoDatabase.h>
+#include <Journal.h>
 
 class Database
 {
 public:
   Database () = default;
-  void initialize (const std::string&);
+  void initialize (const std::string&, Journal& journal);
   void commit ();
   std::vector <std::string> files () const;
 
   std::string lastLine ();
   std::vector <std::string> allLines ();
 
-  void addInterval (const Interval&);
+  void addInterval (const Interval&, bool verbose);
   void deleteInterval (const Interval&);
-  void modifyInterval (const Interval&, const Interval&);
-
-  void undoTxnStart ();
-  void undoTxnEnd ();
-  void undoTxn (const std::string&, const std::string&, const std::string&);
+  void modifyInterval (const Interval&, const Interval &, bool verbose);
 
   std::string dump () const;
 
@@ -58,12 +57,13 @@ private:
   unsigned int getDatafile (int, int);
   std::vector <Range> segmentRange (const Range&);
   void initializeDatafiles ();
+  void initializeTagDatabase ();
 
 private:
   std::string               _location {"~/.timewarrior/data"};
   std::vector <Datafile>    _files    {};
-  std::vector <std::string> _undo     {};
-  int                       _txn      {0};
+  TagInfoDatabase           _tagInfoDatabase {};
+  Journal*                  _journal {};
 };
 
 #endif

@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2016, 2018 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,31 +20,35 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmake.h>
 #include <Database.h>
-#include <FS.h>
 #include <format.h>
-#include <algorithm>
-#include <sstream>
-#include <iterator>
+#include <JSON.h>
+#include <iostream>
 #include <iomanip>
-#include <ctime>
+#include <shared.h>
+#include <timew.h>
 
 ////////////////////////////////////////////////////////////////////////////////
-void Database::initialize (const std::string& location)
+void Database::initialize (const std::string& location, Journal& journal)
 {
   _location = location;
+  _journal = &journal;
+  initializeTagDatabase ();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void Database::commit ()
 {
   for (auto& file : _files)
+  {
     file.commit ();
+  }
+
+  File::write (_location + "/tags.data", _tagInfoDatabase.toJson ());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -52,7 +56,9 @@ std::vector <std::string> Database::files () const
 {
   std::vector <std::string> all;
   for (auto& file : _files)
+  {
     all.push_back (file.name ());
+  }
 
   return all;
 }
@@ -61,15 +67,19 @@ std::vector <std::string> Database::files () const
 // Walk backwards through the files until an interval is found.
 std::string Database::lastLine ()
 {
-  if (! _files.size ())
+  if (_files.empty ())
+  {
     initializeDatafiles ();
+  }
 
   std::vector <Datafile>::reverse_iterator ri;
   for (ri = _files.rbegin (); ri != _files.rend (); ri++)
   {
     auto line = ri->lastLine ();
-    if (line != "")
+    if (! line.empty ())
+    {
       return line;
+    }
   }
 
   return "";
@@ -78,8 +88,10 @@ std::string Database::lastLine ()
 ////////////////////////////////////////////////////////////////////////////////
 std::vector <std::string> Database::allLines ()
 {
-  if (! _files.size ())
+  if (_files.empty ())
+  {
     initializeDatafiles ();
+  }
 
   std::vector <std::string> all;
   for (auto& file : _files)
@@ -94,66 +106,40 @@ std::vector <std::string> Database::allLines ()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void Database::addInterval (const Interval& interval)
+void Database::addInterval (const Interval& interval, bool verbose)
 {
-  undoTxnStart ();
+  auto tags = interval.tags ();
 
-  if (interval.range.is_open ())
+  for (auto& tag : tags)
   {
-    // Get the index into _files for the appropriate Datafile, which may be
-    // created on demand.
-    auto df = getDatafile (interval.range.start.year (), interval.range.start.month ());
-    _files[df].addInterval (interval);
-    undoTxn ("interval", "", interval.json ());
-  }
-  else
-  {
-    auto intervalRange = interval.range;
-    for (auto& segment : segmentRange (intervalRange))
+    if (_tagInfoDatabase.incrementTag (tag) == -1 && verbose)
     {
-      // Get the index into _files for the appropriate Datafile, which may be
-      // created on demand.
-      auto df = getDatafile (segment.start.year (), segment.start.month ());
-
-      // Intersect the original interval range, and the segment.
-      Interval segmentedInterval (interval);
-      segmentedInterval.range = intervalRange.intersect (segment);
-      if (interval.range.is_open ())
-        segmentedInterval.range.end = Datetime (0);
-
-      _files[df].addInterval (segmentedInterval);
-
-      undoTxn ("interval", "", segmentedInterval.json ());
+      std::cout << "Note: '" << quoteIfNeeded (tag) << "' is a new tag." << std::endl;
     }
   }
 
-  undoTxnEnd ();
+  // Get the index into _files for the appropriate Datafile, which may be
+  // created on demand.
+  auto df = getDatafile (interval.start.year (), interval.start.month ());
+  _files[df].addInterval (interval);
+  _journal->recordIntervalAction ("", interval.json ());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 void Database::deleteInterval (const Interval& interval)
 {
-  undoTxnStart ();
+  auto tags = interval.tags ();
 
-  auto intervalRange = interval.range;
-  for (auto& segment : segmentRange (intervalRange))
+  for (auto& tag : tags)
   {
-    // Get the index into _files for the appropriate Datafile, which may be
-    // created on demand.
-    auto df = getDatafile (segment.start.year (), segment.start.month ());
-
-    // Intersect the original interval range, and the segment.
-    Interval segmentedInterval (interval);
-    segmentedInterval.range = intervalRange.intersect (segment);
-    if (! interval.range.is_ended ())
-      segmentedInterval.range.end = Datetime (0);
-
-    _files[df].deleteInterval (segmentedInterval);
-
-    undoTxn ("interval", segmentedInterval.json (), "");
+    _tagInfoDatabase.decrementTag (tag);
   }
 
-  undoTxnEnd ();
+  // Get the index into _files for the appropriate Datafile, which may be
+  // created on demand.
+  auto df = getDatafile (interval.start.year (), interval.start.month ());
+
+  _files[df].deleteInterval (interval);
+  _journal->recordIntervalAction (interval.json (), "");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -161,61 +147,17 @@ void Database::deleteInterval (const Interval& interval)
 // Datafile, then add it back to the right Datafile. This is because
 // modification may involve changing the start date, which could mean the
 // Interval belongs in a different file.
-void Database::modifyInterval (const Interval& from, const Interval& to)
+void Database::modifyInterval (const Interval& from, const Interval& to, bool verbose)
 {
-  undoTxnStart ();
-  deleteInterval (from);
-  addInterval (to);
-  undoTxnEnd ();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// The _txn member is a reference count, allowing multiple nested transactions.
-// This accommodates the Database::modifyInterval call, that in turn calls
-// ::addInterval and ::deleteInterval.
-void Database::undoTxnStart ()
-{
-  if (_txn == 0)
-    _undo.push_back ("txn:");
-
-  ++_txn;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// The _txn member is a reference count. The undo data is only written when
-// ::undoTxnEnd decrements the counter to zero, therefore the undo command can
-// perform multiple atomic steps.
-void Database::undoTxnEnd ()
-{
-  --_txn;
-  if (_txn == 0)
+  if (!from.empty ())
   {
-    File undo (_location + "/undo.data");
-    if (undo.open ())
-    {
-      for (auto& line : _undo)
-        undo.append (line + "\n");
-
-      undo.close ();
-      _undo.clear ();
-    }
-    else
-      throw format ("Unable to write the undo transaction to {1}", undo._data);
+    deleteInterval (from);
   }
-}
 
-////////////////////////////////////////////////////////////////////////////////
-// Record undoable transactions. There are several types:
-//   interval    changes to stored intervals
-//   config      changes to configuration
-void Database::undoTxn (
-  const std::string& type,
-  const std::string& before,
-  const std::string& after)
-{
-  _undo.push_back ("  type: " + type);
-  _undo.push_back ("  before: " + before);
-  _undo.push_back ("  after: " + after);
+  if (!to.empty ())
+  {
+    addInterval (to, verbose);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -224,7 +166,9 @@ std::string Database::dump () const
   std::stringstream out;
   out << "Database\n";
   for (auto& df : _files)
+  {
     out << df.dump ();
+  }
 
   return out.str ();
 }
@@ -244,8 +188,12 @@ unsigned int Database::getDatafile (int year, int month)
 
   // If the datafile is already initialized, return.
   for (unsigned int i = 0; i < _files.size (); ++i)
+  {
     if (_files[i].name () == basename)
+    {
       return i;
+    }
+  }
 
   // Create the Datafile.
   Datafile df;
@@ -257,16 +205,16 @@ unsigned int Database::getDatafile (int year, int month)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// The input Datarange has a start and end, for example:
+// The input Daterange has a start and end, for example:
 //
 //   2016-02-20 to 2016-04-15
 //
-// Given the monthly storage scheme, split the Datarange into a vector of
-// segmented Dataranges:
+// Given the monthly storage scheme, split the Daterange into a vector of
+// segmented Dateranges:
 //
-//   2016-02-20 to 2016-03-01
+//   2016-02-01 to 2016-03-01
 //   2016-03-01 to 2016-04-01
-//   2016-04-01 to 2016-05-15
+//   2016-04-01 to 2016-05-01
 //
 std::vector <Range> Database::segmentRange (const Range& range)
 {
@@ -277,7 +225,9 @@ std::vector <Range> Database::segmentRange (const Range& range)
 
   auto end = range.end;
   if (end.toEpoch () == 0)
+  {
     end = Datetime ();
+  }
 
   auto end_y = end.year ();
   auto end_m = end.month ();
@@ -298,10 +248,59 @@ std::vector <Range> Database::segmentRange (const Range& range)
 
     // Capture date after incrementing month.
     Datetime segmentEnd (start_y, start_m, 1);
-    segments.push_back (Range (segmentStart, segmentEnd));
+    auto segment = Range (segmentStart, segmentEnd);
+    if (range.intersects (segment))
+    {
+      segments.push_back (segment);
+    }
   }
 
   return segments;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void Database::initializeTagDatabase ()
+{
+  std::string content;
+
+  if (!File::read (_location + "/tags.data", content))
+  {
+    auto intervals = getAllInclusions (*this);
+
+    if (intervals.empty ())
+    {
+      return;
+    }
+
+    std::cout << "Tag info database does not exist. Recreating from interval data..." << std::endl  ;
+
+    for (auto& interval : intervals)
+    {
+      for (auto& tag : interval.tags ())
+      {
+        _tagInfoDatabase.incrementTag (tag);
+      }
+    }
+  }
+  else
+  {
+    auto *json = (json::object *) json::parse (content);
+
+    for (auto &pair : json->_data)
+    {
+      auto key = str_replace (pair.first, "\\\"", "\"");
+      auto *value = (json::object *) pair.second;
+      auto iter = value->_data.find ("count");
+
+      if (iter == value->_data.end ())
+      {
+        throw format ("Failed to find \"count\" member for tag \"{1}\" in tags database. Database corrupted?", key);
+      }
+
+      auto number = dynamic_cast<json::number *> (iter->second);
+      _tagInfoDatabase.add (key, TagInfo{(unsigned int) number->_dvalue});
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2015 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -34,6 +34,7 @@
 #include <cassert>
 #include <cerrno>
 #include <inttypes.h>
+#include <JSON.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 Rules::Rules ()
@@ -140,13 +141,16 @@ bool Rules::has (const std::string& key) const
 
 ////////////////////////////////////////////////////////////////////////////////
 // Return the configuration value given the specified key.
-std::string Rules::get (const std::string& key) const
+std::string Rules::get (const std::string &key, const std::string &defaultValue) const
 {
   auto found = _settings.find (key);
-  if (found != _settings.end ())
-    return found->second;
 
-  return "";
+  if (found != _settings.end ())
+  {
+    return found->second;
+  }
+
+  return defaultValue;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -223,7 +227,7 @@ std::vector <std::string> Rules::all (const std::string& stem) const
 {
   std::vector <std::string> items;
   for (const auto& it : _settings)
-    if (stem == "" || it.first.find (stem) == 0)
+    if (stem.empty () || it.first.find (stem) == 0)
       items.push_back (it.first);
 
   return items;
@@ -274,7 +278,7 @@ void Rules::parse (const std::string& input, int nest /* = 1 */)
     auto indent = line.find_first_not_of (' ');
 
     auto tokens = Lexer::tokenize (line);
-    if (tokens.size ())
+    if (! tokens.empty ())
     {
       if (inRule)
       {
@@ -302,7 +306,7 @@ void Rules::parse (const std::string& input, int nest /* = 1 */)
         //
         if (firstWord == "define")
         {
-          if (ruleDef != "")
+          if (! ruleDef.empty ())
           {
             parseRule (ruleDef);
             ruleDef = "";
@@ -357,7 +361,7 @@ void Rules::parse (const std::string& input, int nest /* = 1 */)
     }
   }
 
-  if (ruleDef != "")
+  if (! ruleDef.empty ())
     parseRule (ruleDef);
 }
 
@@ -411,7 +415,7 @@ void Rules::parseRuleSettings (
     // If indent decreased.
     else if (indent < indents.back ())
     {
-      while (indents.size () && indent != indents.back ())
+      while (!indents.empty () && indent != indents.back ())
       {
         indents.pop_back ();
         hierarchy.pop_back ();
@@ -423,7 +427,7 @@ void Rules::parseRuleSettings (
     }
 
     // Descend.
-    if (group != "")
+    if (! group.empty ())
       hierarchy.push_back (group);
 
     // Settings.
@@ -492,3 +496,219 @@ std::string Rules::parseGroup (const std::vector <std::string>& tokens)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Note that because this function does not recurse with includes, it therefore
+// only sees the top-level settings. This has the desirable effect of adding as
+// an override any setting which resides in an imported file.
+bool Rules::setConfigVariable (
+  Journal& journal,
+  const Rules& rules,
+  std::string name,
+  std::string value,
+  bool confirmation /* = false */)
+{
+  // Read config file as lines of text.
+  std::vector <std::string> lines;
+  File::read (rules.file (), lines);
+
+  bool change = false;
+
+  if (rules.has (name))
+  {
+    // No change.
+    if (rules.get (name) == value)
+      return false;
+
+    // If there is a non-comment line containing the entry in flattened form:
+    //   a.b.c = value
+    bool found = false;
+    for (auto& line : lines)
+    {
+      auto comment = line.find ('#');
+      auto pos     = line.find (name);
+      if (pos != std::string::npos &&
+          (comment == std::string::npos || comment > pos))
+      {
+        found = true;
+
+        // Modify value
+        if (! confirmation ||
+            confirm (format ("Are you sure you want to change the value of '{1}' from '{2}' to '{3}'?",
+                             name,
+                             rules.get (name),
+                             value)))
+        {
+          auto before = line;
+          line = line.substr (0, pos) + name + " = " + value;
+
+          journal.recordConfigAction (before, line);
+
+          change = true;
+        }
+      }
+    }
+
+    // If it was not found, then retry in hierarchical form∴
+    //   a:
+    //     b:
+    //       c = value
+    if (! found)
+    {
+      auto leaf = split (name, '.').back () + ":";
+      for (auto& line : lines)
+      {
+        auto comment = line.find ('#');
+        auto pos     = line.find (leaf);
+        if (pos != std::string::npos &&
+            (comment == std::string::npos || comment > pos))
+        {
+          found = true;
+
+          // Remove name
+          if (! confirmation ||
+              confirm (format ("Are you sure you want to change the value of '{1}' from '{2}' to '{3}'?",
+                               name,
+                               rules.get (name),
+                               value)))
+          {
+            auto before = line;
+            line = line.substr (0, pos) + leaf + " " + value;
+
+            journal.recordConfigAction (before, line);
+
+            change = true;
+          }
+        }
+      }
+    }
+    if (! found)
+    {
+      // Remove name
+      if (! confirmation ||
+          confirm (format ("Are you sure you want to change the value of '{1}' from '{2}' to '{3}'?",
+                           name,
+                           rules.get (name),
+                           value)))
+      {
+        // Add blank line required by rules.
+        if (lines.empty () || lines.back ().empty ())
+          lines.push_back ("");
+
+        // Add new line.
+        lines.push_back (name + " = " + json::encode (value));
+
+        journal.recordConfigAction ("", lines.back ());
+
+        change = true;
+      }
+    }
+  }
+  else
+  {
+    if (! confirmation ||
+        confirm (format ("Are you sure you want to add '{1}' with a value of '{2}'?", name, value)))
+    {
+      // TODO Ideally, this would locate an existing hierarchy and insert the
+      //      new leaf/value properly. But that's non-trivial.
+
+      // Add blank line required by rules.
+      if (lines.empty () || lines.back ().empty ())
+        lines.push_back ("");
+
+      // Add new line.
+      lines.push_back (name + " = " + json::encode (value));
+
+      journal.recordConfigAction ("", lines.back ());
+
+      change = true;
+    }
+  }
+
+  if (change)
+    File::write (rules.file (), lines);
+
+  return change;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Removes lines from configuration but leaves comments intact.
+//
+// Return codes:
+//   0 - found and removed
+//   1 - found and not removed
+//   2 - not found
+int Rules::unsetConfigVariable (
+  Journal& journal,
+  const Rules& rules,
+  std::string name,
+  bool confirmation /* = false */)
+{
+  // Setting not found.
+  if (! rules.has (name))
+    return 2;
+
+  // Read config file as lines of text.
+  std::vector <std::string> lines;
+  File::read (rules.file (), lines);
+
+  // If there is a non-comment line containing the entry in flattened form:
+  //   a.b.c = value
+  bool found = false;
+  bool change = false;
+  for (auto& line : lines)
+  {
+    auto comment = line.find ('#');
+    auto pos     = line.find (name);
+    if (pos != std::string::npos &&
+        (comment == std::string::npos || comment > pos))
+    {
+      found = true;
+
+      // Remove name
+      if (! confirmation ||
+          confirm (format ("Are you sure you want to remove '{1}'?", name)))
+      {
+        journal.recordConfigAction (line, "");
+
+        line = "";
+        change = true;
+      }
+    }
+  }
+
+  // If it was not found, then retry in hierarchical form∴
+  //   a:
+  //     b:
+  //       c = value
+  if (! found)
+  {
+    auto leaf = split (name, '.').back () + ":";
+    for (auto& line : lines)
+    {
+      auto comment = line.find ('#');
+      auto pos     = line.find (leaf);
+      if (pos != std::string::npos &&
+          (comment == std::string::npos || comment > pos))
+      {
+        found = true;
+
+        // Remove name
+        if (! confirmation ||
+            confirm (format ("Are you sure you want to remove '{1}'?", name)))
+        {
+          line = "";
+          change = true;
+        }
+      }
+    }
+  }
+
+  if (change)
+    File::write (rules.file (), lines);
+
+  if (change && found)
+    return 0;
+  else if (found)
+    return 1;
+
+  return 2;
+}

@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2006 - 2018, Paul Beckingham, Federico Hernandez.
+// Copyright 2006 - 2019, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -66,9 +66,15 @@ bool Datetime::isoEnabled            = true;
 bool Datetime::standaloneDateEnabled = true;
 bool Datetime::standaloneTimeEnabled = true;
 
-// When true, HH:MM:SS is assumed to be today if the time > now, otherwise it is
-// asumed to be tomorrow.  When false, it is always today.
-bool Datetime::timeRelative          = true;
+// When true,
+// - HH:MM:SS is assumed to be today if the time > now, otherwise it is assumed to be tomorrow.
+// - day name is converted to date relative to now
+// - 1st, 2nd, 3rd, ... is converted to date relative to now
+// When false,
+// - HH:MM:SS is always today.
+// - day name is always converted to date before now
+// - 1st, 2nd, 3rd, ... is always converted to date before now
+bool Datetime::timeRelative = true;
 
 ////////////////////////////////////////////////////////////////////////////////
 Datetime::Datetime ()
@@ -619,7 +625,7 @@ bool Datetime::parse_named (Pig& pig)
   }
 
 /*
-  // This grpoup contains "1st monday ..." which must be processed before
+  // This group contains "1st monday ..." which must be processed before
   // initializeOrdinal below.
   if (initializeNthDayInMonth (tokens))
   {
@@ -1455,32 +1461,30 @@ bool Datetime::initializeOrdinal (Pig& pig)
         int m = t->tm_mon + 1;
         int d = t->tm_mday;
 
-        // If it is this month.
-        if (d < number &&
-            number <= daysInMonth (y, m))
-        {
-          t->tm_hour = t->tm_min = t->tm_sec = 0;
-          t->tm_mon  = m - 1;
-          t->tm_mday = number;
-          t->tm_year = y - 1900;
-          t->tm_isdst = -1;
-          _date = mktime (t);
-        }
-        else
+        if (timeRelative && (1 <= number && number <= d))
         {
           if (++m > 12)
           {
             m = 1;
             y++;
           }
-
-          t->tm_hour = t->tm_min = t->tm_sec = 0;
-          t->tm_mon  = m - 1;
-          t->tm_mday = number;
-          t->tm_year = y - 1900;
-          t->tm_isdst = -1;
-          _date = mktime (t);
         }
+        else if (!timeRelative && (d < number && number <= daysInMonth (y, m)))
+        {
+          if (--m < 1)
+          {
+            m = 12;
+            y--;
+          }
+        }
+
+        t->tm_hour = t->tm_min = t->tm_sec = 0;
+        t->tm_mon  = m - 1;
+        t->tm_mday = number;
+        t->tm_year = y - 1900;
+        t->tm_isdst = -1;
+
+        _date = mktime (t);
 
         return true;
       }
@@ -1513,9 +1517,13 @@ bool Datetime::initializeDayName (Pig& pig)
         struct tm* t = localtime (&now);
 
         if (t->tm_wday >= day)
-          t->tm_mday += day - t->tm_wday + 7;
+        {
+          t->tm_mday += day - t->tm_wday + (timeRelative ? 7 : 0);
+        }
         else
-          t->tm_mday += day - t->tm_wday;
+        {
+          t->tm_mday += day - t->tm_wday - (timeRelative ? 0 : 7);
+        }
 
         t->tm_hour = t->tm_min = t->tm_sec = 0;
         t->tm_isdst = -1;
@@ -1551,8 +1559,10 @@ bool Datetime::initializeMonthName (Pig& pig)
         time_t now = time (nullptr);
         struct tm* t = localtime (&now);
 
-        if (t->tm_mon >= month)
+        if (t->tm_mon >= month && timeRelative)
+        {
           t->tm_year++;
+        }
 
         t->tm_mon = month;
         t->tm_mday = 1;

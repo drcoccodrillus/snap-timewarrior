@@ -6,13 +6,22 @@ include_directories (${CMAKE_SOURCE_DIR}
                      ${TIMEW_INCLUDE_DIRS})
 
 set (timew_SRCS CLI.cpp        CLI.h
+                Chart.cpp      Chart.h
+                               ChartConfig.h
                 Database.cpp   Database.h
                 Datafile.cpp   Datafile.h
                 Exclusion.cpp  Exclusion.h
                 Extensions.cpp Extensions.h
                 Interval.cpp   Interval.h
+                IntervalFactory.cpp IntervalFactory.h
+                Journal.cpp    Journal.h
                 Range.cpp      Range.h
                 Rules.cpp      Rules.h
+                TagInfo.cpp    TagInfo.h
+                TagInfoDatabase.cpp TagInfoDatabase.h
+                Transaction.cpp Transaction.h
+                TransactionsFactory.cpp TransactionsFactory.h
+                UndoAction.cpp UndoAction.h
                 data.cpp
                 dom.cpp
                 init.cpp

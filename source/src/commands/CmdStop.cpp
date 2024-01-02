@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -44,39 +44,42 @@ template <class T> T setIntersect (
 int CmdStop (
   const CLI& cli,
   Rules& rules,
-  Database& database)
+  Database& database,
+  Journal& journal)
 {
   // Load the most recent interval.
   auto filter = getFilter (cli);
   auto latest = getLatestInterval (database);
 
   // Verify the interval is open.
-  if (! latest.range.is_open ())
+  if (! latest.is_open ())
     throw std::string ("There is no active time tracking.");
+
+  journal.startTransaction ();
 
   Interval modified {latest};
 
-  // If a stop date is specified (and occupies filter.range.start) then use
+  // If a stop date is specified (and occupies filter.start) then use
   // that instead of the current time.
-  if (filter.range.start.toEpoch () != 0)
+  if (filter.start.toEpoch () != 0)
   {
-    if (modified.range.start >= filter.range.start)
+    if (modified.start >= filter.start)
       throw std::string ("The end of a date range must be after the start.");
 
-    modified.range.end = filter.range.start;
+    modified.end = filter.start;
   }
   else
   {
-    modified.range.end = Datetime ();
+    modified.end = Datetime ();
   }
 
   // Close the interval.
   database.deleteInterval (latest);
   validate (cli, rules, database, modified);
 
-  for (auto& interval : flatten (modified, getAllExclusions (rules, modified.range)))
+  for (auto& interval : flatten (modified, getAllExclusions (rules, modified)))
   {
-    database.addInterval (interval);
+    database.addInterval (interval, rules.getBoolean ("verbose"));
 
     if (rules.getBoolean ("verbose"))
       std::cout << intervalSummarize (database, rules, interval);
@@ -84,7 +87,7 @@ int CmdStop (
 
   // If tags are specified, but are not a full set of tags, remove them
   // before closing the interval.
-  if (filter.tags ().size () &&
+  if (! filter.tags ().empty () &&
       setIntersect (filter.tags (), latest.tags ()).size () != latest.tags ().size ())
   {
     for (auto& tag : filter.tags ())
@@ -94,21 +97,19 @@ int CmdStop (
         throw format ("The current interval does not have the '{1}' tag.", tag);
   }
 
-  latest.range.end = modified.range.end;
-  if (rules.getBoolean ("verbose"))
-    std::cout << intervalSummarize (database, rules, latest);
-
   // Open a new interval with remaining tags, if any.
-  if (filter.tags ().size () &&
+  if (! filter.tags ().empty () &&
       modified.tags ().size () != latest.tags ().size ())
   {
-    modified.range.start = modified.range.end;
-    modified.range.end = {0};
+    modified.start = modified.end;
+    modified.end = {0};
     validate (cli, rules, database, modified);
-    database.addInterval (modified);
+    database.addInterval (modified, rules.getBoolean ("verbose"));
     if (rules.getBoolean ("verbose"))
       std::cout << '\n' << intervalSummarize (database, rules, modified);
   }
+
+  journal.endTransaction ();
 
   return 0;
 }

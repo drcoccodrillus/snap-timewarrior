@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2006 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -55,22 +55,30 @@ std::string escape (const std::string& input, int c)
 std::string quoteIfNeeded (const std::string& input)
 {
   if (input[0] == '"' || input[0] == '\'')
+  {
     return input;
+  }
 
   auto quote = input.find ('"');
   auto space = input.find (' ');
-  auto op    = input.find_first_of ("+-/()<^!=~_");
+  auto op    = input.find_first_of ("+-/()<^!=~_%");
 
   if (quote == std::string::npos &&
       space == std::string::npos &&
       op    == std::string::npos)
+  {
     return input;
+  }
 
   std::string output;
   if (quote != std::string::npos)
+  {
     output = escape (input, '"');
+  }
   else
+  {
     output = input;
+  }
 
   return std::string ("\"") + output + "\"";
 }

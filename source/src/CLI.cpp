@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2006 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -33,6 +33,7 @@
 #include <utf8.h>
 #include <sstream>
 #include <algorithm>
+#include <set>
 
 ////////////////////////////////////////////////////////////////////////////////
 A2::A2 (const std::string& raw, Lexer::Type lextype)
@@ -326,7 +327,7 @@ bool CLI::canonicalize (
 ////////////////////////////////////////////////////////////////////////////////
 std::string CLI::getBinary () const
 {
-  if (_args.size ())
+  if (! _args.empty ())
     return _args[0].attribute ("raw");
 
   return "";
@@ -365,7 +366,7 @@ std::string CLI::dump (const std::string& title) const
 
   out << '\n';
 
-  if (_args.size ())
+  if (! _args.empty ())
   {
     out << "  _args\n";
     for (auto& a : _args)
@@ -413,6 +414,9 @@ void CLI::identifyIds ()
           pig.getDigits (digits) &&
           pig.eos ())
       {
+        if (digits <= 0)
+          throw format ("'@{1}' is not a valid ID.", digits);
+
         a.tag ("ID");
         a.attribute ("value", digits);
       }
@@ -439,6 +443,22 @@ void CLI::canonicalizeNames ()
       a.attribute ("canonical", canonical);
       a.tag ("CMD");
       alreadyFoundCmd = true;
+    }
+
+    // 'timew <command> --help|-h' should be treated the same as 'timew help <command>'.
+    // Therefore, '--help|-h' on the command line should always become the command.
+    else if (alreadyFoundCmd && (raw == "--help" || raw == "-h"))
+    {
+      for (auto& b : _args) {
+        if (b.hasTag("CMD"))
+        {
+          b.unTag("CMD");
+          break;
+        }
+      }
+
+      a.tag ("CMD");
+      a.attribute("canonical", canonical);
     }
 
     // Hints.
@@ -524,17 +544,48 @@ bool CLI::exactMatch (
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-std::vector<int> CLI::getIds() const
+std::set<int> CLI::getIds() const
 {
-  std::vector <int> ids;
+  std::set <int> ids;
 
   for (auto& arg : _args)
   {
     if (arg.hasTag ("ID"))
-      ids.push_back (strtol (arg.attribute ("value").c_str (), NULL, 10));
+      ids.insert (strtol (arg.attribute ("value").c_str (), NULL, 10));
   }
 
   return ids;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+std::vector<std::string> CLI::getTags () const
+{
+  std::vector <std::string> tags;
+
+  for (auto& arg : _args)
+  {
+    if (arg.hasTag ("TAG"))
+      tags.push_back (arg.attribute ("raw"));
+  }
+
+  return tags;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+std::string CLI::getAnnotation () const
+{
+  std::string annotation;
+
+  for (auto& arg : _args)
+  {
+    if (arg.hasTag ("TAG"))
+    {
+      annotation = (arg.attribute ("raw"));
+    }
+
+  }
+
+  return annotation;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

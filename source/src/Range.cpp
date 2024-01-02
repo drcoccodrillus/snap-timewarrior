@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -102,7 +102,8 @@ bool Range::is_empty () const
 ////////////////////////////////////////////////////////////////////////////////
 bool Range::contains (const Datetime &datetime) const
 {
-  return start <= datetime && (! is_ended () || end >= datetime);
+  return (! is_started () || start < datetime) &&
+         (! is_ended () || datetime < end);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -130,7 +131,7 @@ bool Range::contains (const Datetime &datetime) const
 //   H                         [...
 //   I                                 [...
 //
-bool Range::overlap (const Range& other) const
+bool Range::overlaps (const Range &other) const
 {
   if (! is_started () || ! other.is_started ())
     return false;
@@ -147,36 +148,31 @@ bool Range::overlap (const Range& other) const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Detect the following enclosure cases:
-//
-// this                     [--------)
-//   C                        [----)
-//
-// this                     [...
-//   C                        [----)
-//   D                           [--------)
-//   E                                    [--------)
-//   H                         [...
-//   I                                 [...
-//
 bool Range::encloses (const Range& other) const
 {
-  if (is_started ())
+  return other.startsWithin (*this) && other.endsWithin (*this);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool Range::startsWithin (const Range& other) const
+{
+  if (other.is_empty ())
   {
-    if (is_ended ())
-    {
-      if (other.is_started () && other.start >= start &&
-          other.is_ended ()   && other.end   <= end)
-        return true;
-    }
-    else
-    {
-      if (other.is_started () && other.start >= start)
-        return true;
-    }
+    return false;
   }
 
-  return false;
+  return other.start == start || other.contains (start);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool Range::endsWithin (const Range& other) const
+{
+  if (other.is_empty ())
+  {
+    return false;
+  }
+
+  return other.end == end || other.contains (end);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -206,7 +202,7 @@ bool Range::encloses (const Range& other) const
 //
 Range Range::intersect (const Range& other) const
 {
-  if (overlap (other))
+  if (overlaps (other))
   {
     // Intersection is choosing the later of the two starts, and the earlier of
     // the two ends, provided the two ranges overlap.
@@ -216,7 +212,7 @@ Range Range::intersect (const Range& other) const
     if (is_ended ())
     {
       if (other.is_ended ())
-        result.end  = end < other.end ? end : other.end;
+        result.end = end < other.end ? end : other.end;
       else
         result.end = end;
     }
@@ -229,7 +225,26 @@ Range Range::intersect (const Range& other) const
     return result;
   }
 
+  // If there is an intersection but no overlap, we have a zero-width
+  // interval [p, p) and another interval [p, q), where q >= p.
+  if (intersects (other)) {
+    return Range {start, start};
+  }
+
   return Range {};
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool Range::intersects (const Range &other) const
+{
+  if (overlaps (other)) {
+    return true;
+  }
+
+  // A half-closed zero-width interval [p, p) may have the same
+  // starting point as another interval without overlapping it.
+  // We consider p to be an element of a range [p, p).
+  return (is_started () && other.is_started () && start == other.start);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -298,7 +313,7 @@ std::vector <Range> Range::subtract (const Range& other) const
 {
   std::vector <Range> results;
 
-  if (overlap (other))
+  if (overlaps (other))
   {
     if (start < other.start)
     {

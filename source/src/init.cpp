@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -49,6 +49,7 @@ bool lightweightVersionCheck (int argc, const char** argv)
 void initializeEntities (CLI& cli)
 {
   // Command entities.
+  cli.entity ("command", "annotate");
   cli.entity ("command", "cancel");
   cli.entity ("command", "config");
   cli.entity ("command", "continue");
@@ -61,8 +62,10 @@ void initializeEntities (CLI& cli)
   cli.entity ("command", "get");
   cli.entity ("command", "help");
   cli.entity ("command", "--help");
+  cli.entity ("command", "-h");
   cli.entity ("command", "join");
   cli.entity ("command", "lengthen");
+  cli.entity ("command", "modify");
   cli.entity ("command", "move");
   cli.entity ("command", "report");
   cli.entity ("command", "resize");
@@ -74,6 +77,7 @@ void initializeEntities (CLI& cli)
   cli.entity ("command", "tag");
   cli.entity ("command", "tags");
   cli.entity ("command", "track");
+  cli.entity ("command", "undo");
   cli.entity ("command", "untag");
 
   // Some command list themselves as extensions, to integrate with the real
@@ -91,6 +95,7 @@ void initializeEntities (CLI& cli)
   cli.entity ("hint", ":debug");
   cli.entity ("hint", ":fill");
   cli.entity ("hint", ":ids");
+  cli.entity ("hint", ":annotations");
   cli.entity ("hint", ":lastmonth");
   cli.entity ("hint", ":lastquarter");
   cli.entity ("hint", ":lastweek");
@@ -113,9 +118,10 @@ void initializeEntities (CLI& cli)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void initializeDataAndRules (
+void initializeDataJournalAndRules (
   const CLI& cli,
   Database& database,
+  Journal& journal,
   Rules& rules)
 {
   // Rose tint my world, make me safe from my trouble and pain.
@@ -210,8 +216,9 @@ void initializeDataAndRules (
     }
   }
 
+  journal.initialize (data._data + "/undo.data");
   // Initialize the database (no data read), but files are enumerated.
-  database.initialize (data._data);
+  database.initialize (data._data, journal);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -238,6 +245,7 @@ void initializeExtensions (
 int dispatchCommand (
   const CLI& cli,
   Database& database,
+  Journal& journal,
   Rules& rules,
   const Extensions& extensions)
 {
@@ -249,49 +257,54 @@ int dispatchCommand (
 
   // Dispatch to the right command function.
   std::string command = cli.getCommand ();
-  if (command != "")
+
+  if (! command.empty ())
   {
     // These signatures are expected to be all different, therefore no
     // command to fn mapping.
-         if (command == "cancel")      status = CmdCancel        (     rules, database            );
-    else if (command == "config")      status = CmdConfig        (cli, rules, database            );
-    else if (command == "continue")    status = CmdContinue      (cli, rules, database            );
-    else if (command == "day")         status = CmdChartDay      (cli, rules, database            );
-    else if (command == "delete")      status = CmdDelete        (cli, rules, database            );
-    else if (command == "diagnostics") status = CmdDiagnostics   (     rules, database, extensions);
-    else if (command == "export")      status = CmdExport        (cli, rules, database            );
-    else if (command == "extensions")  status = CmdExtensions    (     rules,           extensions);
+         if (command == "annotate")    status = CmdAnnotate      (cli, rules, database, journal            );
+    else if (command == "cancel")      status = CmdCancel        (     rules, database, journal            );
+    else if (command == "config")      status = CmdConfig        (cli, rules,           journal            );
+    else if (command == "continue")    status = CmdContinue      (cli, rules, database, journal            );
+    else if (command == "day")         status = CmdChartDay      (cli, rules, database                     );
+    else if (command == "delete")      status = CmdDelete        (cli, rules, database, journal            );
+    else if (command == "diagnostics") status = CmdDiagnostics   (     rules, database,          extensions);
+    else if (command == "export")      status = CmdExport        (cli, rules, database                     );
+    else if (command == "extensions")  status = CmdExtensions    (     rules,                    extensions);
 /*
-    else if (command == "fill")        status = CmdFill          (cli, rules, database            );
-*/
-    else if (command == "gaps")        status = CmdGaps          (cli, rules, database            );
-    else if (command == "get")         status = CmdGet           (cli, rules, database            );
+    else if (command == "fill")        status = CmdFill          (cli, rules, database, journal            );
+//*/
+    else if (command == "gaps")        status = CmdGaps          (cli, rules, database                     );
+    else if (command == "get")         status = CmdGet           (cli, rules, database                     );
     else if (command == "help" ||
-             command == "--help")      status = CmdHelp          (cli,                  extensions);
-    else if (command == "join")        status = CmdJoin          (cli, rules, database            );
-    else if (command == "lengthen")    status = CmdLengthen      (cli, rules, database            );
-    else if (command == "month")       status = CmdChartMonth    (cli, rules, database            );
-    else if (command == "move")        status = CmdMove          (cli, rules, database            );
-    else if (command == "report")      status = CmdReport        (cli, rules, database, extensions);
-    else if (command == "resize")      status = CmdResize        (cli, rules, database            );
-    else if (command == "shorten")     status = CmdShorten       (cli, rules, database            );
-    else if (command == "show")        status = CmdShow          (     rules                      );
-    else if (command == "split")       status = CmdSplit         (cli, rules, database            );
-    else if (command == "start")       status = CmdStart         (cli, rules, database            );
-    else if (command == "stop")        status = CmdStop          (cli, rules, database            );
-    else if (command == "summary")     status = CmdSummary       (cli, rules, database            );
-    else if (command == "tag")         status = CmdTag           (cli, rules, database            );
-    else if (command == "tags")        status = CmdTags          (cli, rules, database            );
-    else if (command == "track")       status = CmdTrack         (cli, rules, database            );
-    else if (command == "untag")       status = CmdUntag         (cli, rules, database            );
-    else if (command == "week")        status = CmdChartWeek     (cli, rules, database            );
-    else                               status = CmdReport        (cli, rules, database, extensions);
+             command == "--help" ||
+             command == "-h")          status = CmdHelp          (cli,                           extensions);
+    else if (command == "join")        status = CmdJoin          (cli, rules, database, journal            );
+    else if (command == "lengthen")    status = CmdLengthen      (cli, rules, database, journal            );
+    else if (command == "modify")      status = CmdModify        (cli, rules, database, journal            );
+    else if (command == "month")       status = CmdChartMonth    (cli, rules, database                     );
+    else if (command == "move")        status = CmdMove          (cli, rules, database, journal            );
+    else if (command == "report")      status = CmdReport        (cli, rules, database,          extensions);
+    else if (command == "resize")      status = CmdResize        (cli, rules, database, journal            );
+    else if (command == "shorten")     status = CmdShorten       (cli, rules, database, journal            );
+    else if (command == "show")        status = CmdShow          (     rules                               );
+    else if (command == "split")       status = CmdSplit         (cli, rules, database, journal            );
+    else if (command == "start")       status = CmdStart         (cli, rules, database, journal            );
+    else if (command == "stop")        status = CmdStop          (cli, rules, database, journal            );
+    else if (command == "summary")     status = CmdSummary       (cli, rules, database                     );
+    else if (command == "tag")         status = CmdTag           (cli, rules, database, journal            );
+    else if (command == "tags")        status = CmdTags          (cli, rules, database                     );
+    else if (command == "track")       status = CmdTrack         (cli, rules, database, journal            );
+    else if (command == "undo")        status = CmdUndo          (     rules, database, journal            );
+    else if (command == "untag")       status = CmdUntag         (cli, rules, database, journal            );
+    else if (command == "week")        status = CmdChartWeek     (cli, rules, database                     );
+    else                               status = CmdReport        (cli, rules, database,          extensions);
   }
   else
   {
     auto words = cli.getWords ();
 
-    if (words.size () > 0)
+    if (! words.empty ())
     {
       throw format ("'{1}' is not a timew command. See 'timew help'.", words[0]);
     }

@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2015 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -79,10 +79,11 @@ int main (int argc, const char** argv)
     // Scan command line.
     cli.analyze ();
 
+    Journal journal;
     // Prepare the database, but do not read data.
     Database database;
     Rules rules;
-    initializeDataAndRules (cli, database, rules);
+    initializeDataJournalAndRules (cli, database, journal, rules);
 
     // Load extension script info.
     // Re-analyze command because of the new extension entities.
@@ -91,7 +92,7 @@ int main (int argc, const char** argv)
     cli.analyze ();
 
     // Dispatch to commands.
-    status = dispatchCommand (cli, database, rules, extensions);
+    status = dispatchCommand (cli, database, journal, rules, extensions);
 
     // Save any outstanding changes.
     database.commit ();

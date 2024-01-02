@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -32,26 +32,31 @@
 int CmdTrack (
   const CLI& cli,
   Rules& rules,
-  Database& database)
+  Database& database,
+  Journal& journal)
 {
   auto filter = getFilter (cli);
 
   // If this is not a proper closed interval, then the user is trying to make
   // the 'track' command behave like 'start', so delegate to CmdStart.
-  if (! filter.range.is_started () ||
-      ! filter.range.is_ended ())
-    return CmdStart (cli, rules, database);
+  if (! filter.is_started () ||
+      ! filter.is_ended ())
+    return CmdStart (cli, rules, database, journal);
+
+  journal.startTransaction ();
 
   // Validation must occur before flattening.
   validate (cli, rules, database, filter);
 
-  for (auto& interval : flatten (filter, getAllExclusions (rules, filter.range)))
+  for (auto& interval : flatten (filter, getAllExclusions (rules, filter)))
   {
-    database.addInterval (interval);
+    database.addInterval (interval, rules.getBoolean ("verbose"));
 
     if (rules.getBoolean ("verbose"))
       std::cout << intervalSummarize (database, rules, interval);
   }
+
+  journal.endTransaction ();
 
   return 0;
 }

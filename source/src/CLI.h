@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2006 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -29,6 +29,7 @@
 
 #include <Lexer.h>
 #include <string>
+#include <set>
 #include <vector>
 #include <map>
 
@@ -64,7 +65,9 @@ public:
   bool canonicalize (std::string&, const std::string&, const std::string&) const;
   std::string getBinary () const;
   std::string getCommand () const;
-  std::vector <int> getIds () const;
+  std::set <int> getIds () const;
+  std::vector<std::string> getTags () const;
+  std::string getAnnotation() const;
   std::string dump (const std::string& title = "CLI Parser") const;
 
 private:

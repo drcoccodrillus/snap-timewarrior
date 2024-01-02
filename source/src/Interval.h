@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -31,11 +31,10 @@
 #include <set>
 #include <string>
 
-class Interval
+class Interval : public Range
 {
 public:
   Interval () = default;
-  void initialize (const std::string&);
   bool empty () const;
 
   bool hasTag (const std::string&) const;
@@ -43,14 +42,20 @@ public:
   void tag (const std::string&);
   void untag (const std::string&);
 
+  void setRange (const Range& range);
+  void setRange (const Datetime& start, const Datetime& end);
+
+  void setAnnotation(const std::string& annotation);
+  std::string getAnnotation();
+
   std::string serialize () const;
   std::string json () const;
   std::string dump () const;
 
 public:
-  Range                  range     {};
   int                    id        {0};
   bool                   synthetic {false};
+  std::string            annotation {};
 
 private:
   std::set <std::string> _tags  {};

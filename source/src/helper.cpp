@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -39,27 +39,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Select a color to represent the interval.
 Color intervalColor (
-  const Interval& interval,
-  const Rules& rules,
-  std::map <std::string, Color>& tag_colors)
+  const std::set <std::string>& tags,
+  const std::map <std::string, Color>& tag_colors)
 {
-  Color c;
-  std::string first_tag;
-  for (auto& tag : interval.tags ())
+  if (tags.empty ())
   {
-    if (first_tag == "")
-      first_tag = tag;
-
-    std::string name = std::string ("tags.") + tag + ".color";
-    if (rules.has (name))
-      c.blend (Color (rules.get (name)));
+    return tag_colors.at ("");
   }
 
-  if (c.nontrivial ())
-    return c;
+  Color c;
 
-  if (interval.tags ().size ())
-    return tag_colors[first_tag];
+  for (auto& tag : tags)
+  {
+      c.blend (tag_colors.at (tag));
+  }
 
   return c;
 }
@@ -85,7 +78,7 @@ std::string intervalSummarize (
 {
   std::stringstream out;
 
-  if (interval.range.is_started ())
+  if (interval.is_started ())
   {
     // Walk backwards through the inclusions, and stop as soon as the tags
     // no longer match interval. This means the 'total' is the sum of all time
@@ -96,7 +89,7 @@ std::string intervalSummarize (
     std::vector <Interval>::reverse_iterator i;
     for (i = inclusions.rbegin (); i != inclusions.rend (); i++)
       if (interval.tags () == i->tags ())
-        total_recorded += i->range.total ();
+        total_recorded += i->total ();
       else
         break;
 
@@ -106,18 +99,18 @@ std::string intervalSummarize (
     std::string tags;
     for (auto& tag : interval.tags ())
     {
-      if (tags != "")
+      if (! tags.empty ())
         tags += " ";
 
       tags += tagColor (rules, tag).colorize (quoteIfNeeded (tag));
     }
 
     // Interval open.
-    if (interval.range.is_open ())
+    if (interval.is_open ())
     {
       out << "Tracking " << tags << '\n'
-          << "  Started " << interval.range.start.toISOLocalExtended () << '\n'
-          << "  Current " << minimalDelta (interval.range.start, Datetime ()) << '\n'
+          << "  Started " << interval.start.toISOLocalExtended () << '\n'
+          << "  Current " << minimalDelta (interval.start, Datetime ()) << '\n'
           << "  Total   " << std::setw (19) << std::setfill (' ') << total.formatHours () << '\n';
     }
 
@@ -125,8 +118,8 @@ std::string intervalSummarize (
     else
     {
       out << "Recorded " << tags << '\n'
-          << "  Started " << interval.range.start.toISOLocalExtended () << '\n'
-          << "  Ended   " << minimalDelta (interval.range.start, interval.range.end) << '\n'
+          << "  Started " << interval.start.toISOLocalExtended () << '\n'
+          << "  Ended   " << minimalDelta (interval.start, interval.end) << '\n'
           << "  Total   " << std::setw (19) << std::setfill (' ') << total.formatHours () << '\n';
     }
   }
@@ -260,8 +253,13 @@ bool expandIntervalHint (
 
     m = ((q - 1) * 3) + 1;
 
-    range.start = Datetime (y, m,     1);
-    range.end   = Datetime (y, m + 3, 1);
+    range.start = Datetime (y, m, 1);
+
+    m += 3;
+    y += m/12;
+    m %= 12;
+
+    range.end   = Datetime (y, m, 1);
 
     debug (format ("Hint {1} expanded to {2} - {3}",
                    hint,
@@ -340,7 +338,8 @@ Palette createPalette (const Rules& rules)
 {
   Palette p;
   auto colors = rules.all ("theme.palette.color");
-  if (colors.size ())
+
+  if (! colors.empty ())
   {
     p.clear ();
     for (auto& c : colors)
@@ -362,15 +361,23 @@ std::map <std::string, Color> createTagColorMap (
   const std::vector <Interval>& intervals)
 {
   std::map <std::string, Color> mapping;
+
+  // Add a color for intervals without tags
+  mapping[""] = palette.next ();
+
   for (auto& interval : intervals)
   {
     for (auto& tag : interval.tags ())
     {
       std::string custom = "tags." + tag + ".color";
       if (rules.has (custom))
+      {
         mapping[tag] = Color (rules.get (custom));
+      }
       else if (mapping.find (tag) == mapping.end ())
+      {
         mapping[tag] = palette.next ();
+      }
     }
   }
 
@@ -388,17 +395,6 @@ int quantizeToNMinutes (const int minutes, const int N)
     return minutes - deviation;
 
   return minutes + N - deviation;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Check rules to see if day is a holiday.
-bool dayIsHoliday (const Rules& rules, const Datetime& day)
-{
-  for (auto& holiday : rules.all ("holidays."))
-    if (day.sameDay (Datetime (holiday.substr (holiday.length () - 10), "Y_M_D")))
-      return true;
-
-  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -450,7 +446,7 @@ std::vector <Interval> getOverlaps (
 
   std::vector <Interval> overlaps;
   for (auto& track : tracked)
-    if (interval.range.overlap (track.range))
+    if (interval.overlaps (track))
       overlaps.push_back (track);
 
   return overlaps;

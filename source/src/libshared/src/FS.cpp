@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2006 - 2018, Paul Beckingham, Federico Hernandez.
+// Copyright 2006 - 2019, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -183,6 +183,9 @@ bool Path::is_absolute () const
 ////////////////////////////////////////////////////////////////////////////////
 bool Path::is_link () const
 {
+  if (! exists ())
+    return false;
+
   struct stat s {};
   if (lstat (_data.c_str (), &s))
     throw format ("lstat error {1}: {2}", errno, strerror (errno));
@@ -195,6 +198,9 @@ bool Path::is_link () const
 // to determine.
 bool Path::readable () const
 {
+  if (! exists ())
+    return false;
+
   auto status = access (_data.c_str (), R_OK);
   if (status == -1 && errno != EACCES)
     throw format ("access error {1}: {2}", errno, strerror (errno));
@@ -207,6 +213,9 @@ bool Path::readable () const
 // to determine.
 bool Path::writable () const
 {
+  if (! exists ())
+    return false;
+
   auto status = access (_data.c_str (), W_OK);
   if (status == -1 && errno != EACCES)
     throw format ("access error {1}: {2}", errno, strerror (errno));
@@ -219,6 +228,9 @@ bool Path::writable () const
 // to determine.
 bool Path::executable () const
 {
+  if (! exists ())
+    return false;
+
   auto status = access (_data.c_str (), X_OK);
   if (status == -1 && errno != EACCES)
     throw format ("access error {1}: {2}", errno, strerror (errno));
@@ -246,18 +258,21 @@ bool Path::rename (const std::string& new_name)
 // ~      --> /home/user
 // ~foo/x --> /home/foo/s
 // ~/x    --> /home/foo/x
+// .      --> $PWD
 // ./x    --> $PWD/x
 // x      --> $PWD/x
 std::string Path::expand (const std::string& in)
 {
   std::string copy = in;
 
-  auto tilde = copy.find ('~');
   std::string::size_type slash;
 
-  if (tilde != std::string::npos)
+  if (in.empty ())
+  { }
+
+  else if (in.front () == '~')
   {
-    const char *home = getenv("HOME");
+    const char* home = getenv ("HOME");
     if (home == nullptr)
     {
       struct passwd* pw = getpwuid (getuid ());
@@ -265,37 +280,37 @@ std::string Path::expand (const std::string& in)
     }
 
     // Convert: ~ --> /home/user
-    if (copy.length () == 1)
+    if (in.length () == 1)
       copy = home;
 
     // Convert: ~/x --> /home/user/x
-    else if (copy.length () > tilde + 1 &&
-             copy[tilde + 1] == '/')
-    {
-      copy.replace (tilde, 1, home);
-    }
+    else if (in.at (1) == '/')
+      copy = home + in.substr (1);
 
     // Convert: ~foo/x --> /home/foo/x
-    else if ((slash = copy.find ('/', tilde)) != std::string::npos)
+    else if ((slash = in.find ('/', 1)) != std::string::npos)
     {
-      std::string name = copy.substr (tilde + 1, slash - tilde - 1);
+      std::string name = in.substr (1, slash - 1);
       struct passwd* pw = getpwnam (name.c_str ());
       if (pw)
-        copy.replace (tilde, slash - tilde, pw->pw_dir);
+        copy = pw->pw_dir + in.substr (slash);
     }
   }
 
   // Relative paths
-  else if (in.length () > 2 &&
-           in.substr (0, 2) == "./")
+  else if (in.front () != '/')
   {
-    copy = Directory::cwd () + in.substr (1);
-  }
-  else if (in.length () > 1 &&
-           in[0] != '.' &&
-           in[0] != '/')
-  {
-    copy = Directory::cwd () + '/' + in;
+    // Convert: ., ./ --> $PWD
+    if (in == ".")
+      copy = Directory::cwd ();
+
+    // Convert: ./x --> $PWD/x
+    else if (in.substr (0, 2) == "./")
+      copy = Directory::cwd () + in.substr (1);
+
+    // Convert: x --> $PWD/x
+    else
+      copy = Directory::cwd () + '/' + in;
   }
 
   return copy;
@@ -358,8 +373,14 @@ File::File (const std::string& in)
 ////////////////////////////////////////////////////////////////////////////////
 File::~File ()
 {
-  if (_fh)
-    close ();
+  try
+  {
+    if (_fh)
+      close ();
+  }
+  catch (...)
+  {
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -454,7 +475,10 @@ bool File::lock ()
   _locked = false;
   if (_fh && _h != -1)
   {
-#ifdef FREEBSD
+#ifdef DARWIN
+                    // l_start l_len l_pid l_type   l_whence
+    struct flock fl = {0,      0,    0,    F_WRLCK, SEEK_SET};
+#elif FREEBSD
                     // l_type   l_whence  l_start  l_len  l_pid  l_sysid
     struct flock fl = {F_WRLCK, SEEK_SET, 0,       0,     0,     0 };
 #else
@@ -474,7 +498,10 @@ void File::unlock ()
 {
   if (_locked)
   {
-#ifdef FREEBSD
+#ifdef DARWIN
+                    // l_start l_len l_pid l_type   l_whence
+    struct flock fl = {0,      0,    0,    F_WRLCK, SEEK_SET};
+#elif FREEBSD
                     // l_type   l_whence  l_start  l_len  l_pid  l_sysid
     struct flock fl = {F_WRLCK, SEEK_SET, 0,       0,     0,     0 };
 #else
@@ -755,7 +782,7 @@ bool File::write (const std::string& name, const std::string& contents)
   {
     out << contents;
     out.close ();
-    return true;
+    return out.good ();
   }
 
   return false;
@@ -780,7 +807,7 @@ bool File::write (
     }
 
     out.close ();
-    return true;
+    return out.good ();
   }
 
   return false;
