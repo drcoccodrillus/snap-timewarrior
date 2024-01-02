@@ -32,7 +32,7 @@
 // Returns 0 if tracking is active, 1 if not.
 int CmdDefault (Rules& rules, Database& database)
 {
-  auto verbose = rules.getBoolean ("verbose");
+  const bool verbose = rules.getBoolean ("verbose");
 
   // Load the most recent interval, summarize and display.
   auto interval = getLatestInterval (database);
@@ -41,7 +41,7 @@ int CmdDefault (Rules& rules, Database& database)
   {
     if (verbose)
     {
-      std::cout << intervalSummarize (database, rules, interval);
+      std::cout << intervalSummarize (rules, interval);
     }
 
     return 0;

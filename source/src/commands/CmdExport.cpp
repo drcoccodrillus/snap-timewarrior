@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -34,7 +34,7 @@ int CmdExport (
   Rules& rules,
   Database& database)
 {
-  auto filter = getFilter (cli);
+  auto filter = cli.getFilter ();
   std::cout << jsonFromIntervals (getTracked (database, rules, filter));
   return 0;
 }

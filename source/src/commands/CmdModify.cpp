@@ -37,9 +37,9 @@ int CmdModify (
   Database& database,
   Journal& journal)
 {
-  bool verbose = rules.getBoolean ("verbose");
+  const bool verbose = rules.getBoolean ("verbose");
 
-  auto filter = getFilter (cli);
+  auto filter = cli.getFilter ();
   std::set <int> ids = cli.getIds ();
   std::vector <std::string> words = cli.getWords ();
   enum { MODIFY_START, MODIFY_END } op = MODIFY_START;
@@ -76,13 +76,14 @@ int CmdModify (
 
   flattenDatabase (database, rules);
   auto intervals = getIntervalsByIds (database, rules, ids);
-  if (intervals.size () == 0)
+
+  if (intervals.empty())
   {
     throw format ("ID '@{1}' does not correspond to any tracking.", id);
   }
 
   assert (intervals.size () == 1);
-  if (filter.start.toEpoch () == 0)
+  if (! filter.is_started ())
   {
     throw std::string ("No updated time specified. See 'timew help modify'.");
   }
@@ -112,8 +113,8 @@ int CmdModify (
   journal.startTransaction ();
 
   database.deleteInterval (interval);
-  validate(cli, rules, database, modified);
-  database.addInterval(modified, verbose);
+  validate (cli, rules, database, modified);
+  database.addInterval (modified, verbose);
 
   journal.endTransaction();
 

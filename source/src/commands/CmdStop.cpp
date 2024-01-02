@@ -47,12 +47,12 @@ int CmdStop (
   Database& database,
   Journal& journal)
 {
-  auto verbose = rules.getBoolean ("verbose");
+  const bool verbose = rules.getBoolean ("verbose");
+  const Datetime now {};
 
+  auto filter = cli.getFilter ({ now, 0 });
   // Load the most recent interval.
-  auto filter = getFilter (cli);
   auto latest = getLatestInterval (database);
-  std::set <int> ids = cli.getIds ();
 
   // Verify the interval is open.
   if (! latest.is_open ())
@@ -61,66 +61,74 @@ int CmdStop (
   }
 
   // We expect no ids
-  if (! ids.empty ())
+  if (! cli.getIds ().empty ())
   {
     throw std::string ("The stop command does not accept ids as it works on the most recent open interval only. "
                        "Perhaps you want the modify command?.");
   }
 
+  if (! filter.is_started())
+  {
+    throw std::string ("No datetime specified.");
+  }
+  else if (filter.start <= latest.start)
+  {
+    throw std::string ("The end of a date range must be after the start.");
+  }
+
+  std::set <std::string> diff = {};
+
+  if(! std::includes(latest.tags ().begin (), latest.tags ().end (),
+                     filter.tags ().begin (), filter.tags ().end ()))
+  {
+    std::set_difference(filter.tags ().begin (), filter.tags ().end (),
+                        latest.tags ().begin (), latest.tags ().end (),
+                        std::inserter(diff, diff.begin ()));
+
+    throw format ("The current interval does not have the '{1}' tag.", *diff.begin ());
+  }
+  else if (!filter.tags ().empty ())
+  {
+    std::set_difference(latest.tags ().begin (), latest.tags ().end (),
+                        filter.tags ().begin (), filter.tags ().end (),
+                        std::inserter(diff, diff.begin()));
+  }
+
   journal.startTransaction ();
 
-  Interval modified {latest};
-
-  // If a stop date is specified (and occupies filter.start) then use
-  // that instead of the current time.
-  if (filter.start.toEpoch () != 0)
+  if (diff.empty ())
   {
-    if (modified.start >= filter.start)
-    {
-      throw std::string ("The end of a date range must be after the start.");
-    }
-
+    Interval modified { latest };
     modified.end = filter.start;
+
+    database.deleteInterval (latest);
+    validate (cli, rules, database, modified);
+
+    for (auto& interval : flatten (modified, getAllExclusions (rules, modified)))
+    {
+      database.addInterval (interval, verbose);
+
+      if (verbose)
+      {
+        std::cout << intervalSummarize (rules, interval);
+      }
+    }
   }
   else
   {
-    modified.end = Datetime ();
-  }
+    Interval next { filter.start, 0 };
+    for (auto& tag : diff)
+    {
+      next.tag (tag);
+    }
 
-  // Close the interval.
-  database.deleteInterval (latest);
-  validate (cli, rules, database, modified);
-
-  for (auto& interval : flatten (modified, getAllExclusions (rules, modified)))
-  {
-    database.addInterval (interval, verbose);
+    validate (cli, rules, database, next);
+    database.addInterval (next, verbose);
 
     if (verbose)
-      std::cout << intervalSummarize (database, rules, interval);
-  }
-
-  // If tags are specified, but are not a full set of tags, remove them
-  // before closing the interval.
-  if (! filter.tags ().empty () &&
-      setIntersect (filter.tags (), latest.tags ()).size () != latest.tags ().size ())
-  {
-    for (auto& tag : filter.tags ())
-      if (modified.hasTag (tag))
-        modified.untag (tag);
-      else
-        throw format ("The current interval does not have the '{1}' tag.", tag);
-  }
-
-  // Open a new interval with remaining tags, if any.
-  if (! filter.tags ().empty () &&
-      modified.tags ().size () != latest.tags ().size ())
-  {
-    modified.start = modified.end;
-    modified.end = {0};
-    validate (cli, rules, database, modified);
-    database.addInterval (modified, verbose);
-    if (verbose)
-      std::cout << '\n' << intervalSummarize (database, rules, modified);
+    {
+      std::cout << '\n' << intervalSummarize (rules, next);
+    }
   }
 
   journal.endTransaction ();

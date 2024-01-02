@@ -88,6 +88,7 @@ void initializeEntities (CLI& cli)
   cli.entity ("extension", "week");
 
   // Hint entities.
+  cli.entity ("hint", ":all");
   cli.entity ("hint", ":adjust");
   cli.entity ("hint", ":blank");
   cli.entity ("hint", ":color");
@@ -220,7 +221,7 @@ void initializeDataJournalAndRules (
     }
   }
 
-  journal.initialize (data._data + "/undo.data");
+  journal.initialize (data._data + "/undo.data", rules.getInteger ("journal.size"));
   // Initialize the database (no data read), but files are enumerated.
   database.initialize (data._data, journal);
 }

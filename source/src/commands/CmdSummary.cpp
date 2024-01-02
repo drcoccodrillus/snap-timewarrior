@@ -42,15 +42,10 @@ int CmdSummary (
   Rules& rules,
   Database& database)
 {
-  auto verbose = rules.getBoolean ("verbose");
+  const bool verbose = rules.getBoolean ("verbose");
 
   // Create a filter, and if empty, choose 'today'.
-  auto filter = getFilter (cli);
-  if (! filter.is_started ())
-    filter.setRange (Datetime ("today"), Datetime ("tomorrow"));
-
-  if (! filter.is_ended())
-    filter.end = filter.start + Duration("1d").toTime_t();
+  auto filter = cli.getFilter (Range { Datetime ("today"), Datetime ("tomorrow") });
 
   // Load the data.
   auto tracked = getTracked (database, rules, filter);
@@ -117,7 +112,16 @@ int CmdSummary (
   // Each day is rendered separately.
   time_t grand_total = 0;
   Datetime previous;
-  for (Datetime day = filter.start; day < filter.end; day++)
+
+  auto days_start = filter.is_started() ? filter.start : tracked.front ().start;
+  auto days_end   = filter.is_ended()   ? filter.end   : tracked.back ().end;
+
+  if (days_end == 0)
+  {
+    days_end = Datetime ();
+  }
+
+  for (Datetime day = days_start; day < days_end; day++)
   {
     auto day_range = getFullDay (day);
     time_t daily_total = 0;

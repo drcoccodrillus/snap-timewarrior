@@ -6,7 +6,7 @@ set (HAVE_CMAKE true)
 project (timew)
 include (CXXSniffer)
 
-set (PROJECT_VERSION "1.3.0")
+set (PROJECT_VERSION "1.4.2")
 
 string(TOUPPER "${CMAKE_BUILD_TYPE}" uppercase_CMAKE_BUILD_TYPE)
 
@@ -54,7 +54,7 @@ if (EXISTS ${CMAKE_SOURCE_DIR}/test)
   add_subdirectory (test EXCLUDE_FROM_ALL)
 endif (EXISTS ${CMAKE_SOURCE_DIR}/test)
 
-set (doc_FILES NEWS ChangeLog README.md INSTALL AUTHORS COPYING LICENSE)
+set (doc_FILES ChangeLog README.md INSTALL AUTHORS LICENSE)
 foreach (doc_FILE ${doc_FILES})
   install (FILES ${doc_FILE}  DESTINATION ${TIMEW_DOCDIR})
 endforeach (doc_FILE)

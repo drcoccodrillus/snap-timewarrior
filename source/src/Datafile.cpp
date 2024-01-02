@@ -129,16 +129,20 @@ void Datafile::deleteInterval (const Interval& interval)
   assert (interval.startsWithin (_range));
 
   if (! _lines_loaded)
+  {
     load_lines ();
+  }
 
   auto serialized = interval.serialize ();
   auto i = std::find (_lines.begin (), _lines.end (), serialized);
-  if (i != _lines.end ())
+  if (i == _lines.end ())
   {
-    _lines.erase (i);
-    _dirty = true;
-    debug (format ("{1}: Deleted {2}", _file.name (), serialized));
+    throw format ("Datafile::deleteInterval failed to find '{1}'", serialized);
   }
+
+  _lines.erase (i);
+  _dirty = true;
+  debug (format ("{1}: Deleted {2}", _file.name (), serialized));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -148,23 +152,30 @@ void Datafile::commit ()
   if (_dirty)
   {
     AtomicFile file (_file);
-    if (file.open ())
+    if (_lines.size () > 0)
     {
-      // Sort the intervals by ascending start time.
-      std::sort (_lines.begin (), _lines.end ());
-
-      // Write out all the lines.
-      file.truncate ();
-      for (auto& line : _lines)
+      if (file.open ())
       {
-        file.write_raw (line + '\n');
-      }
+        // Sort the intervals by ascending start time.
+        std::sort (_lines.begin (), _lines.end ());
 
-      _dirty = false;
+        // Write out all the lines.
+        file.truncate ();
+        for (auto& line : _lines)
+        {
+          file.write_raw (line + '\n');
+        }
+
+        _dirty = false;
+      }
+      else
+      {
+        throw format ("Could not write to data file {1}", _file._data);
+      }
     }
     else
     {
-      throw format ("Could not write to data file {1}", _file._data);
+      file.remove ();
     }
   }
 }

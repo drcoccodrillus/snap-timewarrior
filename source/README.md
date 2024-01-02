@@ -11,7 +11,7 @@ It is a portable, well supported and very active Open Source project.
 
 ### From Package
 
-Thanks to the community, there are binary packages available [here](https://timewarrior.net/docs/download.html#distributions).
+Thanks to the community, there are binary packages available [here](https://timewarrior.net/docs/install.html#distributions).
 
 ### Building Timewarrior
 
@@ -32,12 +32,12 @@ There are two ways to retrieve the Timewarrior sources:
 
 * Or download the tarball with curl,
 
-      curl -O https://taskwarrior.org/download/timew-1.1.1.tar.gz
+      curl -O https://taskwarrior.org/download/timew-1.3.0.tar.gz
 
   and expand the tarball
 
-      tar xzf timew-1.1.1.tar.gz
-      cd timew-1.1.1
+      tar xzf timew-1.3.0.tar.gz
+      cd timew-1.3.0
 
 Build Timewarrior, optionally run the test suite (note: the tarball does not contain tests), and install it.
 

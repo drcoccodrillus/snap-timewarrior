@@ -35,79 +35,38 @@ int CmdStart (
   Database& database,
   Journal& journal)
 {
-  auto verbose = rules.getBoolean ("verbose");
+  const bool verbose = rules.getBoolean ("verbose");
+  const Datetime now {};
 
-  auto filter = getFilter (cli);
+  auto interval = cli.getFilter ({ now, 0 });
 
-  auto now = Datetime ();
-
-  if (filter.start > now)
-    throw std::string ("Time tracking cannot be set in the future.");
-
-  auto latest = getLatestInterval (database);
-
-  journal.startTransaction ();
-
-  // If the latest interval is open, close it.
-  if (latest.is_open ())
+  if (interval.start > now)
   {
-    // If the new interval tags match those of the currently open interval, then
-    // do nothing - the tags are already being tracked.
-    if (latest.tags () == filter.tags ())
-    {
-      if (verbose)
-        std::cout << intervalSummarize (database, rules, latest);
-
-      return 0;
-    }
-
-    // Stop it, at the given start time, if applicable.
-    Interval modified {latest};
-    if (filter.start.toEpoch () != 0)
-    {
-      if (modified.start >= filter.start)
-      {
-        throw std::string ("The end of a date range must be after the start.");
-      }
-
-      modified.end = filter.start;
-    }
-    else
-    {
-      modified.end = Datetime ();
-    }
-
-    // Update database.
-    database.deleteInterval (latest);
-    validate (cli, rules, database, modified);
-
-    for (auto& interval : flatten (modified, getAllExclusions (rules, modified)))
-    {
-      database.addInterval (interval, verbose);
-
-      if (verbose)
-        std::cout << intervalSummarize (database, rules, interval);
-    }
+    throw std::string ("Time tracking cannot be set in the future.");
+  }
+  else if (!interval.is_started () || interval.is_ended ())
+  {
+    throw std::string ("The start command does not accept ranges but only a single datetime. "
+                       "Perhaps you want the track command?");
   }
 
-  // Now add the new open interval.
-  Interval started;
-  if (filter.start.toEpoch () != 0)
-    started.start = filter.start;
-  else
-    started.start = Datetime ();
+  // We expect no ids
+  if (! cli.getIds ().empty ())
+  {
+    throw std::string ("The start command does not accept ids. "
+                       "Perhaps you want the continue command?");
+  }
 
-  for (auto& tag : filter.tags ())
-    started.tag (tag);
-
-  // Update database. An open interval does not need to be flattened.
-  validate (cli, rules, database, started);
-  database.addInterval (started, verbose);
-
+  journal.startTransaction ();
+  if (validate (cli, rules, database, interval))
+  {
+    database.addInterval (interval, verbose);
+    journal.endTransaction ();
+  }
   if (verbose)
-    std::cout << intervalSummarize (database, rules, started);
-
-  journal.endTransaction ();
+  {
+    std::cout << intervalSummarize (rules, interval);
+  }
 
   return 0;
 }

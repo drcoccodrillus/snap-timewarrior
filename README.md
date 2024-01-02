@@ -40,23 +40,23 @@ First select the [release](https://github.com/drcoccodrillus/snap-timewarrior/re
 
 For amd64:
 
-`snap install timewarrior_1.3.0_amd64.snap --dangerous`
+`snap install timewarrior_1.4.2_amd64.snap --dangerous`
 
 For arm64:
 
-`snap install timewarrior_1.3.0_arm64.snap --dangerous`
+`snap install timewarrior_1.4.2_arm64.snap --dangerous`
 
 For armhf:
 
-`snap install timewarrior_1.3.0_armhf.snap --dangerous`
+`snap install timewarrior_1.4.2_armhf.snap --dangerous`
 
 For ppc64el:
 
-`snap install timewarrior_1.3.0_ppc64el.snap --dangerous`
+`snap install timewarrior_1.4.2_ppc64el.snap --dangerous`
 
 For s390x:
 
-`snap install timewarrior_1.3.0_s390x.snap --dangerous`
+`snap install timewarrior_1.4.2_s390x.snap --dangerous`
 
 ### Before using it
 
