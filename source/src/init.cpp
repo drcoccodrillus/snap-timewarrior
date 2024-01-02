@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -25,14 +25,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <cmake.h>
-#include <timew.h>
-#include <shared.h>
-#include <format.h>
 #include <commands.h>
-#include <cstring>
-#include <unistd.h>
+#include <format.h>
 #include <iostream>
 #include <paths.h>
+#include <shared.h>
+#include <timew.h>
+#include <unistd.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 bool lightweightVersionCheck (int argc, const char** argv)
@@ -70,6 +69,7 @@ void initializeEntities (CLI& cli)
   cli.entity ("command", "move");
   cli.entity ("command", "report");
   cli.entity ("command", "resize");
+  cli.entity ("command", "retag");
   cli.entity ("command", "shorten");
   cli.entity ("command", "show");
   cli.entity ("command", "split");
@@ -241,6 +241,7 @@ int dispatchCommand (
     else if (command == "move")        status = CmdMove          (cli, rules, database, journal            );
     else if (command == "report")      status = CmdReport        (cli, rules, database,          extensions);
     else if (command == "resize")      status = CmdResize        (cli, rules, database, journal            );
+    else if (command == "retag")       status = CmdRetag         (cli, rules, database, journal            );
     else if (command == "shorten")     status = CmdShorten       (cli, rules, database, journal            );
     else if (command == "show")        status = CmdShow          (     rules                               );
     else if (command == "split")       status = CmdSplit         (cli, rules, database, journal            );

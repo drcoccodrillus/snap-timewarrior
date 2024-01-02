@@ -27,10 +27,10 @@
 #ifndef INCLUDED_FS
 #define INCLUDED_FS
 
-#include <stdio.h>
+#include <cstdio>
 #include <string>
-#include <vector>
 #include <sys/stat.h>
+#include <vector>
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096

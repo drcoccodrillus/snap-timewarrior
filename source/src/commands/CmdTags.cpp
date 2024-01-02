@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,16 +24,15 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmake.h>
-#include <commands.h>
-#include <timew.h>
-#include <Table.h>
 #include <Color.h>
-#include <set>
-#include <iostream>
 #include <IntervalFilterAllInRange.h>
 #include <IntervalFilterAllWithTags.h>
 #include <IntervalFilterAndGroup.h>
+#include <Table.h>
+#include <commands.h>
+#include <iostream>
+#include <set>
+#include <timew.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 int CmdTags (
@@ -43,15 +42,14 @@ int CmdTags (
 {
   const bool verbose = rules.getBoolean ("verbose");
 
-  // Create a filter, with no default range.
-  auto filter = cli.getFilter ();
   IntervalFilterAndGroup filtering ({
-    std::make_shared <IntervalFilterAllInRange> ( Range { filter.start, filter.end }),
-    std::make_shared <IntervalFilterAllWithTags> (filter.tags ())
+    std::make_shared <IntervalFilterAllInRange> (cli.getRange ()),
+    std::make_shared <IntervalFilterAllWithTags> (cli.getTags ())
   });
 
   // Generate a unique, ordered list of tags.
   std::set <std::string> tags;
+
   for (const auto& interval : getTracked (database, rules, filtering))
     for (auto& tag : interval.tags ())
       tags.insert (tag);

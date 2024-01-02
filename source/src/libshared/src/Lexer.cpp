@@ -24,13 +24,13 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmake.h>
-#include <Lexer.h>
 #include <Datetime.h>
 #include <Duration.h>
+#include <Lexer.h>
 #include <algorithm>
+#include <cmake.h>
+#include <cctype>
 #include <tuple>
-#include <ctype.h>
 #include <unicode.h>
 #include <utf8.h>
 
@@ -91,7 +91,7 @@ std::vector <std::tuple <std::string, Lexer::Type>> Lexer::tokenize (const std::
 
 ////////////////////////////////////////////////////////////////////////////////
 // No L10N - these are for internal purposes.
-const std::string Lexer::typeName (const Lexer::Type& type)
+std::string Lexer::typeName (const Lexer::Type& type)
 {
   switch (type)
   {
@@ -166,7 +166,7 @@ bool Lexer::isNumber (std::string& token, Lexer::Type& type)
       }
     }
 
-    // Lookahread: !<unicodeWhitespace> | !<isSingleCharOperator>
+    // Lookahead: !<unicodeWhitespace> | !<isSingleCharOperator>
     // If there is an immediately consecutive character, that is not an operator, fail.
     if (_eos > marker &&
         ! unicodeWhitespace (_text[marker]) &&
@@ -210,7 +210,7 @@ bool Lexer::isSingleCharOperator (int c)
   return c == '+' ||  // Addition
          c == '-' ||  // Subtraction or unary minus = ambiguous
          c == '*' ||  // Multiplication
-         c == '/' ||  // Diviѕion
+         c == '/' ||  // Division
          c == '(' ||  // Precedence open parenthesis
          c == ')' ||  // Precedence close parenthesis
          c == '<' ||  // Less than
@@ -840,7 +840,7 @@ bool Lexer::readWord (
       case 'v':  word += (char) 0x0B; ++cursor; break;
 
       // This pass-through default case means that anything can be escaped
-      // harmlessly. In particular 'quote' is included, if it not one of the
+      // harmlessly. In particular 'quote' is included, if it is not one of the
       // above characters.
       default:   word += (char) c;    ++cursor; break;
       }
@@ -924,7 +924,7 @@ bool Lexer::readWord (
       case 'v':  word += (char) 0x0B; ++cursor; break;
 
       // This pass-through default case means that anything can be escaped
-      // harmlessly. In particular 'quote' is included, if it not one of the
+      // harmlessly. In particular 'quote' is included, if it is not one of the
       // above characters.
       default:   word += (char) c;    ++cursor; break;
       }

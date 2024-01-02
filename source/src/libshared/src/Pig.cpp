@@ -24,15 +24,15 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmake.h>
 #include <Pig.h>
+#include <algorithm>
+#include <cinttypes>
+#include <cmake.h>
+#include <cstdlib>
 #include <shared.h>
+#include <sstream>
 #include <unicode.h>
 #include <utf8.h>
-#include <algorithm>
-#include <sstream>
-#include <cinttypes>
-#include <cstdlib>
 
 ////////////////////////////////////////////////////////////////////////////////
 Pig::Pig (const std::string& text)
@@ -521,7 +521,7 @@ bool Pig::getQuoted (int quote, std::string& result)
   {
     i = _text->find (quote, i);
     if (i == std::string::npos)
-      return false;  // Unclosed quote.  Short cut, not definitive.
+      return false;  // Unclosed quote. Shortcut, not definitive.
 
     if (i == start)
     {

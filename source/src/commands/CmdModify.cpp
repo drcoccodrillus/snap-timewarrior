@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2018 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2018 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,12 +24,11 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cassert>
-#include <format.h>
-#include <commands.h>
-#include <timew.h>
-#include <iostream>
 #include <IntervalFilterAllWithIds.h>
+#include <cassert>
+#include <commands.h>
+#include <format.h>
+#include <timew.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 int CmdModify (
@@ -40,10 +39,9 @@ int CmdModify (
 {
   const bool verbose = rules.getBoolean ("verbose");
 
-  auto filter = cli.getFilter ();
-  std::set <int> ids = cli.getIds ();
-  std::vector <std::string> words = cli.getWords ();
-  enum { MODIFY_START, MODIFY_END } op = MODIFY_START;
+  auto words = cli.getWords ();
+
+  enum {MODIFY_START, MODIFY_END} op = MODIFY_START;
 
   if (words.empty())
   {
@@ -63,6 +61,8 @@ int CmdModify (
     throw format ("Must specify start|end command to modify. See 'timew help modify'.", words.at (0));
   }
 
+  auto ids = cli.getIds ();
+
   if (ids.empty ())
   {
     throw std::string ("ID must be specified. See 'timew help modify'.");
@@ -72,6 +72,8 @@ int CmdModify (
   {
     throw std::string ("Only one ID may be specified. See 'timew help modify'.");
   }
+
+  auto range = cli.getRange ({0, 0});
 
   int id = *ids.begin();
 
@@ -85,7 +87,7 @@ int CmdModify (
   }
 
   assert (intervals.size () == 1);
-  if (! filter.is_started ())
+  if (! range.is_started ())
   {
     throw std::string ("No updated time specified. See 'timew help modify'.");
   }
@@ -95,7 +97,7 @@ int CmdModify (
   switch (op)
   {
   case MODIFY_START:
-    modified.start = filter.start;
+    modified.start = range.start;
     break;
 
   case MODIFY_END:
@@ -103,7 +105,7 @@ int CmdModify (
     {
       throw format ("Cannot modify end of open interval @{1}.", id);
     }
-    modified.end = filter.start;
+    modified.end = range.start;
     break;
   }
 

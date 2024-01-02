@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2020 - 2021, Shaun Ruffell, Thomas Lauf.
+// Copyright 2020 - 2023, Shaun Ruffell, Thomas Lauf.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,19 +24,18 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <csignal>
-#include <stdio.h>
-#include <string.h>
-#include <errno.h>
-#include <cassert>
-#include <iostream>
-#include <vector>
-#include <unistd.h>
-#include <timew.h>
-
-#include <format.h>
 #include <AtomicFile.h>
 #include <FS.h>
+#include <cassert>
+#include <cerrno>
+#include <csignal>
+#include <cstdio>
+#include <cstring>
+#include <format.h>
+#include <iostream>
+#include <timew.h>
+#include <unistd.h>
+#include <vector>
 
 struct AtomicFile::impl
 {
@@ -52,7 +51,7 @@ struct AtomicFile::impl
   // the temp file until finalization.
   bool is_temp_active {false};
 
-  impl (const Path& path);
+  explicit impl (const Path& path);
   ~impl ();
 
   std::string name () const;
@@ -92,9 +91,19 @@ AtomicFile::impl::impl (const Path& path)
   static int s_count = 0;
   std::stringstream str; 
 
-  str << path._data << '.' << s_pid << '-' << ++s_count << ".tmp";
+  std::string real_path;
+  if (path.is_link())
+  {
+    real_path = path.realpath();
+  }
+  else
+  {
+    real_path = path._data;
+  }
+
+  str << real_path << '.' << s_pid << '-' << ++s_count << ".tmp";
   temp_file = File (str.str());
-  real_file = File (path);
+  real_file = File (real_path);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

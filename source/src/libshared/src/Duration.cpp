@@ -24,11 +24,11 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmake.h>
 #include <Duration.h>
-#include <unicode.h>
-#include <sstream>
+#include <cmake.h>
 #include <iomanip>
+#include <sstream>
+#include <unicode.h>
 #include <vector>
 
 bool Duration::standaloneSecondsEnabled = true;
@@ -307,7 +307,7 @@ bool Duration::parse_units (Pig& pig)
 
   // Static and so preserved between calls.
   static std::vector <std::string> units;
-  if (units.size () == 0)
+  if (units.empty ())
     for (unsigned int i = 0; i < NUM_DURATIONS; i++)
       units.push_back (durations[i].unit);
 
@@ -396,7 +396,7 @@ void Duration::clear ()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-const std::string Duration::format () const
+std::string Duration::format () const
 {
   if (_period)
   {
@@ -425,7 +425,7 @@ const std::string Duration::format () const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-const std::string Duration::formatHours () const
+std::string Duration::formatHours () const
 {
   if (_period)
   {
@@ -450,7 +450,7 @@ const std::string Duration::formatHours () const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-const std::string Duration::formatISO () const
+std::string Duration::formatISO () const
 {
   if (_period)
   {
@@ -491,7 +491,7 @@ const std::string Duration::formatISO () const
 // >= 1min    {n}min
 //            {n}s
 //
-const std::string Duration::formatVague (bool padding) const
+std::string Duration::formatVague (bool padding) const
 {
   float days = (float) _period / 86400.0;
 

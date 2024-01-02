@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2018 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2018 - 2020, 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,12 +24,10 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cassert>
 #include <AtomicFile.h>
-#include <format.h>
 #include <Journal.h>
 #include <TransactionsFactory.h>
-
+#include <cassert>
 #include <timew.h>
 
 ////////////////////////////////////////////////////////////////////////////////

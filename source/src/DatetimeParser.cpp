@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2020 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez
+// Copyright 2020 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,19 +24,13 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmake.h>
 #include <DatetimeParser.h>
+#include <Duration.h>
 #include <algorithm>
-#include <iostream>
-#include <sstream>
-#include <iomanip>
-#include <cassert>
-#include <stdlib.h>
-#include <shared.h>
 #include <format.h>
+#include <iostream>
 #include <unicode.h>
 #include <utf8.h>
-#include <src/libshared/src/Duration.h>
 
 static std::vector <std::string> dayNames {
   "sunday",
@@ -92,7 +86,7 @@ Range DatetimeParser::parse_range (const std::string& input)
     {
       start = pig.cursor ();
       resolve ();
-      return Range { Datetime {_date}, 0 };
+      return Range {Datetime {_date}, 0};
     }
   }
 
@@ -121,13 +115,13 @@ Range DatetimeParser::parse_range (const std::string& input)
       {
         auto start_date = Datetime (_date);
         auto end_date = Datetime(start_date.year(), start_date.month()+1, 1);
-        return Range { start_date, end_date };
+        return Range {start_date, end_date};
       }
       else if (_year != 0)
       {
         auto start_date = Datetime (_date);
         auto end_date = Datetime(start_date.year()+1, 1, 1);
-        return Range { start_date, end_date };
+        return Range {start_date, end_date};
       }
       return Range {};
     }
@@ -151,7 +145,7 @@ Range DatetimeParser::parse_range (const std::string& input)
     {
       start = pig.cursor ();
       resolve ();
-      return Range { Datetime (_date), 0 };
+      return Range {Datetime (_date), 0};
     }
   }
 
@@ -159,14 +153,14 @@ Range DatetimeParser::parse_range (const std::string& input)
 
   if (parse_informal_time (pig))
   {
-    return Range { Datetime {_date}, 0 };
+    return Range {Datetime {_date}, 0};
   }
 
   if (parse_named_day (pig))
   {
     // ::validate and ::resolve are not needed in this case.
     start = pig.cursor ();
-    return Range { Datetime (_date), Datetime (_date) + Duration ("1d").toTime_t () };
+    return Range {Datetime (_date), Datetime (_date) + Duration ("1d").toTime_t ()};
   }
 
   if (parse_named_month (pig))
@@ -177,14 +171,14 @@ Range DatetimeParser::parse_range (const std::string& input)
     auto month = (begin.month() + 1) % 13 + (begin.month() == 12);
     auto year = (begin.year() + (begin.month() == 12));
     auto end = Datetime (year, month, 1);
-    return Range { begin, end };
+    return Range {begin, end};
   }
 
   if (parse_named (pig))
   {
     // ::validate and ::resolve are not needed in this case.
     start = pig.cursor ();
-    return Range { Datetime (_date), 0 };
+    return Range {Datetime (_date), 0};
   }
 
   throw format ("'{1}' is not a valid range.", input);
@@ -338,7 +332,7 @@ bool DatetimeParser::parse_named (Pig& pig)
 {
   auto checkpoint = pig.cursor ();
 
-  // Experimental handling of date phrases, such as "first monday in march".
+  // Experimental handling of date phrases, such as "first monday in March".
   // Note that this requires that phrases are delimited by EOS or WS.
   std::string token;
   std::vector <std::string> tokens;
@@ -410,7 +404,7 @@ bool DatetimeParser::parse_named (Pig& pig)
 
 ////////////////////////////////////////////////////////////////////////////////
 // Valid epoch values are unsigned integers after 1980-01-01T00:00:00Z. This
-// restriction means that '12' will not be identified as an epoch date.
+// restriction means that "12" will not be identified as an epoch date.
 bool DatetimeParser::parse_epoch (Pig& pig)
 {
   auto checkpoint = pig.cursor ();
@@ -2815,7 +2809,7 @@ bool DatetimeParser::validate ()
 // int tm_year;      year - 1900
 // int tm_wday;      day of week (Sunday = 0)
 // int tm_yday;      day of year (0 - 365)
-// int tm_isdst;     is summer time in effect?
+// int tm_isdst;     is daylight saving time in effect?
 // char *tm_zone;    abbreviation of timezone name
 // long tm_gmtoff;   offset from UTC in seconds
 void DatetimeParser::resolve ()

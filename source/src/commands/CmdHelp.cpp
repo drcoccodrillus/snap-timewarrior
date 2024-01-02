@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2020, 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,15 +24,13 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <sys/types.h>
-#include <sys/wait.h>
-
-#include <commands.h>
-#include <algorithm>
-#include <iostream>
 #include <FS.h>
-#include <shared.h>
 #include <additional-help.h>
+#include <algorithm>
+#include <commands.h>
+#include <iostream>
+#include <shared.h>
+#include <sys/wait.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 int CmdHelpUsage (const Extensions& extensions)

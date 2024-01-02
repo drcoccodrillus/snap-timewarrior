@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2019, 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, 2022 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -28,10 +28,10 @@
 #define INCLUDED_COMMANDS
 
 #include <CLI.h>
-#include <Rules.h>
 #include <Database.h>
 #include <Extensions.h>
 #include <Journal.h>
+#include <Rules.h>
 
 int CmdAnnotate      (const CLI&, Rules&, Database&, Journal&                   );
 int CmdCancel        (            Rules&, Database&, Journal&                   );
@@ -53,6 +53,7 @@ int CmdModify        (const CLI&, Rules&, Database&, Journal&                   
 int CmdMove          (const CLI&, Rules&, Database&, Journal&                   );
 int CmdReport        (const CLI&, Rules&, Database&,           const Extensions&);
 int CmdResize        (const CLI&, Rules&, Database&, Journal&                   );
+int CmdRetag         (const CLI&, Rules&, Database&, Journal&                   );
 int CmdShorten       (const CLI&, Rules&, Database&, Journal&                   );
 int CmdShow          (            Rules&                                        );
 int CmdSplit         (const CLI&, Rules&, Database&, Journal&                   );

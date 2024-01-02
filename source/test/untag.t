@@ -2,7 +2,7 @@
 
 ###############################################################################
 #
-# Copyright 2018 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+# Copyright 2018 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -124,7 +124,7 @@ class TestUntag(TestCase):
 
         code, out, err = self.t("untag @1 foo bar")
 
-        self.assertIn('Removed foo bar from @1', out)
+        self.assertIn('Removed bar foo from @1', out)
 
         j = self.t.export()
         self.assertOpenInterval(j[0], expectedTags=["baz"])
@@ -138,7 +138,7 @@ class TestUntag(TestCase):
 
         code, out, err = self.t("untag @1 foo bar")
 
-        self.assertIn('Removed foo bar from @1', out)
+        self.assertIn('Removed bar foo from @1', out)
 
         j = self.t.export()
         self.assertClosedInterval(j[0], expectedTags=["baz"])
@@ -171,7 +171,7 @@ class TestUntag(TestCase):
 
         code, out, err = self.t("untag @1 @2 foo bar")
 
-        self.assertIn('Removed foo bar from @2\nRemoved foo bar from @1', out)
+        self.assertIn('Removed bar foo from @2\nRemoved bar foo from @1', out)
 
         j = self.t.export()
         self.assertClosedInterval(j[0], expectedTags=["one"])
@@ -206,7 +206,18 @@ class TestUntag(TestCase):
                                 expectedTags=["bar", "foo"],
                                 description="unmodified interval")
 
+    def test_untag_with_identical_tags(self):
+        """Call 'untag' with identical tags"""
+        self.t("track 2016-01-01T00:00:00 - 2016-01-01T01:00:00 foo bar")
+        self.t("untag @1 foo foo")
+
+        j = self.t.export()
+
+        self.assertEqual(len(j), 1)
+        self.assertEqual(j[0]['tags'], ['bar'])
+
     def test_untag_with_identical_ids(self):
+        """Call 'untag' with identical ids"""
         now_utc = datetime.now().utcnow()
         one_hour_before_utc = now_utc - timedelta(hours=1)
 

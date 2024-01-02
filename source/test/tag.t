@@ -2,7 +2,7 @@
 
 ###############################################################################
 #
-# Copyright 2016 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+# Copyright 2016 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -124,7 +124,7 @@ class TestTag(TestCase):
 
         code, out, err = self.t("tag @1 foo bar")
 
-        self.assertIn("Added foo bar to @1", out)
+        self.assertIn("Added bar foo to @1", out)
 
         j = self.t.export()
         self.assertOpenInterval(j[0], expectedTags=["bar", "foo"])
@@ -138,7 +138,7 @@ class TestTag(TestCase):
 
         code, out, err = self.t("tag @1 foo bar")
 
-        self.assertIn("Added foo bar to @1", out)
+        self.assertIn("Added bar foo to @1", out)
 
         j = self.t.export()
         self.assertClosedInterval(j[0], expectedTags=["bar", "foo"])
@@ -171,7 +171,7 @@ class TestTag(TestCase):
 
         code, out, err = self.t("tag @1 @2 foo bar")
 
-        self.assertIn("Added foo bar to @2\nAdded foo bar to @1", out)
+        self.assertIn("Added bar foo to @2\nAdded bar foo to @1", out)
 
         j = self.t.export()
         self.assertClosedInterval(j[0], expectedTags=["bar", "foo", "one"])
@@ -205,6 +205,16 @@ class TestTag(TestCase):
                                 expectedStart="{:%Y%m%dT%H%M%S}Z".format(three_hours_before_utc),
                                 expectedTags=["foo"],
                                 description="unmodified interval")
+
+    def test_tag_with_identical_tags(self):
+        """Call 'tag' with identical tags"""
+        self.t("track 2016-01-01T00:00:00 - 2016-01-01T01:00:00")
+        self.t("tag @1 foo foo")
+
+        j = self.t.export()
+
+        self.assertEqual(len(j), 1)
+        self.assertEqual(j[0]['tags'], ['foo'])
 
     def test_tag_with_identical_ids(self):
         """Call 'tag' with identical ids"""

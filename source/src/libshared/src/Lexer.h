@@ -27,11 +27,11 @@
 #ifndef INCLUDED_LEXER
 #define INCLUDED_LEXER
 
-#include <string>
-#include <map>
-#include <vector>
-#include <tuple>
 #include <cstddef>
+#include <map>
+#include <string>
+#include <tuple>
+#include <vector>
 
 class Lexer
 {
@@ -54,7 +54,7 @@ public:
 
   // Static helpers.
   static std::vector <std::tuple <std::string, Lexer::Type>> tokenize (const std::string&);
-  static const std::string typeName          (const Lexer::Type&);
+  static std::string typeName          (const Lexer::Type&);
   static bool isSingleCharOperator           (int);
   static bool isDoubleCharOperator           (int, int, int);
   static bool isTripleCharOperator           (int, int, int, int);

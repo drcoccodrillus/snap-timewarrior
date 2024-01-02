@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, 2018 - 2019, 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2015 - 2016, 2018 - 2019, 2022 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,12 +27,12 @@
 #ifndef INCLUDED_RULES
 #define INCLUDED_RULES
 
-#include <Lexer.h>
-#include <map>
-#include <vector>
-#include <string>
 #include <Database.h>
 #include <Journal.h>
+#include <Lexer.h>
+#include <map>
+#include <string>
+#include <vector>
 
 class Rules
 {

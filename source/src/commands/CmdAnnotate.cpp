@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2018 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2018 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,15 +24,13 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmake.h>
+#include <IntervalFilterAllInRange.h>
+#include <IntervalFilterAllWithIds.h>
+#include <IntervalFilterFirstOf.h>
 #include <commands.h>
 #include <format.h>
-#include <timew.h>
 #include <iostream>
-#include <stdlib.h>
-#include <IntervalFilterAllWithIds.h>
-#include <IntervalFilterAllInRange.h>
-#include <IntervalFilterFirstOf.h>
+#include <timew.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 int CmdAnnotate (
@@ -43,8 +41,8 @@ int CmdAnnotate (
 {
   const bool verbose = rules.getBoolean ("verbose");
 
-  std::set <int> ids = cli.getIds ();
-  std::string annotation = cli.getAnnotation ();
+  auto ids = cli.getIds ();
+  auto annotation = cli.getAnnotation ();
 
   journal.startTransaction ();
   flattenDatabase (database, rules);

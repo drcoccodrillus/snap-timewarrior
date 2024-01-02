@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2015 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,18 +24,17 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmake.h>
-#include <Rules.h>
+#include <AtomicFile.h>
 #include <FS.h>
-#include <shared.h>
-#include <format.h>
-#include <sstream>
-#include <tuple>
+#include <JSON.h>
+#include <Rules.h>
 #include <cassert>
 #include <cerrno>
-#include <inttypes.h>
-#include <AtomicFile.h>
-#include <JSON.h>
+#include <cinttypes>
+#include <format.h>
+#include <shared.h>
+#include <sstream>
+#include <tuple>
 
 ////////////////////////////////////////////////////////////////////////////////
 Rules::Rules ()
@@ -606,7 +605,7 @@ bool Rules::setConfigVariable (
       {
         // Add blank line required by rules.
         if (lines.empty () || lines.back ().empty ())
-          lines.emplace_back("");
+          lines.emplace_back ("");
 
         // Add new line.
         lines.push_back (name + " = " + json::encode (value));
@@ -627,7 +626,7 @@ bool Rules::setConfigVariable (
 
       // Add blank line required by rules.
       if (lines.empty () || lines.back ().empty ())
-        lines.emplace_back("");
+        lines.emplace_back ("");
 
       // Add new line.
       lines.push_back (name + " = " + json::encode (value));

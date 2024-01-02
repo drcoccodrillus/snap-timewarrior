@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, 2022 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,13 +24,12 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmake.h>
-#include <Exclusion.h>
 #include <Datetime.h>
+#include <Exclusion.h>
 #include <Pig.h>
-#include <shared.h>
-#include <format.h>
 #include <algorithm>
+#include <format.h>
+#include <shared.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 // An exclusion represents untrackable time such as holidays, weekends, evenings

@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -25,11 +25,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <Duration.h>
-#include <format.h>
-#include <commands.h>
-#include <timew.h>
-#include <iostream>
 #include <IntervalFilterAllInRange.h>
+#include <commands.h>
+#include <format.h>
+#include <iostream>
+#include <timew.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 int CmdFill (
@@ -40,7 +40,7 @@ int CmdFill (
 {
   const bool verbose = rules.getBoolean ("verbose");
 
-  std::set <int> ids = cli.getIds ();
+  auto ids = cli.getIds ();
 
   if (ids.empty ())
   {
@@ -48,10 +48,7 @@ int CmdFill (
   }
 
   // Load the data.
-  // Note: There is no filter.
-  Interval filter;
-
-  auto filtering = IntervalFilterAllInRange ({ 0, 0 });
+  auto filtering = IntervalFilterAllInRange ({0, 0});
   auto tracked = getTracked (database, rules, filtering);
 
   journal.startTransaction ();
@@ -60,7 +57,9 @@ int CmdFill (
   for (auto& id : ids)
   {
     if (id > static_cast <int> (tracked.size ()))
+    {
       throw format ("ID '@{1}' does not correspond to any tracking.", id);
+    }
 
     Interval from = tracked[tracked.size () - id];
     std::cout << "# from " << from.dump () << "\n";

@@ -1,6 +1,35 @@
 ------ current release ---------------------------
 
-1.5.0 (2023-04-02) -
+1.6.0 (2023-09-18) -
+
+- #529    Fix summary truncating multibyte characters in long annotations
+          (thanks to Maxim Beder, Leon Grünewald)
+- #531    Update CONTRIBUTING.md to use branch 'develop' instead of 'dev'
+          (thanks to Maxim Beder)
+- #535    Adding completion for fish shell
+          (thanks to Povl Filip Sonne-Frederiksen)
+- #538    Fix man page build for out-of-source builds
+          (thanks to Benedikt Fein)
+- #540    reports should end at current time if a task is still running
+          (thanks to Ankur Sinha)
+- #547    AtomicFile: Operate on the target of symlinks
+          (thanks to Shaun Ruffel, Ivo Forlin)
+- #551    Add retag command
+          (thanks to Iúri Archer)
+- #552    Extend XDG support to macOS
+          (thanks to Tadeas Uhlir)
+- #553    Configurability of CMake install directories
+          (thanks to aMOPel)
+- #554    Update documentation for command 'retag'
+          (thanks to quazgar)
+-         Use local man pages in tests
+          (thanks to Maxim Beder)
+-         Cleanup CMake files
+-         Update project to C++17
+
+------ old releases ------------------------------
+
+1.5.0 (2023-04-04) - 51e7c2c772837bbd6d56da8d16506c4b6de8644166e0b5234ad36ae6a70dd4f6
 
 - #361    Improve documentation
           (thanks to xeruf)
@@ -20,7 +49,7 @@
 - #441    Return report return code
           (thanks to lospatchos)
 - #444    Improve documentation on annotations
-          (Thanks to apkawel, Shaun Ruffel)
+          (thanks to apkawel, Shaun Ruffel)
 - #450    Report 'totals.py' does not display data when no time range specified
           (thanks to squirrellyDave)
 - #458    Add man documentation for configuring tag colors.
@@ -37,7 +66,7 @@
 - #477    Add configurable default range for reports
           (thanks to Oivvio Polite, Christian Kohlstedde)
 - #478    Add support for XDG Base Directory specification on Unixes
-          (Thanks to Stanisław Wysocki)
+          (thanks to Stanisław Wysocki)
 - #491    Tracking an interval in the future while actively tracking time results in a database inconsistency
           (thanks to agentcoffee)
 - #505    Report 'totals.py' does not truncate intervals to report range
@@ -141,9 +170,9 @@
 - #278    New hint :fortnight added
           (thanks to quazgar)
 - #282    Database: Fix error when empty datafile is most recent / oldest
-          (Thanks to Shaun Ruffell)
+          (thanks to Shaun Ruffell)
 - #283    Use AtomicFile to commit files as a group
-          (Thanks to Shaun Ruffell)
+          (thanks to Shaun Ruffell)
 - #284    tags.data modification date updated when file is not modified
           (thanks to Shaun Ruffell, Charlie Gorichanaz)
 - #285    Pass record id to extensions

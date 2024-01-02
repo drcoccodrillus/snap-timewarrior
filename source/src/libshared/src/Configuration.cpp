@@ -24,14 +24,14 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmake.h>
 #include <Configuration.h>
-#include <inttypes.h>
-#include <stdlib.h>
 #include <FS.h>
 #include <JSON.h>
-#include <shared.h>
+#include <cmake.h>
 #include <format.h>
+#include <cinttypes>
+#include <shared.h>
+#include <cstdlib>
 
 ////////////////////////////////////////////////////////////////////////////////
 bool setVariableInFile (
@@ -144,7 +144,7 @@ void Configuration::load (
       config.readable ())
   {
     std::string contents;
-    if (File::read (file, contents) && contents.length ())
+    if (File::read (file, contents) && !contents.empty ())
       parse (contents, nest, search_paths, file);
   }
 }
@@ -169,7 +169,7 @@ void Configuration::parse (
   const std::string& file_path /* = {} */)
 {
   // Shortcut case for default constructor.
-  if (input.length () == 0)
+  if (input.empty ())
     return;
 
   // Parse each line.
@@ -182,7 +182,7 @@ void Configuration::parse (
 
     // Skip empty lines.
     line = trim (line);
-    if (line.length () > 0)
+    if (!line.empty ())
     {
       auto equal = line.find ('=');
       if (equal != std::string::npos)
@@ -350,7 +350,7 @@ void Configuration::set (const std::string& key, const std::string& value)
 // Autovivification is ok here.
 void Configuration::setIfBlank (const std::string& key, const std::string& value)
 {
-  if ((*this)[key] == "")
+  if ((*this)[key].empty ())
   {
     (*this)[key] = value;
     _dirty = true;

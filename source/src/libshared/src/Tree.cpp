@@ -24,13 +24,13 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmake.h>
 #include <Tree.h>
 #include <algorithm>
-#include <iostream>
-#include <sstream>
-#include <shared.h>
+#include <cmake.h>
 #include <format.h>
+#include <iostream>
+#include <shared.h>
+#include <sstream>
 
 ////////////////////////////////////////////////////////////////////////////////
 //  - Tree, Branch and Node are synonymous.
@@ -231,26 +231,26 @@ std::string Tree::dumpNode (
   std::string atts;
   for (auto& a : t->_attributes)
   {
-    if (atts != "")
+    if (!atts.empty ())
       atts += ' ';
 
     atts += a.first + "='\033[33m" + a.second + "\033[0m'";
   }
 
-  if (atts.length ())
+  if (!atts.empty ())
     out << ' ' << atts;
 
   // Dump tags.
   std::string tags;
   for (auto& tag : t->_tags)
   {
-    if (tags.length ())
+    if (!tags.empty ())
       tags += ' ';
 
     tags += "\033[32m" + tag + "\033[0m";
   }
 
-  if (tags.length ())
+  if (!tags.empty ())
     out << ' ' << tags;
   out << '\n';
 

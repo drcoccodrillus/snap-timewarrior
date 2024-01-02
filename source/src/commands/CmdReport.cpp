@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,17 +24,16 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmake.h>
-#include <commands.h>
-#include <shared.h>
-#include <format.h>
-#include <timew.h>
-#include <iostream>
-#include <sstream>
 #include <FS.h>
 #include <IntervalFilterAllInRange.h>
 #include <IntervalFilterAllWithTags.h>
 #include <IntervalFilterAndGroup.h>
+#include <cmake.h>
+#include <commands.h>
+#include <format.h>
+#include <iostream>
+#include <shared.h>
+#include <timew.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 // Given a partial match for an extension script name, find the full patch of
@@ -135,24 +134,28 @@ int CmdReport (
   expandIntervalHint (":" + report_hint, default_range);
 
   // Create a filter, and if empty, choose the current week.
-  auto filter = cli.getFilter (default_range);
+  auto tags = cli.getTags ();
+  auto range = cli.getRange (default_range);
 
   IntervalFilterAndGroup filtering ({
-    std::make_shared <IntervalFilterAllInRange> ( Range { filter.start, filter.end }),
-    std::make_shared <IntervalFilterAllWithTags> (filter.tags ())
+    std::make_shared <IntervalFilterAllInRange> (range),
+    std::make_shared <IntervalFilterAllWithTags> (tags)
   });
 
   auto tracked = getTracked (database, rules, filtering);
 
   // Compose Header info.
-  rules.set ("temp.report.start", filter.is_started () ? filter.start.toISO () : "");
-  rules.set ("temp.report.end",   filter.is_ended ()   ? filter.end.toISO ()   : "");
-  rules.set ("temp.report.tags", joinQuotedIfNeeded (",", filter.tags ()));
+  rules.set ("temp.report.start", range.is_started () ? range.start.toISO () : "");
+  rules.set ("temp.report.end",   range.is_ended ()   ? range.end.toISO ()   : "");
+  rules.set ("temp.report.tags", joinQuotedIfNeeded (",", tags));
   rules.set ("temp.version", VERSION);
 
   std::stringstream header;
+
   for (auto& name : rules.all ())
+  {
     header << name << ": " << rules.get (name) << '\n';
+  }
 
   // Get the data.
   auto input = header.str ()
@@ -162,14 +165,16 @@ int CmdReport (
   // Run the extensions.
   std::vector <std::string> output;
   int rc = extensions.callExtension (script_path, split (input, '\n'), output);
-  if (rc != 0 && output.size () == 0)
+  if (rc != 0 && output.empty ())
   {
     throw format ("'{1}' returned {2} without producing output.", script_path, rc);
   }
 
   // Display the output.
   for (auto& line : output)
+  {
     std::cout << line << '\n';
+  }
 
   return rc;
 }

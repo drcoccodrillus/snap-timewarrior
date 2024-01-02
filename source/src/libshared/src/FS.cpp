@@ -30,23 +30,23 @@
 #define _GNU_SOURCE
 #endif
 #include <FS.h>
+#include <cstdio>
+#include <dirent.h>
+#include <cerrno>
+#include <fcntl.h>
+#include <format.h>
 #include <fstream>
 #include <glob.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <stdlib.h>
 #include <pwd.h>
-#include <cstdio>
-#include <unistd.h>
-#include <fcntl.h>
-#include <dirent.h>
-#include <errno.h>
-#include <string.h>
 #include <shared.h>
-#include <format.h>
+#include <cstdlib>
+#include <cstring>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #if defined SOLARIS || defined NETBSD || defined FREEBSD || defined DRAGONFLY || !defined(__GLIBC__)
-#include <limits.h>
+#include <climits>
 #endif
 
 #if defined __APPLE__
@@ -116,7 +116,7 @@ Path::operator std::string () const
 ////////////////////////////////////////////////////////////////////////////////
 std::string Path::name () const
 {
-  if (_data.length ())
+  if (!_data.empty ())
   {
     auto slash = _data.rfind ('/');
     if (slash != std::string::npos)
@@ -129,7 +129,7 @@ std::string Path::name () const
 ////////////////////////////////////////////////////////////////////////////////
 std::string Path::parent () const
 {
-  if (_data.length ())
+  if (!_data.empty ())
   {
     auto slash = _data.rfind ('/');
     if (slash != std::string::npos)
@@ -143,7 +143,7 @@ std::string Path::parent () const
 ////////////////////////////////////////////////////////////////////////////////
 std::string Path::extension () const
 {
-  if (_data.length ())
+  if (!_data.empty ())
   {
     auto dot = _data.rfind ('.');
     if (dot != std::string::npos)
@@ -192,7 +192,7 @@ bool Path::is_directory () const
 ////////////////////////////////////////////////////////////////////////////////
 bool Path::is_absolute () const
 {
-  if (_data.length () && _data[0] == '/')
+  if (!_data.empty () && _data[0] == '/')
     return true;
 
   return false;
@@ -460,7 +460,7 @@ std::string File::removeBOM (const std::string& input)
 ////////////////////////////////////////////////////////////////////////////////
 bool File::open ()
 {
-  if (_data != "")
+  if (!_data.empty ())
   {
     if (! _fh)
     {
@@ -501,7 +501,7 @@ void File::close ()
         throw format ("fdatasync error {1}: {2}", errno, strerror (errno));
     #elif defined (DARWIN)
       // https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/fsync.2.html
-      // fsync() on macOS flush data to the drvice but does not force drive
+      // fsync() on macOS flush data to the device but does not force drive
       // flush.
       if (fcntl (fileno (_fh), F_FULLFSYNC, 0))
       {

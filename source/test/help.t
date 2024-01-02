@@ -2,7 +2,7 @@
 
 ###############################################################################
 #
-# Copyright 2019 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+# Copyright 2019 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -64,14 +64,14 @@ class TestHelp(TestCase):
 
     def test_help_with_command_should_show_man_page(self):
         """timew help with command should show man page"""
-        _, expected, _ = run_cmd_wait_nofail(["man", "timew-start"])
+        _, expected, _ = run_cmd_wait_nofail(["man", "timew-start"], env=self.t.env)
         _, actual, _ = self.t("help start")
 
         self.assertEqual(actual, expected)
 
     def test_help_with_unknown_argument_should_show_error_message(self):
         """timew help with unknown argument should show error message"""
-        _, _, expected = run_cmd_wait_nofail(["man", "timew-bogus"])
+        _, _, expected = run_cmd_wait_nofail(["man", "timew-bogus"], env=self.t.env)
         _, _, actual = self.t.runError("help bogus")
 
         self.assertEqual(actual, expected)
