@@ -2,12 +2,12 @@
 
 /* Package information */
 #define PACKAGE           "timew"
-#define VERSION           "1.1.0"
+#define VERSION           "1.1.1"
 #define PACKAGE_BUGREPORT "support@taskwarrior.org"
 #define PACKAGE_NAME      "timew"
 #define PACKAGE_TARNAME   "timew"
-#define PACKAGE_VERSION   "1.1.0"
-#define PACKAGE_STRING    "timew 1.1.0"
+#define PACKAGE_VERSION   "1.1.1"
+#define PACKAGE_STRING    "timew 1.1.1"
 
 #define CMAKE_BUILD_TYPE  ""
 
