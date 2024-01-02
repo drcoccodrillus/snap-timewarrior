@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016, 2018 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016, 2018 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,17 +24,16 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmake.h>
-#include <timew.h>
-#include <Pig.h>
 #include <Duration.h>
-#include <format.h>
-#include <vector>
-#include <iostream>
 #include <IntervalFilterAllInRange.h>
 #include <IntervalFilterAllWithTags.h>
 #include <IntervalFilterAndGroup.h>
 #include <IntervalFilterFirstOf.h>
+#include <Pig.h>
+#include <format.h>
+#include <iostream>
+#include <timew.h>
+#include <vector>
 
 ////////////////////////////////////////////////////////////////////////////////
 bool domGet (
@@ -120,8 +119,8 @@ bool domGet (
     else if (pig.skipLiteral ("tracked."))
     {
       IntervalFilterAndGroup filtering ({
-        std::make_shared <IntervalFilterAllInRange> ( Range { filter.start, filter.end }),
-        std::make_shared <IntervalFilterAllWithTags> (filter.tags())
+        std::make_shared <IntervalFilterAllInRange> (Range {filter.start, filter.end}),
+        std::make_shared <IntervalFilterAllWithTags> (filter.tags ())
       });
 
       auto tracked = getTracked (database, rules, filtering);

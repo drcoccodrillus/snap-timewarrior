@@ -2,7 +2,7 @@
 
 ###############################################################################
 #
-# Copyright 2016 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+# Copyright 2016 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -100,6 +100,9 @@ def calculate_totals(input_stream):
     if "start" in j[0]:
         if report_start_utc is not None:
             j[0]["start"] = max(report_start_utc, datetime.datetime.strptime(j[0]["start"], DATEFORMAT).replace(tzinfo=from_zone)).strftime(DATEFORMAT)
+        else:
+            report_start_utc = datetime.datetime.strptime(j[0]["start"], DATEFORMAT).replace(tzinfo=from_zone)
+            report_start = report_start_utc.astimezone(tz=to_zone)
     else:
         return ["Cannot display an past open range"]
 
@@ -107,10 +110,11 @@ def calculate_totals(input_stream):
         if report_end_utc is not None:
             j[-1]["end"] = min(report_end_utc, datetime.datetime.strptime(j[-1]["end"], DATEFORMAT).replace(tzinfo=from_zone)).strftime(DATEFORMAT)
         else:
-            report_end = datetime.datetime.strptime(j[-1]["end"], DATEFORMAT).replace(tzinfo=from_zone)
+            report_end_utc = datetime.datetime.strptime(j[-1]["end"], DATEFORMAT).replace(tzinfo=from_zone)
+            report_end = report_end_utc.astimezone(tz=to_zone)
     else:
         if report_end_utc is not None:
-            j[-1]["end"] = report_end_utc.strftime(DATEFORMAT)
+            j[-1]["end"] = min(report_end_utc, datetime.datetime.now(tz=from_zone)).strftime(DATEFORMAT)
         else:
             j[-1]["end"] = datetime.datetime.now(tz=from_zone).strftime(DATEFORMAT)
             report_end = datetime.datetime.now(tz=to_zone)

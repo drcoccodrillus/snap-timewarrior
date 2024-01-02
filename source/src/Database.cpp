@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016, 2018 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016, 2018 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,16 +24,15 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cassert>
-#include <Database.h>
-#include <format.h>
-#include <JSON.h>
-#include <IntervalFactory.h>
-#include <iostream>
-#include <iomanip>
-#include <shared.h>
-#include <timew.h>
 #include <AtomicFile.h>
+#include <Database.h>
+#include <IntervalFactory.h>
+#include <JSON.h>
+#include <cassert>
+#include <format.h>
+#include <iomanip>
+#include <iostream>
+#include <timew.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 Database::iterator::iterator (files_iterator fbegin, files_iterator fend) :
@@ -548,8 +547,8 @@ void Database::initializeDatafiles ()
         file.find (".data") == file.length () - 5)
     {
       auto basename = Path (file).name ();
-      auto year  = strtol (basename.substr (0, 4).c_str (), NULL, 10);
-      auto month = strtol (basename.substr (5, 2).c_str (), NULL, 10);
+      auto year  = strtol (basename.substr (0, 4).c_str (), nullptr, 10);
+      auto month = strtol (basename.substr (5, 2).c_str (), nullptr, 10);
       getDatafile (year, month);
     }
   }

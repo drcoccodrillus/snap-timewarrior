@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,14 +24,12 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmake.h>
 #include <Interval.h>
-#include <timew.h>
-#include <format.h>
-#include <Lexer.h>
-#include <sstream>
 #include <JSON.h>
-#include <Interval.h>
+#include <Lexer.h>
+#include <algorithm>
+#include <sstream>
+#include <timew.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 bool Interval::operator== (const Interval& other) const
@@ -77,14 +75,39 @@ const std::set <std::string>& Interval::tags () const
 ////////////////////////////////////////////////////////////////////////////////
 void Interval::tag (const std::string& tag)
 {
-  if (_tags.find (tag) == _tags.end ())
-    _tags.insert (tag);
+  _tags.insert (tag);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void Interval::tag (const std::set<std::string>& tags)
+{
+  _tags.insert (tags.begin (), tags.end ());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void Interval::untag (const std::string& tag)
 {
   _tags.erase (tag);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void Interval::untag (const std::set <std::string>& tags)
+{
+  std::set<std::string> updated;
+
+  std::set_difference (
+    _tags.begin (), _tags.end (),
+    tags.begin (), tags.end (),
+    std::inserter (updated, updated.end ())
+  );
+
+  _tags = updated;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void Interval::clearTags ()
+{
+  _tags.clear ();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

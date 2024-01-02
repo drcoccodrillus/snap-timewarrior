@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2018 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2018 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -28,10 +28,10 @@
 #define INCLUDED_JOURNAL
 
 
-#include <vector>
-#include <string>
-#include <memory>
 #include <Transaction.h>
+#include <memory>
+#include <string>
+#include <vector>
 
 class Journal
 {

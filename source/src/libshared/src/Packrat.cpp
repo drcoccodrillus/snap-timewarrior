@@ -24,13 +24,13 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmake.h>
 #include <Packrat.h>
-#include <shared.h>
+#include <cmake.h>
 #include <format.h>
+#include <iostream>
+#include <shared.h>
 #include <unicode.h>
 #include <utf8.h>
-#include <iostream>
 
 int Packrat::minimumMatchLength = 3;
 
@@ -79,7 +79,7 @@ void Packrat::entity (const std::string& category, const std::string& name)
 ////////////////////////////////////////////////////////////////////////////////
 void Packrat::external (
   const std::string& rule,
-  bool (*fn)(Pig&, std::shared_ptr <Tree>))
+  bool (*fn)(Pig&, const std::shared_ptr <Tree>&))
 {
   if (_externals.find (rule) != _externals.end ())
     throw format ("There is already an external parser defined for rule '{1}'.", rule);
@@ -750,14 +750,14 @@ std::string Packrat::dump () const
   out << "Packrat Parse "
       << _tree->dump ();
 
-  if (_entities.size ())
+  if (!_entities.empty ())
   {
     out << "  Entities\n";
     for (const auto& entity : _entities)
       out << "    " << entity.first << ':' << entity.second << '\n';
   }
 
-  if (_externals.size ())
+  if (!_externals.empty ())
   {
     out << "  Externals\n";
     for (const auto& external : _externals)

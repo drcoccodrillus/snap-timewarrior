@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -25,10 +25,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <commands.h>
-#include <timew.h>
-#include <shared.h>
 #include <format.h>
 #include <iostream>
+#include <shared.h>
+#include <timew.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 // Іdentify DOM references in cli, provide space-separated results.
@@ -37,9 +37,10 @@ int CmdGet (
   Rules& rules,
   Database& database)
 {
+  auto references = cli.getDomReferences ();
+  auto filter = Interval {cli.getRange (), cli.getTags()};
+
   std::vector <std::string> results;
-  std::vector <std::string> references = cli.getDomReferences ();
-  Interval filter = cli.getFilter ();
 
   for (auto& reference : references)
   {

@@ -1,16 +1,17 @@
 <div align="center">
-<img src="https://avatars.githubusercontent.com/u/36100920?s=200&u=24da05914c20c4ccfe8485310f7b83049407fa9a&v=4"></br>
+<img alt="Timewarrior logo" src="https://avatars.githubusercontent.com/u/36100920?s=200&u=24da05914c20c4ccfe8485310f7b83049407fa9a&v=4">
+<br>
 
 [![Tests](https://github.com/GothenburgBitFactory/timewarrior/actions/workflows/tests.yaml/badge.svg)](https://github.com/GothenburgBitFactory/timewarrior/actions/workflows/tests.yaml)
 [![Release](https://img.shields.io/github/v/release/GothenburgBitFactory/timewarrior)](https://github.com/GothenburgBitFactory/timewarrior/releases/latest)
 [![Release date](https://img.shields.io/github/release-date/GothenburgBitFactory/timewarrior)](https://github.com/GothenburgBitFactory/timewarrior/releases/latest)
 ![Commits since release](https://img.shields.io/github/commits-since/GothenburgBitFactory/timewarrior/latest)
-</br>
+<br>
 [![Twitter](https://img.shields.io/twitter/follow/timewarrior_net?style=social)](https://twitter.com/timewarrior_net)
 </div>
 
 # Timewarrior
-![OS-X downloads](https://img.shields.io/homebrew/installs/dy/timewarrior?label=OS-X%20downloads)
+![macOS downloads](https://img.shields.io/homebrew/installs/dy/timewarrior?label=macOS%20downloads)
 ![GitHub downloads](https://img.shields.io/github/downloads/GothenburgBitFactory/timewarrior/total?label=GitHub%20downloads)
 ![Linux downloads](https://img.shields.io/badge/Linux%20downloads-unknown-gray)
 
@@ -36,10 +37,10 @@ Thanks to the community, there are binary packages available [here](https://time
 
 Building Timewarrior yourself requires
 
-* git
-* cmake
-* make
-* C++ compiler with full C++14 support, currently gcc 6.1+ or clang 3.4+ 
+* Git
+* CMake (>= 3.8)
+* Make
+* C++ compiler with full C++17 support, currently GCC 8+ or Clang 5+ 
 * Python 3 (for running the testsuite)
 * Asciidoctor (for creating documentation)
 
@@ -52,12 +53,12 @@ There are two ways to retrieve the Timewarrior sources:
 
 * Or download the tarball with curl,
 
-    curl -O https://github.com/GothenburgBitFactory/timewarrior/releases/download/v1.5.0/timew-1.5.0.tar.gz
+    curl -O https://github.com/GothenburgBitFactory/timewarrior/releases/download/v1.6.0/timew-1.6.0.tar.gz
 
   and expand the tarball
 
-    tar xzf timew-1.5.0.tar.gz
-    cd timew-1.5.0
+    tar xzf timew-1.6.0.tar.gz
+    cd timew-1.6.0
 
 Build Timewarrior, optionally run the test suite, and install it.
 

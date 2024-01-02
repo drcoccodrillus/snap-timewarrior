@@ -26,10 +26,10 @@
 
 #include <cmake.h>
 #include <format.h>
-#include <timew.h>
 #include <iostream>
-#include <shared.h>
 #include <paths.h>
+#include <shared.h>
+#include <timew.h>
 
 #ifdef HAVE_COMMIT
 #include <commit.h>
@@ -179,9 +179,9 @@ int CmdDiagnostics (
 
   // Determine rc.editor/$EDITOR/$VISUAL.
   char* peditor;
-  if ((peditor = getenv ("VISUAL")) != NULL)
+  if ((peditor = getenv ("VISUAL")) != nullptr)
     out << "        $VISUAL: " << peditor << '\n';
-  else if ((peditor = getenv ("EDITOR")) != NULL)
+  else if ((peditor = getenv ("EDITOR")) != nullptr)
     out << "        $EDITOR: " << peditor << '\n';
 
   // Theme description, if present.

@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2020 - 2021, Shaun Ruffell, Thomas Lauf.
+// Copyright 2020 - 2022, Shaun Ruffell, Thomas Lauf.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,11 +24,10 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <test.h>
 #include <Datafile.h>
 #include <Interval.h>
-
 #include <TempDir.h>
+#include <test.h>
 
 int main ()
 {

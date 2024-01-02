@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,13 +27,13 @@
 #ifndef INCLUDED_CLI
 #define INCLUDED_CLI
 
-#include <Lexer.h>
-#include <string>
-#include <set>
-#include <vector>
-#include <map>
 #include <Duration.h>
-#include "Interval.h"
+#include <Interval.h>
+#include <Lexer.h>
+#include <map>
+#include <set>
+#include <string>
+#include <vector>
 
 // Represents a single argument.
 class A2
@@ -70,11 +70,11 @@ public:
   bool getComplementaryHint (const std::string&, bool) const;
   bool getHint(const std::string&, bool) const;
   std::set <int> getIds () const;
-  std::vector<std::string> getTags () const;
+  std::set <std::string> getTags () const;
   std::string getAnnotation() const;
   Duration getDuration() const;
   std::vector<std::string> getDomReferences () const;
-  Interval getFilter (const Range& = {}) const;
+  Range getRange (const Range& default_range = {0, 0}) const;
   std::string dump (const std::string& title = "CLI Parser") const;
 
 private:

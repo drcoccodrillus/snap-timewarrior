@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2022 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,10 +26,10 @@
 
 #ifndef INCLUDED_PATH_RESOLVER
 #define INCLUDED_PATH_RESOLVER
-#include <string>
-#include <Rules.h>
 #include <CLI.h>
 #include <Rules.h>
+#include <Rules.h>
+#include <string>
 
 namespace paths {
     void initializeDirs (const CLI&, Rules&);

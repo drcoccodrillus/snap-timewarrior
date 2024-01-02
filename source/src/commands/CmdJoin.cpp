@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,14 +24,12 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmake.h>
 #include <Duration.h>
-#include <format.h>
-#include <commands.h>
-#include <timew.h>
-#include <iostream>
-#include <stdlib.h>
 #include <IntervalFilterAllWithIds.h>
+#include <commands.h>
+#include <format.h>
+#include <iostream>
+#include <timew.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 int CmdJoin (
@@ -43,7 +41,7 @@ int CmdJoin (
   const bool verbose = rules.getBoolean ("verbose");
 
   // Gather IDs and TAGs.
-  std::set <int> ids = cli.getIds ();
+  auto ids = cli.getIds ();
 
   // Only 2 IDs allowed in a join.
   if (ids.size () != 2)

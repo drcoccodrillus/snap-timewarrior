@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,17 +24,14 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <algorithm>
-#include <cmake.h>
-#include <shared.h>
-#include <format.h>
 #include <Datetime.h>
 #include <Duration.h>
-#include <timew.h>
-#include <algorithm>
-#include <iostream>
 #include <IntervalFactory.h>
 #include <IntervalFilter.h>
+#include <algorithm>
+#include <format.h>
+#include <shared.h>
+#include <timew.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 // Read rules and extract all holiday definitions. Create a Range for each
@@ -83,7 +80,7 @@ std::vector <Range> getAllExclusions (
   // Load all exclusions from configuration.
   std::vector <Exclusion> exclusions;
   for (auto& name : rules.all ("exclusions."))
-    exclusions.emplace_back(lowerCase (name), rules.get (name));
+    exclusions.emplace_back (lowerCase (name), rules.get (name));
   debug (format ("Found {1} exclusions", exclusions.size ()));
 
   // Find exclusions 'exc day on <date>' and remove from holidays.
@@ -149,8 +146,8 @@ std::vector <Interval> expandLatest (const Interval& latest, const Rules& rules)
       std::vector <Interval> flattened = flatten (latest, exclusions);
 
       // If flatten() converted the latest interval into a group of synthetic
-      // intervals, the number of returned intervals will be greater than 1,
-      // otherwise, it just returned the non-synthetic, latest interval.
+      // intervals, the number of returned intervals will be greater than 1.
+      // Otherwise, it just returned the non-synthetic, latest interval.
       if (flattened.size () > 1)
       {
         std::reverse (flattened.begin (), flattened.end ());

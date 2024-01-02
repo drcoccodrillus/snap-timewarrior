@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 2.8.12)
+cmake_minimum_required (VERSION 3.8)
 include_directories (${CMAKE_SOURCE_DIR}
                      ${CMAKE_SOURCE_DIR}/src
                      ${CMAKE_SOURCE_DIR}/src/commands
@@ -71,5 +71,4 @@ target_link_libraries (lex_executable   timew libshared                libshared
 set_property (TARGET timew_executable PROPERTY OUTPUT_NAME "timew")
 set_property (TARGET lex_executable   PROPERTY OUTPUT_NAME "lex")
 
-install (TARGETS timew_executable DESTINATION bin)
-
+install (TARGETS timew_executable DESTINATION ${TIMEW_BINDIR})

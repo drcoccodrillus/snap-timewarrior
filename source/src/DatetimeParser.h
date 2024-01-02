@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2020 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2020, 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,10 +27,10 @@
 #ifndef INCLUDED_DATETIMEPARSER
 #define INCLUDED_DATETIMEPARSER
 
-#include <string>
-#include <ctime>
 #include <Pig.h>
 #include <Range.h>
+#include <ctime>
+#include <string>
 
 class DatetimeParser
 {

@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2020 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2020, 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,12 +24,11 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmake.h>
 #include <Datetime.h>
-#include <test.h>
+#include <DatetimeParser.h>
+#include <ctime>
 #include <iostream>
-#include <time.h>
-#include <src/DatetimeParser.h>
+#include <test.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 void testParseOpenRange (

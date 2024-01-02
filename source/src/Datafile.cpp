@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016, 2018 - 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016, 2018 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,16 +24,15 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmake.h>
-#include <Datafile.h>
-#include <timew.h>
-#include <format.h>
-#include <algorithm>
-#include <sstream>
-#include <cassert>
-#include <stdlib.h>
 #include <AtomicFile.h>
+#include <Datafile.h>
 #include <IntervalFactory.h>
+#include <algorithm>
+#include <cassert>
+#include <cstdlib>
+#include <format.h>
+#include <sstream>
+#include <timew.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 void Datafile::initialize (const std::string& name)
@@ -42,8 +41,8 @@ void Datafile::initialize (const std::string& name)
 
   // From the name, which is of the form YYYY-MM.data, extract the YYYY and MM.
   auto basename = _file.name ();
-  auto year  = strtol (basename.substr (0, 4).c_str (), NULL, 10);
-  auto month = strtol (basename.substr (5, 2).c_str (), NULL, 10);
+  auto year  = strtol (basename.substr (0, 4).c_str (), nullptr, 10);
+  auto month = strtol (basename.substr (5, 2).c_str (), nullptr, 10);
 
   // The range is a month: [start, end).
   Datetime start (year, month, 1, 0, 0, 0);
@@ -152,7 +151,7 @@ void Datafile::commit ()
   if (_dirty)
   {
     AtomicFile file (_file);
-    if (_lines.size () > 0)
+    if (!_lines.empty ())
     {
       if (file.open ())
       {

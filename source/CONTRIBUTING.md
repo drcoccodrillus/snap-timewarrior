@@ -8,9 +8,9 @@ Anyone can contribute, and everyone is encouraged to do so.
 Here are the different ways you might conѕider contributing:
 
 1. Reviews
-1. Bug reports
-1. Feature requests
-1. Code contribution
+2. Bug reports
+3. Feature requests
+4. Code contribution
 
 Please read the respective section below about the details.
 
@@ -29,7 +29,7 @@ It is also the quickest way to get help, or confirm a bug.
 
 Review documentation: there are man pages, online articles, tutorials and so on, and these may contain errors, or they may not convey ideas in the best way.
 You can help improve it.
-Documentation is a separate effort from the codebase, and includes all websites, and all are available using git.
+Documentation is a separate effort from the codebase, and includes all websites, and all are available using Git.
 
 Take a look at the bug database, and help triage the bug list.
 Bug triage is very useful and much needed.
@@ -85,9 +85,9 @@ Plus, you might get your feature implemented.
 There are different ways you can contribute code to the project:
 
 1. Add extensions
-1. Add tests
-1. Fix bugs
-1. Add features
+2. Add tests
+3. Fix bugs
+4. Add features
 
 
 ### Extensions
@@ -123,23 +123,23 @@ By contributing, you are declaring that you have the right to submit the code un
  
 ## How to make a pull-request
 
-The main branch for development is named `dev`.
+The main branch for development is named `develop`.
 This is the branch where your changes must go.
-The `master` branch always points to the latest release.
+The `stable` branch always points to the latest release.
 No development takes place here.
 
 To make a pull request you need to have a GitHub account.
 
 1. Fork the [Timewarrior repository](https://github.com/GothenburgBitFactory/timewarrior) on GitHub.
-1. Checkout the development branch.
+2. Checkout the development branch.
 
        $ git checkout dev
 
-1. Create a feature branch.
+3. Create a feature branch.
 
        $ git checkout -b feature_branch
 
-1. Commit your changes, and finally push to the remote repository.
+4. Commit your changes, and finally push to the remote repository.
    Use a commit message that matches the prevailing format. (See `git log` for examples.)
    
        $ git commit --signoff -am '<issue>: <description>'
@@ -148,7 +148,7 @@ To make a pull request you need to have a GitHub account.
     
     Furthermore, commits should be signed off according to the [DCO](DCO) (use `-s` / `--signoff` flag when committing).
     
-1. Create the pull request on GitHub.
+5. Create the pull request on GitHub.
 
 ## What happens next?
 
@@ -206,5 +206,5 @@ To be a little more explicit, the common elements across the languages are:
 
 We target Python 3 so that our test suite runs on the broadest set of platforms.
 
-We can safely target C++14 because all the default compilers on our supported platforms are ready.
-Feel free to use C++17 and C++20 provided that all build platforms support this.
+We can safely target C++17 because all the default compilers on our supported platforms are ready.
+Feel free to use C++20 provided that all build platforms support this.

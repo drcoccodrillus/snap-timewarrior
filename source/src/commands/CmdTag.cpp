@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,16 +24,13 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmake.h>
-#include <cassert>
+#include <IntervalFilterAllInRange.h>
+#include <IntervalFilterAllWithIds.h>
+#include <IntervalFilterFirstOf.h>
 #include <commands.h>
 #include <format.h>
-#include <timew.h>
 #include <iostream>
-#include <stdlib.h>
-#include <IntervalFilterAllWithIds.h>
-#include <IntervalFilterAllInRange.h>
-#include <IntervalFilterFirstOf.h>
+#include <timew.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 int CmdTag (
@@ -46,7 +43,7 @@ int CmdTag (
 
   // Gather IDs and TAGs.
   std::set <int> ids = cli.getIds ();
-  std::vector<std::string> tags = cli.getTags ();
+  std::set<std::string> tags = cli.getTags ();
 
   if (tags.empty ())
   {
@@ -106,10 +103,7 @@ int CmdTag (
   {
     Interval modified {interval};
 
-    for (auto& tag : tags)
-    {
-      modified.tag (tag);
-    }
+    modified.tag (tags);
 
     database.modifyInterval (interval, modified, verbose);
 

@@ -24,16 +24,16 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmake.h>
 #include <Datetime.h>
 #include <algorithm>
-#include <iostream>
-#include <sstream>
-#include <iomanip>
 #include <cassert>
-#include <stdlib.h>
-#include <shared.h>
+#include <cmake.h>
 #include <format.h>
+#include <iomanip>
+#include <iostream>
+#include <shared.h>
+#include <sstream>
+#include <cstdlib>
 #include <unicode.h>
 #include <utf8.h>
 
@@ -236,7 +236,7 @@ void Datetime::clear ()
 bool Datetime::parse_formatted (Pig& pig, const std::string& format)
 {
   // Short-circuit on missing format.
-  if (format == "")
+  if (format.empty ())
     return false;
 
   auto checkpoint = pig.cursor ();
@@ -614,7 +614,7 @@ bool Datetime::parse_named (Pig& pig)
   auto checkpoint = pig.cursor ();
 
   // Experimental handling of date phrases, such as "first monday in march".
-  // Note that this requires that phrases are deliminted by EOS or WS.
+  // Note that this requires that phrases are delimited by EOS or WS.
   std::string token;
   std::vector <std::string> tokens;
   while (pig.getUntilWS (token))
@@ -2056,7 +2056,7 @@ bool Datetime::initializeEopww (Pig& pig)
       time_t now = time (nullptr);
       struct tm* t = localtime (&now);
 
-      t->tm_mday -= (t->tm_wday + 1) % 7;
+      t->tm_mday -= t->tm_wday + 1;
       t->tm_hour = t->tm_min = 0;
       t->tm_sec = -1;
       t->tm_isdst = -1;
@@ -3120,7 +3120,7 @@ bool Datetime::validate ()
 // int tm_year;      year - 1900
 // int tm_wday;      day of week (Sunday = 0)
 // int tm_yday;      day of year (0 - 365)
-// int tm_isdst;     is summer time in effect?
+// int tm_isdst;     is daylight saving time in effect?
 // char *tm_zone;    abbreviation of timezone name
 // long tm_gmtoff;   offset from UTC in seconds
 void Datetime::resolve ()
@@ -3298,7 +3298,7 @@ void Datetime::toYMD (int& y, int& m, int& d) const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-const std::string Datetime::toString (const std::string& format) const
+std::string Datetime::toString (const std::string& format) const
 {
   std::stringstream formatted;
   for (unsigned int i = 0; i < format.length (); ++i)
@@ -3337,7 +3337,7 @@ const std::string Datetime::toString (const std::string& format) const
 ////////////////////////////////////////////////////////////////////////////////
 Datetime Datetime::startOfDay () const
 {
-  return Datetime (year (), month (), day ());
+  return { year (), month (), day () };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3345,19 +3345,19 @@ Datetime Datetime::startOfWeek () const
 {
   Datetime sow (_date);
   sow -= (dayOfWeek () * 86400);
-  return Datetime (sow.year (), sow.month (), sow.day ());
+  return { sow.year (), sow.month (), sow.day () };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 Datetime Datetime::startOfMonth () const
 {
-  return Datetime (year (), month (), 1);
+  return { year (), month (), 1 };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 Datetime Datetime::startOfYear () const
 {
-  return Datetime (year (), 1, 1);
+  return { year (), 1, 1 };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3410,7 +3410,7 @@ bool Datetime::valid (const int y, const int m, const int d)
     return false;
 
   // Finally check that the days fall within the acceptable range for this
-  // month, and whether or not this is a leap year.
+  // month, and whether this is a leap year.
   if (d < 1 || d > Datetime::daysInMonth (y, m))
     return false;
 
@@ -3734,13 +3734,13 @@ bool Datetime::sameYear (const Datetime& rhs) const
 ////////////////////////////////////////////////////////////////////////////////
 Datetime Datetime::operator+ (const int delta)
 {
-  return Datetime (_date + delta);
+  return { _date + delta };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 Datetime Datetime::operator- (const int delta)
 {
-  return Datetime (_date - delta);
+  return { _date - delta };
 }
 
 ////////////////////////////////////////////////////////////////////////////////

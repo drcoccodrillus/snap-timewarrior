@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2020 - 2021, Shaun Ruffell, Thomas Lauf.
+// Copyright 2020 - 2022, Shaun Ruffell, Thomas Lauf.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -34,8 +34,8 @@ class Path;
 class AtomicFile
 {
 public:
-  AtomicFile (const Path& path);
-  AtomicFile (std::string path);
+  explicit AtomicFile (const Path& path);
+  explicit AtomicFile (std::string path);
   AtomicFile (const AtomicFile&) = delete;
   AtomicFile (AtomicFile&&);
   AtomicFile& operator= (const AtomicFile&) = delete;

@@ -1,12 +1,12 @@
-cmake_minimum_required (VERSION 2.8.12)
+cmake_minimum_required (VERSION 3.8)
 
 # This is a work-around for the following CMake issue:
 # https://gitlab.kitware.com/cmake/cmake/issues/16062
 # The issue has been fixed in CMake 3.11.0; the policy is set
 # to OLD for compatibility with older versions of CMake only.
-if(POLICY CMP0037 AND ${CMAKE_VERSION} VERSION_LESS "3.11.0")
+if (POLICY CMP0037 AND ${CMAKE_VERSION} VERSION_LESS "3.11.0")
   cmake_policy(SET CMP0037 OLD)
-endif()
+endif ()
 
 # If this is a debug build, check if we have libfiu installed and available on
 # the system. If so, we will be able to use it to add additional tests of the
@@ -38,7 +38,8 @@ set (test_SRCS AtomicFileTest data.t Datafile.t DatetimeParser.t exclusion.t hel
 
 add_custom_target (test ./run_all --verbose
                         DEPENDS ${test_SRCS} timew_executable doc
-                        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/test)
+                        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/test
+                        COMMENT "Running testsuite...")
 
 foreach (src_FILE ${test_SRCS})
   add_executable (${src_FILE} "${src_FILE}.cpp" test.cpp)

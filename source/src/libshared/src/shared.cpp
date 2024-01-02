@@ -24,23 +24,23 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmake.h>
-#include <shared.h>
-#include <utf8.h>
 #include <algorithm>
-#include <sstream>
-#include <iostream>
-#include <iomanip>
 #include <cctype>
-#include <strings.h>
-#include <unistd.h>
-#include <sys/select.h>
 #include <cerrno>
-#include <csignal>
+#include <cmake.h>
 #include <cmath>
+#include <csignal>
 #include <cstring>
-#include <sys/wait.h>
 #include <format.h>
+#include <iomanip>
+#include <iostream>
+#include <shared.h>
+#include <sstream>
+#include <strings.h>
+#include <sys/select.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <utf8.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 void wrapText (
@@ -68,7 +68,7 @@ std::vector <std::string> split (const std::string& input, const char delimiter)
     start = i + 1;
   }
 
-  if (input.length ())
+  if (!input.empty ())
     results.push_back (input.substr (start));
 
   return results;
@@ -351,7 +351,7 @@ bool extractLine (
               if (line_width + 1 <= width)
               {
                 // if the last good part + hyphen is short enough,
-                // ie. the just read character is wider than one column
+                // i.e. the just read character is wider than one column
                 line = text.substr (offset, last_bytes - offset) + '-';
                 offset = last_bytes;
               }
@@ -740,7 +740,7 @@ int execute (
   close (pin[0]);   // Close the read end of the input pipe.
   close (pout[1]);  // Close the write end of the output pipe.
 
-  if (input.size () == 0)
+  if (input.empty ())
   {
     // Nothing to send to the child, close the pipe early.
     close (pin[1]);
