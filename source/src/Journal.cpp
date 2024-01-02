@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2018 - 2020, 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2018 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -39,7 +39,7 @@ bool Journal::enabled () const
 
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<Transaction> loadJournal (AtomicFile& undo)
+std::vector <Transaction> loadJournal (AtomicFile& undo)
 {
   std::vector <std::string> read_lines;
   undo.read (read_lines);
@@ -88,7 +88,7 @@ void Journal::startTransaction ()
 ////////////////////////////////////////////////////////////////////////////////
 void Journal::endTransaction ()
 {
-  if (!enabled ())
+  if (! enabled ())
   {
     assert (_currentTransaction == nullptr);
     return;
@@ -149,9 +149,9 @@ void Journal::recordIntervalAction (const std::string&  before, const std::strin
 // Actions are only recorded if a transaction is open
 //
 void Journal::recordUndoAction (
-  const std::string &type,
-  const std::string &before,
-  const std::string &after)
+  const std::string& type,
+  const std::string& before,
+  const std::string& after)
 {
   if (enabled () && _currentTransaction != nullptr)
   {

@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2006 - 2021, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2017, 2019 - 2021, 2023, Gothenburg Bit Factory.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -25,9 +25,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <JSON.h>
-#include <cmake.h>
 #include <format.h>
-#include <shared.h>
 #include <utf8.h>
 
 const char *json_encode[] = {
@@ -76,7 +74,7 @@ json::value* json::value::parse (Pig& pig)
       (v = json::literal::parse (pig)))
     return v;
 
-  return NULL;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -108,7 +106,7 @@ json::string* json::string::parse (Pig& pig)
     return s;
   }
 
-  return NULL;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -134,7 +132,7 @@ json::number* json::number::parse (Pig& pig)
     return s;
   }
 
-  return NULL;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,7 +175,7 @@ json::literal* json::literal::parse (Pig& pig)
     return s;
   }
 
-  return NULL;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -217,7 +215,7 @@ json::array* json::array::parse (Pig& pig)
     if ((value = json::value::parse (pig)))
     {
       arr->_data.push_back (value);
-      value = NULL; // Not a leak.  Looks like a leak.
+      value = nullptr; // Not a leak.  Looks like a leak.
       pig.skipWS ();
       while (pig.skip (','))
       {
@@ -245,7 +243,7 @@ json::array* json::array::parse (Pig& pig)
   }
 
   pig.restoreTo (checkpoint);
-  return NULL;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -296,7 +294,7 @@ json::object* json::object::parse (Pig& pig)
     if (json::object::parse_pair (pig, name, value))
     {
       obj->_data.insert (std::pair <std::string, json::value*> (name, value));
-      value = NULL; // Not a leak.  Looks like a leak.
+      value = nullptr; // Not a leak.  Looks like a leak.
 
       pig.skipWS ();
       while (pig.skip (','))
@@ -325,7 +323,7 @@ json::object* json::object::parse (Pig& pig)
   }
 
   pig.restoreTo (checkpoint);
-  return NULL;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -383,7 +381,7 @@ std::string json::object::dump () const
 ////////////////////////////////////////////////////////////////////////////////
 json::value* json::parse (const std::string& input)
 {
-  json::value* root = NULL;
+  json::value* root = nullptr;
 
   Pig n (input);
   n.skipWS ();

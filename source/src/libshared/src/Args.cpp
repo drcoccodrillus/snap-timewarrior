@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2012 - 2021, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2017, 2019 - 2021, 2023, Gothenburg Bit Factory.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -25,10 +25,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <Args.h>
-#include <cmake.h>
+#include <cstring>
 #include <shared.h>
 #include <sstream>
-#include <cstring>
+#include <string>
 
 ////////////////////////////////////////////////////////////////////////////////
 void Args::addOption (const std::string& name, bool defaultValue)
@@ -89,7 +89,7 @@ void Args::scan (int argc, const char** argv)
     // Or a positional.
     else
     {
-      _positionals.push_back (argv[i]);
+      _positionals.emplace_back (argv[i]);
       if (_limit != -1 &&
           static_cast <int> (_positionals.size ()) > _limit)
         throw std::string ("Too many positional arguments.");

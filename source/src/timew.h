@@ -69,6 +69,7 @@ int dispatchCommand (const CLI&, Database&, Journal&, Rules&, const Extensions&)
 
 // helper.cpp
 Color summaryIntervalColor (const Rules&, const std::set <std::string>&);
+Color summaryIntervalColor (std::map <std::string, Color>&, const std::set <std::string>&);
 Color chartIntervalColor (const std::set <std::string>&, const std::map <std::string, Color>&);
 Color tagColor (const Rules&, const std::string&);
 std::string intervalSummarize (const Rules&, const Interval&);
@@ -76,10 +77,12 @@ bool expandIntervalHint (const std::string&, Range&);
 std::string jsonFromIntervals (const std::vector <Interval>&);
 Palette createPalette (const Rules&);
 std::map <std::string, Color> createTagColorMap (const Rules&, Palette&, const std::vector <Interval>&);
+std::map <std::string, Color> createTagColorMap (const Rules& rules, const std::vector <Interval>& intervals);
 int quantizeToNMinutes (int, int);
 
 bool findHint (const CLI&, const std::string&);
 std::string minimalDelta (const Datetime&, const Datetime&);
+int getTerminalWidth () ;
 
 // log.cpp
 void enableDebugMode (bool);
@@ -87,12 +90,11 @@ void setDebugIndicator (const std::string&);
 void setDebugColor (const Color&);
 void debug (const std::string&);
 
-// utiŀ.cpp
+// util.cpp
 std::string escape (const std::string&, int);
 std::string quoteIfNeeded (const std::string&);
 std::string join(const std::string& glue, const std::set <std::string>& array);
-std::string joinQuotedIfNeeded(const std::string& glue, const std::set <std::string>& array);
-std::string joinQuotedIfNeeded(const std::string& glue, const std::vector <std::string>& array);
+template <typename Container> std::string joinQuotedIfNeeded (const std::string&, const Container&);
 
 // dom.cpp
 bool domGet (Database&, Interval&, const Rules&, const std::string&, std::string&);

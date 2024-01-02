@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2021, 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,7 @@ bool IntervalFilterAllInRange::accepts (const Interval& interval)
     return false;
   }
 
-  if ((!_range.is_started() && !_range.is_ended()) || interval.intersects (_range))
+  if ((! _range.is_started() && ! _range.is_ended()) || interval.intersects (_range))
   {
     return true;
   }

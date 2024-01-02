@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2006 - 2021, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2017, 2019 - 2021, 2023, Gothenburg Bit Factory.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -34,9 +34,6 @@
 
 bool setVariableInFile   (const std::string&, const std::string&, const std::string&);
 bool unsetVariableInFile (const std::string&, const std::string&);
-
-// ct.cpp
-std::vector <std::tuple <std::string, int>> foo (File&);
 
 class Configuration : public std::map <std::string, std::string>
 {

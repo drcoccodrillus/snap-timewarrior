@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2018 - 2021, 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2018 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -64,7 +64,7 @@ Interval IntervalFactory::fromSerialization (const std::string& line)
   std::vector <std::string> tokens = tokenizeSerialization (line);
 
   // Minimal requirement 'inc'.
-  if (!tokens.empty () && tokens[0] == "inc")
+  if (! tokens.empty () && tokens[0] == "inc")
   {
     Interval interval = Interval ();
 
@@ -125,9 +125,9 @@ Interval IntervalFactory::fromJson (const std::string& jsonString)
 {
   Interval interval = Interval ();
 
-  if (!jsonString.empty ())
+  if (! jsonString.empty ())
   {
-    std::unique_ptr <json::object> json (dynamic_cast <json::object *> (json::parse (jsonString)));
+    std::unique_ptr <json::object> json (dynamic_cast <json::object*> (json::parse (jsonString)));
 
     json::array* tags = (json::array*) json->_data["tags"];
 
@@ -144,7 +144,7 @@ Interval IntervalFactory::fromJson (const std::string& jsonString)
     interval.annotation = (annotation != nullptr) ? json::decode (annotation->_data) : "";
 
     json::string* start = (json::string*) json->_data["start"];
-    interval.start = (start != nullptr) ? Datetime(start->_data) : 0;
+    interval.start = (start != nullptr) ? Datetime (start->_data) : 0;
     json::string* end = (json::string*) json->_data["end"];
     interval.end = (end != nullptr) ? Datetime(end->_data) : 0;
 

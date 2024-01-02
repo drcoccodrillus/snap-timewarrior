@@ -1,0 +1,18 @@
+# Holiday data provided by holidata.net
+#   Generated 2023-10-10T17:01:16
+
+define holidays:
+  fr-FR:
+    2023_01_01 = Jour de l'an
+    2023_04_10 = Lundi de Pâques
+    2023_05_01 = Fête du premier mai
+    2023_05_08 = Armistice 1945
+    2023_05_18 = Ascension
+    2023_05_28 = Pentecôte
+    2023_05_29 = Lundi de Pentecôte
+    2023_07_14 = Fête nationale
+    2023_08_15 = Assomption
+    2023_11_01 = Toussaint
+    2023_11_11 = Armistice 1918
+    2023_12_25 = Noël
+

@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2013 - 2021, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2017, 2019 - 2021, 2023, Gothenburg Bit Factory.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,8 +27,6 @@
 #include <Datetime.h>
 #include <Duration.h>
 #include <Lexer.h>
-#include <algorithm>
-#include <cmake.h>
 #include <cctype>
 #include <tuple>
 #include <unicode.h>
@@ -84,7 +82,7 @@ std::vector <std::tuple <std::string, Lexer::Type>> Lexer::tokenize (const std::
   Lexer::Type type;
   Lexer lexer (input);
   while (lexer.token (token, type))
-    tokens.push_back (std::make_tuple (token, type));
+    tokens.emplace_back (token, type);
 
   return tokens;
 }
@@ -937,7 +935,7 @@ bool Lexer::readWord (
     prev = c;
   }
 
-  return word.length () > 0 ? true : false;
+  return word.length () > 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
