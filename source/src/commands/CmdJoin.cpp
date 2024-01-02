@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -39,6 +39,8 @@ int CmdJoin (
   Database& database,
   Journal& journal)
 {
+  const bool verbose = rules.getBoolean ("verbose");
+
   // Gather IDs and TAGs.
   std::set <int> ids = cli.getIds ();
 
@@ -48,28 +50,13 @@ int CmdJoin (
     throw std::string ("Two IDs must be specified. See 'timew help join'.");
   }
 
-  // Load the data.
-  // Note: There is no filter.
-  Interval filter;
-  auto tracked = getTracked (database, rules, filter);
-
-  // ID values must be in range.
-  for (auto& id : ids)
-  {
-    if (id > static_cast <int> (tracked.size ()))
-    {
-      throw format ("ID '@{1}' does not correspond to any tracking.", id);
-    }
-
-  }
-
   journal.startTransaction ();
 
-  auto first_id  = *ids.begin ();
-  auto second_id = *ids.rbegin ();
+  flattenDatabase (database, rules);
+  std::vector <Interval> intervals = getIntervalsByIds (database, rules, ids);
 
-  Interval first  = tracked[tracked.size () - first_id];
-  Interval second = tracked[tracked.size () - second_id];
+  Interval first  = intervals[0];
+  Interval second = intervals[1];
 
   // TODO Require confirmation if intervals are not consecutive.
 
@@ -85,13 +72,13 @@ int CmdJoin (
   database.deleteInterval (second);
 
   validate (cli, rules, database, combined);
-  database.addInterval (combined, rules.getBoolean ("verbose"));
+  database.addInterval (combined, verbose);
 
   journal.endTransaction ();
 
-  if (rules.getBoolean ("verbose"))
+  if (verbose)
   {
-    std::cout << "Joined @" << first_id << " and @" << second_id << '\n';
+    std::cout << "Joined @" << first.id << " and @" << second.id << '\n';
   }
 
   return 0;

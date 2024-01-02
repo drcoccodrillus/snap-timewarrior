@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -38,6 +38,8 @@ int CmdTags (
   Rules& rules,
   Database& database)
 {
+  auto verbose = rules.getBoolean ("verbose");
+
   // Create a filter, with no default range.
   auto filter = getFilter (cli);
 
@@ -72,7 +74,7 @@ int CmdTags (
   }
   else
   {
-    if (rules.getBoolean ("verbose"))
+    if (verbose)
       std::cout << "No data found.\n";
   }
 

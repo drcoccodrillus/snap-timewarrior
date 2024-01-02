@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -36,49 +36,29 @@ int CmdDelete (
   Database& database,
   Journal& journal)
 {
+  auto verbose = rules.getBoolean ("verbose");
+
   // Gather IDs.
   std::set <int> ids = cli.getIds ();
 
   if (ids.empty ())
+  {
     throw std::string ("IDs must be specified. See 'timew help delete'.");
-
-  // Load the data.
-  // Note: There is no filter.
-  Interval filter;
-  auto tracked = getTracked (database, rules, filter);
+  }
 
   journal.startTransaction ();
 
-  bool dirty = true;
+  flattenDatabase (database, rules);
+  auto intervals = getIntervalsByIds (database, rules, ids);
 
-  for (auto& id : ids)
+  for (const auto& interval : intervals)
   {
-    if (id > static_cast <int> (tracked.size ()))
-      throw format ("ID '@{1}' does not correspond to any tracking.", id);
+    database.deleteInterval (interval);
 
-    if (tracked[tracked.size() - id].synthetic && dirty)
+    if (verbose)
     {
-      auto latest = getLatestInterval(database);
-      auto exclusions = getAllExclusions (rules, filter);
-
-      Interval modified {latest};
-
-      // Update database.
-      database.deleteInterval (latest);
-      for (auto& interval : flatten (modified, exclusions))
-        database.addInterval (interval, rules.getBoolean ("verbose"));
-
-      dirty = false;
+      std::cout << "Deleted @" << interval.id << '\n';
     }
-  }
-
-  // Delete intervals by id
-  for (auto& id : ids)
-  {
-    database.deleteInterval (tracked[tracked.size () - id]);
-
-    if (rules.getBoolean ("verbose"))
-      std::cout << "Deleted @" << id << '\n';
   }
 
   journal.endTransaction ();

@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016, 2018 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016, 2018 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -177,11 +177,8 @@ bool domGet (
 
     else if (pig.skipLiteral ("tag."))
     {
-      // Generate a unique, ordered list of tags.
-      std::set <std::string> tags;
-      for (auto& interval : getAllInclusions (database))
-        for (auto& tag : interval.tags ())
-          tags.insert (tag);
+      // get unique, ordered list of tags.
+      std::set <std::string> tags = database.tags ();
 
       // dom.tag.count
       if (pig.skipLiteral ("count"))

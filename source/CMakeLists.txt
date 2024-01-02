@@ -6,7 +6,9 @@ set (HAVE_CMAKE true)
 project (timew)
 include (CXXSniffer)
 
-set (PROJECT_VERSION "1.2.0")
+set (PROJECT_VERSION "1.3.0")
+
+string(TOUPPER "${CMAKE_BUILD_TYPE}" uppercase_CMAKE_BUILD_TYPE)
 
 message ("-- Looking for SHA1 references")
 if (EXISTS ${CMAKE_SOURCE_DIR}/.git/index)

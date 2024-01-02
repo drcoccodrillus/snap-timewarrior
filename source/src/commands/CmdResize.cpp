@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2017 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2017 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -39,45 +39,39 @@ int CmdResize (
   Database& database,
   Journal& journal)
 {
+  const bool verbose = rules.getBoolean ("verbose");
+
   std::set <int> ids = cli.getIds ();
 
   if (ids.empty ())
-    throw std::string ("IDs must be specified. See 'timew help resize'.");
-
-  std::string delta;
-  for (auto& arg : cli._args)
   {
-    if (arg.hasTag ("FILTER") &&
-        arg._lextype == Lexer::Type::duration)
-      delta = arg.attribute ("raw");
+    throw std::string ("IDs must be specified. See 'timew help resize'.");
   }
+
+  Duration dur = cli.getDuration ();
 
   journal.startTransaction ();
 
-  // Load the data.
-  // Note: There is no filter.
-  Interval filter;
-  auto tracked = getTracked (database, rules, filter);
+  std::vector <Interval> intervals = getIntervalsByIds (database, rules, ids);
 
   // Apply tags to ids.
-  for (auto& id : ids)
+  for (auto& interval : intervals)
   {
-    if (id > static_cast <int> (tracked.size ()))
-      throw format ("ID '@{1}' does not correspond to any tracking.", id);
+    if (interval.is_open ())
+    {
+      throw format ("Cannot resize open interval @{1}", interval.id);
+    }
 
-    Interval i = tracked[tracked.size () - id];
-    if (i.is_open ())
-      throw format ("Cannot resize open interval @{1}", id);
+    database.deleteInterval (interval);
 
-    Duration dur (delta);
-    database.deleteInterval (tracked[tracked.size () - id]);
+    interval.end = interval.start + dur.toTime_t ();
+    validate (cli, rules, database, interval);
+    database.addInterval (interval, verbose);
 
-    i.end = i.start + dur.toTime_t ();
-    validate (cli, rules, database, i);
-    database.addInterval (i, rules.getBoolean ("verbose"));
-
-    if (rules.getBoolean ("verbose"))
-      std::cout << "Resized @" << id << " to " << dur.formatHours () << '\n';
+    if (verbose)
+    {
+      std::cout << "Resized @" << interval.id << " to " << dur.formatHours () << '\n';
+    }
   }
 
   journal.endTransaction ();

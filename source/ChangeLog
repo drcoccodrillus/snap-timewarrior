@@ -1,6 +1,41 @@
 ------ current release ---------------------------
 
-1.2.0 (2019-11-22) -
+1.3.0 (2020-04-19) -
+
+- #155    Corrupts database when no disk space available
+          (thanks to Shaun Ruffell, Tom Dörr)
+- #245    Performance Issues
+          (thanks to  Shaun Ruffell, Tom Dörr)
+- #259    Migrate to python 3
+- #268    Minimum required gcc version to build timewarrior
+          (thanks to Joerg Kastning)
+- #269    Do not load entire database for all commands
+          (thanks to Shaun Ruffell)
+- #270    Stop with id should suggest modify command
+          (thanks to Shaun Ruffell)
+- #273    Report when tests do not run
+          (thanks to Shaun Ruffell)
+- #275    Change `timew help intervals` to `timew help ranges` in help summary
+          (thanks to Shaun Ruffell)
+- #278    New hint :fortnight added
+          (thanks to quazgar)
+- #282    Database: Fix error when empty datafile is most recent / oldest
+          (Thanks to Shaun Ruffell)
+- #283    Use AtomicFile to commit files as a group
+          (Thanks to Shaun Ruffell)
+- #284    tags.data modification date updated when file is not modified
+          (thanks to Shaun Ruffell, Charlie Gorichanaz)
+- #285    Pass record id to extensions
+          (thanks to Johannes Hertenstein)
+- #290    trying to track something that would be before epoch fails silently, corrupting database
+          (thanks to Shaun Ruffell, Clément Hermann)
+- #293    filtering by tag can produce wrong ids
+          (thanks to Shaun Ruffell, Saulius Krasuckas)
+- #298    Add current version of bash-completion
+
+------ old releases ------------------------------
+
+1.2.0 (2019-11-22) 1d271508a27b9d8a5211ae5b01c7a0583ff690fd
 
 - #2      Generate a warning when a new tag is used on the command line
 - #9      Add an 'undo' command (TI-1)
@@ -97,8 +132,6 @@
 -         Refactoring of Interval and Range
 -         Refactoring of CmdChart
 -         Let command join merge tags of given intervals
-
------- old releases ------------------------------
 
 1.1.1 (2018-02-03) ef26ebd6fec8472d4b91644806f48b546bb35747
 

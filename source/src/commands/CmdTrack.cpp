@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,8 @@ int CmdTrack (
   Database& database,
   Journal& journal)
 {
+  auto boolean = rules.getBoolean ("verbose");
+
   auto filter = getFilter (cli);
 
   // If this is not a proper closed interval, then the user is trying to make
@@ -50,9 +52,9 @@ int CmdTrack (
 
   for (auto& interval : flatten (filter, getAllExclusions (rules, filter)))
   {
-    database.addInterval (interval, rules.getBoolean ("verbose"));
+    database.addInterval (interval, boolean);
 
-    if (rules.getBoolean ("verbose"))
+    if (boolean)
       std::cout << intervalSummarize (database, rules, interval);
   }
 

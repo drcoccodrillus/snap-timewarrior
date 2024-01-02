@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -55,6 +55,8 @@ int CmdConfig (
   {
     return CmdShow (rules);
   }
+
+  auto verbose = rules.getBoolean ("verbose");
 
   bool confirmation = rules.getBoolean ("confirmation");
   std::string name = words[0];
@@ -114,7 +116,7 @@ int CmdConfig (
 
   journal.endTransaction ();
 
-  if (rules.getBoolean ("verbose"))
+  if (verbose)
   {
     if (change)
     {

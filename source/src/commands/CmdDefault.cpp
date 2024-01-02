@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -32,12 +32,14 @@
 // Returns 0 if tracking is active, 1 if not.
 int CmdDefault (Rules& rules, Database& database)
 {
+  auto verbose = rules.getBoolean ("verbose");
+
   // Load the most recent interval, summarize and display.
   auto interval = getLatestInterval (database);
 
   if (interval.is_open ())
   {
-    if (rules.getBoolean ("verbose"))
+    if (verbose)
     {
       std::cout << intervalSummarize (database, rules, interval);
     }
@@ -61,7 +63,7 @@ int CmdDefault (Rules& rules, Database& database)
     return 0;
   }
 
-  if (rules.getBoolean ("verbose"))
+  if (verbose)
   {
     std::cout << "There is no active time tracking.\n";
   }

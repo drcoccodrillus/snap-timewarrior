@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,6 +24,9 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <algorithm>
+#include <deque>
+
 #include <cmake.h>
 #include <shared.h>
 #include <format.h>
@@ -32,7 +35,7 @@
 #include <timew.h>
 #include <algorithm>
 #include <iostream>
-#include "IntervalFactory.h"
+#include <IntervalFactory.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 // A filter is just another interval, containing start, end and tags.
@@ -309,13 +312,127 @@ std::vector <Range> getAllExclusions (
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-std::vector <Interval> getAllInclusions (Database& database)
+void flattenDatabase (Database& database, const Rules& rules)
+{
+  auto latest = getLatestInterval (database);
+  if (latest.is_open ())
+  {
+    auto exclusions = getAllExclusions (rules, {latest.start, Datetime ()});
+    if (! exclusions.empty ())
+    {
+      Interval modified {latest};
+
+      // Update database.
+      database.deleteInterval (latest);
+      for (auto& interval : flatten (modified, exclusions))
+      {
+        database.addInterval (interval, rules.getBoolean ("verbose"));
+      }
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// This function will return synthetic intervals
+std::vector <Interval> getIntervalsByIds (
+  Database& database,
+  const Rules& rules,
+  const std::set <int>& ids)
+{
+  std::vector <Interval> intervals;
+  std::deque <Interval> synthetic;
+
+  int current_id = 0;
+  auto id_it = ids.begin ();
+  auto id_end = ids.end ();
+
+  auto it = database.begin ();
+  auto end = database.end ();
+
+  Interval latest;
+  if (it != end )
+  {
+    latest = IntervalFactory::fromSerialization (*it);
+  }
+
+  // If the latest interval is open, check for synthetic intervals
+  if (latest.is_open ())
+  {
+    auto exclusions = getAllExclusions (rules, {latest.start, Datetime ()});
+    if (! exclusions.empty ())
+    {
+        // We're converting the latest interval into synthetic intervals so we need to skip it
+        ++it;
+
+        for (auto& interval : flatten (latest, exclusions))
+        {
+          ++current_id;
+          interval.synthetic = true;
+          interval.id = current_id;
+          synthetic.push_front (interval);
+        }
+    }
+  }
+
+  intervals.reserve (ids.size ());
+
+  // First look for the ids in our set of synthetic intervals
+  for (auto& interval : synthetic)
+  {
+    if (id_it == id_end)
+    {
+      break;
+    }
+
+    if (interval.id == *id_it)
+    {
+      intervals.push_back (interval);
+      ++id_it;
+    }
+  }
+
+  current_id = synthetic.size ();
+
+  // We'll find remaining intervals from the database itself
+  for ( ; it != end; ++it)
+  {
+    ++current_id;
+
+    if (id_it == id_end)
+    {
+      break;
+    }
+
+    if (current_id == *id_it)
+    {
+      Interval interval = IntervalFactory::fromSerialization (*it);
+      interval.id = current_id;
+      intervals.push_back (interval);
+      ++id_it;
+    }
+  }
+
+  // We did not find all the ids we were looking for.
+  if (id_it != id_end)
+  {
+    throw format("ID '@{1}' does not correspond to any tracking.", *id_it);
+  }
+
+  return intervals;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+std::vector <Interval> subset (
+  const Interval& filter,
+  const std::deque <Interval>& intervals)
 {
   std::vector <Interval> all;
-  for (auto& line : database.allLines ())
+  for (auto& interval : intervals)
   {
-    Interval i = IntervalFactory::fromSerialization (line);
-    all.push_back (i);
+    if (matchesFilter (interval, filter))
+    {
+      all.push_back (interval);
+    }
   }
 
   return all;
@@ -449,8 +566,7 @@ std::vector <Range> addRanges (
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Subtract a set of Ranges from another set of Ranges, all within a defined
-// range.
+// Subtract a set of Ranges from another set of Ranges, all within a defined range.
 std::vector <Range> subtractRanges (
   const std::vector <Range>& ranges,
   const std::vector <Range>& subtractions)
@@ -470,28 +586,12 @@ std::vector <Range> subtractRanges (
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// From a set of intervals, find the earliest start and the latest end, and
-// return these in a Range.
-Range outerRange (const std::vector <Interval>& intervals)
+// An interval matches a filter range if the start/end overlaps
+bool matchesRange (const Interval& interval, const Range& filter)
 {
-  Range outer;
-  for (auto& interval : intervals)
-  {
-    if (interval.start < outer.start || outer.start.toEpoch () == 0)
-      outer.start = interval.start;
-
-    // Deliberately mixed start/end.
-    if (interval.start > outer.end)
-      outer.end = interval.start;
-
-    if (interval.end > outer.end)
-      outer.end = interval.end;
-
-    if (! interval.is_ended ())
-      outer.end = Datetime ();
-  }
-
-  return outer;
+  return ((filter.start.toEpoch () == 0 &&
+           filter.end.toEpoch () == 0
+          ) || interval.intersects (filter));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -533,14 +633,15 @@ Range outerRange (const std::vector <Interval>& intervals)
 //
 bool matchesFilter (const Interval& interval, const Interval& filter)
 {
-  if ((filter.start.toEpoch () == 0 &&
-       filter.end.toEpoch () == 0
-     ) || interval.intersects (filter))
+  if (matchesRange (interval, filter))
   {
     for (auto& tag : filter.tags ())
+    {
       if (! interval.hasTag (tag))
+      {
         return false;
-
+      }
+    }
     return true;
   }
 
@@ -573,8 +674,6 @@ std::vector <Interval> getTracked (
   const Rules& rules,
   Interval& filter)
 {
-  auto inclusions = getAllInclusions (database);
-
   // Exclusions are only usable within a range, so if no filter range exists,
   // determine the infinite range starting at the first inclusion, i.e.:
   //
@@ -583,9 +682,12 @@ std::vector <Interval> getTracked (
   // Avoid assigning a zero-width range - leave it unstarted instead.
   if (! filter.is_started ())
   {
-    auto outer = outerRange (inclusions);
-    if (outer.total ())
-      filter.setRange (outer);
+    auto begin = database.rbegin ();
+    auto end = database.rend ();
+    if (begin != end)
+    {
+      filter.start = IntervalFactory::fromSerialization (*begin).start;
+    }
 
     // Use an infinite range instead of the last end date; this prevents
     // issues when there is an empty range [q, q) at the end of a filter
@@ -593,11 +695,32 @@ std::vector <Interval> getTracked (
     filter.end = 0;
   }
 
-  std::vector <Interval> intervals = inclusions;
+  int id_skip = 0;
+  std::deque <Interval> intervals;
+
+  for (auto& line : database)
+  {
+    Interval interval = IntervalFactory::fromSerialization(line);
+
+    // Since we are moving backwards, and the intervals are in sorted order,
+    // if the filter is after the interval, we know there will be no more matches
+    if (matchesRange (interval, filter))
+    {
+      intervals.push_front (std::move (interval));
+    }
+    else if (interval.start.toEpoch () >= filter.start.toEpoch ())
+    {
+      ++id_skip;
+    }
+    else
+    {
+      break;
+    }
+  }
 
   if (! intervals.empty ())
   {
-    auto latest = inclusions.back ();
+    auto latest = intervals.back ();
 
     if (latest.is_open ())
     {
@@ -623,12 +746,35 @@ std::vector <Interval> getTracked (
     }
   }
 
-  // Assign an ID to each interval.
+  // Assign an ID to each interval before we prune ones that do not have matching tags
   for (unsigned int i = 0; i < intervals.size (); ++i)
-    intervals[i].id = intervals.size () - i;
+  {
+    intervals[i].id = intervals.size () - i + id_skip;
+  }
+
+  // Now prune the intervals without matching tags
+  if (filter.tags ().size () > 0)
+  {
+    auto cmp = [&filter] (const Interval& interval)
+               {
+                 for (const auto& tag : filter.tags ())
+                 {
+                   if (! interval.hasTag (tag))
+                   {
+                     return true;
+                   }
+                 }
+                 return false;
+               };
+
+    intervals.erase (std::remove_if (intervals.begin (), intervals.end (), cmp),
+                     intervals.end ());
+  }
 
   debug (format ("Loaded {1} tracked intervals", intervals.size ()));
-  return subset (filter, intervals);
+
+  return std::vector <Interval> (std::make_move_iterator (intervals.begin ()),
+                                 std::make_move_iterator (intervals.end ()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -638,9 +784,24 @@ std::vector <Range> getUntracked (
   const Rules& rules,
   Interval& filter)
 {
+  bool found_match = false;
   std::vector <Range> inclusion_ranges;
-  for (auto& i : subset (filter, getAllInclusions (database)))
-    inclusion_ranges.push_back (i);
+  for (auto& line : database)
+  {
+    Interval i = IntervalFactory::fromSerialization (line);
+    if (matchesFilter (i, filter))
+    {
+      inclusion_ranges.push_back (i);
+      found_match = true;
+    }
+    else if (found_match)
+    {
+      // If we already had a match, and now we do not, since the database is in
+      // order from most recent to oldest inclusion, we can be sure that there
+      // will not be any further matches.
+      break;
+    }
+  }
 
   auto available = subtractRanges ({filter}, getAllExclusions (rules, filter));
   auto untracked = subtractRanges (available, inclusion_ranges);
@@ -652,20 +813,12 @@ std::vector <Range> getUntracked (
 Interval getLatestInterval (Database& database)
 {
   Interval i;
-  for (auto& line : database.allLines ())
+  auto latestEntry = database.getLatestEntry ();
+  if (! latestEntry.empty ())
   {
-    // inc YYYYMMDDTHHMMSSZ - YYYYMMDDTHHMMSSZ # ...
-    //                     ^ 20
-    if (line.find (" - ") != 20)
-    {
-      i = IntervalFactory::fromSerialization (line);
-      return i;
-    }
+    i = IntervalFactory::fromSerialization (latestEntry);
+    i.id = 1;
   }
-
-  auto lastLine = database.lastLine ();
-  if (! lastLine.empty ())
-    i = IntervalFactory::fromSerialization (lastLine);
 
   return i;
 }

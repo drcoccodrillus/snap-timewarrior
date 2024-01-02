@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016, 2018 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016, 2018 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,7 @@
 #include <Color.h>
 #include <timew.h>
 #include <iostream>
+#include <sstream>
 
 static bool debugMode = false;
 static std::string debugIndicator = ">>";
@@ -54,7 +55,14 @@ void setDebugColor (const Color& color)
 void debug (const std::string& msg)
 {
   if (debugMode)
-    std::cout << debugColor.colorize (debugIndicator + " " + msg) << "\n";
+  {
+    std::stringstream sstr (msg);
+    std::string line;
+    while (std::getline (sstr, line, '\n'))
+    {
+      std::cout << debugColor.colorize (debugIndicator + " " + line) << "\n";
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

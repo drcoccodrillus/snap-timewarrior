@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016, 2018 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016, 2018 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -41,7 +41,7 @@ public:
   std::string name () const;
 
   std::string lastLine ();
-  std::vector <std::string> allLines ();
+  const std::vector <std::string>& allLines ();
 
   void addInterval (const Interval&);
   void deleteInterval (const Interval&);
@@ -53,7 +53,7 @@ private:
   void load_lines ();
 
 private:
-  File                      _file         {};
+  Path                      _file         {};
   bool                      _dirty        {false};
   std::vector <std::string> _lines        {};
   bool                      _lines_loaded {false};

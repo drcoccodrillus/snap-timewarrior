@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -30,6 +30,7 @@
 #include <format.h>
 #include <Datetime.h>
 #include <Duration.h>
+#include <IntervalFactory.h>
 #include <sstream>
 #include <iomanip>
 #include <iostream>
@@ -85,13 +86,19 @@ std::string intervalSummarize (
     // in the most recent set of intervals for the same tags. This is the
     // acceptable definition of "the current task".
     time_t total_recorded = 0;
-    auto inclusions = getAllInclusions (database);
-    std::vector <Interval>::reverse_iterator i;
-    for (i = inclusions.rbegin (); i != inclusions.rend (); i++)
-      if (interval.tags () == i->tags ())
-        total_recorded += i->total ();
+
+    for (auto& line : database)
+    {
+      Interval current = IntervalFactory::fromSerialization (line);
+      if (interval.tags () == current.tags ())
+      {
+        total_recorded += current.total ();
+      }
       else
+      {
         break;
+      }
+    }
 
     Duration total (total_recorded);
 
@@ -100,7 +107,9 @@ std::string intervalSummarize (
     for (auto& tag : interval.tags ())
     {
       if (! tags.empty ())
+      {
         tags += " ";
+      }
 
       tags += tagColor (rules, tag).colorize (quoteIfNeeded (tag));
     }
@@ -138,6 +147,7 @@ bool expandIntervalHint (
     {":yesterday",   {"yesterday", "today"}},
     {":day",         {"today",     "eod"}},
     {":week",        {"sow",       "eow"}},
+    {":fortnight",   {"sopw",      "eow"}},
     {":month",       {"som",       "eom"}},
     {":quarter",     {"soq",       "eoq"}},
     {":year",        {"soy",       "eoy"}},
@@ -441,7 +451,8 @@ std::vector <Interval> getOverlaps (
   const Rules& rules,
   const Interval& interval)
 {
-  Interval range_filter;
+  Interval range_filter {interval.start, interval.end};
+
   auto tracked = getTracked (database, rules, range_filter);
 
   std::vector <Interval> overlaps;

@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,10 +35,13 @@ class Interval : public Range
 {
 public:
   Interval () = default;
-  bool empty () const;
+  Interval (const Datetime& start, const Datetime& end) : Range (start, end) {}
+  bool operator== (const Interval&) const;
+  bool operator!= (const Interval&) const;
 
+  bool empty () const;
   bool hasTag (const std::string&) const;
-  std::set <std::string> tags () const;
+  const std::set <std::string>& tags () const;
   void tag (const std::string&);
   void untag (const std::string&);
 

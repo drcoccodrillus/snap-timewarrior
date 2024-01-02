@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -39,25 +39,23 @@ int CmdSplit (
   Database& database,
   Journal& journal)
 {
+  const bool verbose = rules.getBoolean ("verbose");
+
   std::set <int> ids = cli.getIds ();
 
   if (ids.empty ())
+  {
     throw std::string ("IDs must be specified. See 'timew help split'.");
-
-  // Load the data.
-  // Note: There is no filter.
-  Interval filter;
-  auto tracked = getTracked (database, rules, filter);
+  }
 
   journal.startTransaction ();
 
-  // Apply tags to ids.
-  for (auto& id : ids)
-  {
-    if (id > static_cast <int> (tracked.size ()))
-      throw format ("ID '@{1}' does not correspond to any tracking.", id);
+  std::vector <Interval> intervals = getIntervalsByIds (database, rules, ids);
 
-    Interval first = tracked[tracked.size () - id];
+  // Apply tags to ids.
+  for (const auto& interval : intervals)
+  {
+    Interval first = interval;
     Interval second = first;
 
     if (first.is_open ())
@@ -75,16 +73,18 @@ int CmdSplit (
       second.start = midpoint;
     }
 
-    database.deleteInterval (tracked[tracked.size () - id]);
+    database.deleteInterval (interval);
 
     validate (cli, rules, database, first);
-    database.addInterval (first, rules.getBoolean ("verbose"));
+    database.addInterval (first, verbose);
 
     validate (cli, rules, database, second);
-    database.addInterval (second, rules.getBoolean ("verbose"));
+    database.addInterval (second, verbose);
 
-    if (rules.getBoolean ("verbose"))
-      std::cout << "Split @" << id << '\n';
+    if (verbose)
+    {
+      std::cout << "Split @" << interval.id << '\n';
+    }
   }
 
   journal.endTransaction ();

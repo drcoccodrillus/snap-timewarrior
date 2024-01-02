@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2018 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2018 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,7 @@
 #ifndef INCLUDED_TAGINFODATABASE
 #define INCLUDED_TAGINFODATABASE
 
+#include <set>
 #include <string>
 #include <map>
 #include <TagInfo.h>
@@ -39,10 +40,16 @@ public:
 
   void add (const std::string&, const TagInfo&);
 
+  std::set <std::string> tags () const;
+
   std::string toJson ();
+
+  bool is_modified () const;
+  void clear_modified ();
 
 private:
   std::map <std::string, TagInfo> _tagInformation {};
+  bool _is_modified {false};
 };
 
 #endif

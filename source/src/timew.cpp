@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2015 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -25,6 +25,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <cmake.h>
+#include <AtomicFile.h>
 #include <CLI.h>
 #include <Database.h>
 #include <Rules.h>
@@ -96,6 +97,8 @@ int main (int argc, const char** argv)
 
     // Save any outstanding changes.
     database.commit ();
+
+    AtomicFile::finalize_all ();
   }
 
   catch (const std::string& error)
