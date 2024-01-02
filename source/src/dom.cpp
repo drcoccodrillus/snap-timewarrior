@@ -132,7 +132,7 @@ bool domGet (
         std::set <std::string> tags;
         for (const auto& interval : tracked)
         {
-          for (const auto &tag : interval.tags ())
+          for (const auto& tag : interval.tags ())
           {
             tags.insert (tag);
           }
@@ -142,7 +142,7 @@ bool domGet (
 
         s << joinQuotedIfNeeded ( " ", tags );
 
-        value = s.str();
+        value = s.str ();
         return true;
       }
 
@@ -154,7 +154,7 @@ bool domGet (
         {
           s << format ( "@{1} ", interval.id );
         }
-        value = s.str();
+        value = s.str ();
         return true;
       }
 

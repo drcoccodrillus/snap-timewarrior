@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2019, 2021 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, 2021 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -55,7 +55,7 @@ std::string quoteIfNeeded (const std::string& input)
 {
   auto quote = input.find ('"');
   auto space = input.find (' ');
-  auto op    = input.find_first_of ("+-/()<^!=~_%");
+  auto op    = input.find_first_of ("+/()<^!=~_%");
 
   if (quote == std::string::npos &&
       space == std::string::npos &&
@@ -78,8 +78,7 @@ std::string quoteIfNeeded (const std::string& input)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-
-std::string join(const std::string& glue, const std::set <std::string>& array)
+std::string join (const std::string& glue, const std::set <std::string>& array)
 {
   if (array.empty ())
   {
@@ -99,45 +98,28 @@ std::string join(const std::string& glue, const std::set <std::string>& array)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-
-std::string joinQuotedIfNeeded(const std::string& glue, const std::set <std::string>& array)
+template <typename Container>
+std::string joinQuotedIfNeeded (const std::string& glue, const Container& container)
 {
-  if (array.empty ())
+  if (container.empty ())
   {
     return "";
   }
 
-  auto iterator = array.begin ();
+  auto iterator = container.begin ();
 
-  std::string value = *iterator++;
+  std::string value = quoteIfNeeded (*iterator++);
 
-  while (iterator != array.end ())
+  while (iterator != container.end ())
   {
-    value += glue + quoteIfNeeded(*iterator++);
+    value += glue + quoteIfNeeded (*iterator++);
   }
 
   return value;
 }
 
-////////////////////////////////////////////////////////////////////////////////
+template std::string joinQuotedIfNeeded(const std::string&, const std::set <std::string>&);
 
-std::string joinQuotedIfNeeded(const std::string& glue, const std::vector <std::string>& array)
-{
-  if (array.empty ())
-  {
-    return "";
-  }
-
-  auto iterator = array.begin ();
-
-  std::string value = *iterator++;
-
-  while (iterator != array.end ())
-  {
-    value += glue + quoteIfNeeded(*iterator++);
-  }
-
-  return value;
-}
+template std::string joinQuotedIfNeeded(const std::string&, const std::vector <std::string>&);
 
 ////////////////////////////////////////////////////////////////////////////////

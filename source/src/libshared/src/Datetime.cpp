@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2006 - 2021, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2021, 2023, Gothenburg Bit Factory.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,13 +27,12 @@
 #include <Datetime.h>
 #include <algorithm>
 #include <cassert>
-#include <cmake.h>
+#include <cstdlib>
 #include <format.h>
 #include <iomanip>
 #include <iostream>
 #include <shared.h>
 #include <sstream>
-#include <cstdlib>
 #include <unicode.h>
 #include <utf8.h>
 

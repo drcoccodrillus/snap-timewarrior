@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -87,7 +87,7 @@ int CmdConfig (
 
     change = Rules::setConfigVariable (journal, rules, name, value, confirmation);
 
-    if (!change)
+    if (! change)
     {
       rc = 1;
     }
@@ -107,7 +107,7 @@ int CmdConfig (
       found = true;
     }
 
-    if (!found)
+    if (! found)
     {
       throw format ("No entry named '{1}' found.", name);
     }

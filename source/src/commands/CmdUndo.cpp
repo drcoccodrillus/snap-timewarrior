@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016, 2018 - 2022, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016, 2018 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,7 +37,7 @@ static void undoIntervalAction(UndoAction& action, Database& database)
   database.modifyInterval (after, before, false);
 }
 
-static void undoConfigAction (UndoAction& action, Rules &rules, Journal& journal)
+static void undoConfigAction (UndoAction& action, Rules& rules, Journal& journal)
 {
   const std::string& before = action.getBefore ();
 

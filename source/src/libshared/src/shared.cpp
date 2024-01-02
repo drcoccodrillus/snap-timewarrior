@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2006 - 2021, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2017, 2019 - 2021, 2023, Gothenburg Bit Factory.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -32,7 +32,6 @@
 #include <csignal>
 #include <cstring>
 #include <format.h>
-#include <iomanip>
 #include <iostream>
 #include <shared.h>
 #include <sstream>
@@ -488,7 +487,7 @@ bool compare (
 {
   // Use strcasecmp if required.
   if (! sensitive)
-    return strcasecmp (left.c_str (), right.c_str ()) == 0 ? true : false;
+    return strcasecmp (left.c_str (), right.c_str ()) == 0;
 
   // Otherwise, just use std::string::operator==.
   return left == right;
@@ -676,7 +675,7 @@ bool confirm (const std::string& question)
   while (! std::cin.eof () && matches.size () != 1);
 
   signal (SIGINT, SIG_DFL);
-  return matches.size () == 1 && matches[0] == "yes" ? true : false;
+  return matches.size () == 1 && matches[0] == "yes";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -730,7 +729,7 @@ int execute (
     for (unsigned int i = 0; i < args.size (); ++i)
       argv[i+1] = (char*) args[i].c_str ();
 
-    argv[args.size () + 1] = NULL;
+    argv[args.size () + 1] = nullptr;
     int rc = execvp (executable.c_str (), argv);
     std::cerr << "Failed to execute '" << executable << "' Error: " << strerror (errno) << '\n';
     _exit (rc);
@@ -766,7 +765,7 @@ int execute (
     tv.tv_sec = 5;
     tv.tv_usec = 0;
 
-    select_retval = select (std::max (pout[0], pin[1]) + 1, &rfds, &wfds, NULL, &tv);
+    select_retval = select (std::max (pout[0], pin[1]) + 1, &rfds, &wfds, nullptr, &tv);
 
     if (select_retval == -1)
       throw std::string (std::strerror (errno));

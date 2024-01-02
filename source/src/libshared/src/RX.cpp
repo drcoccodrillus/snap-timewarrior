@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2006 - 2021, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2017, 2019 - 2021, 2023, Gothenburg Bit Factory.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -25,9 +25,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <RX.h>
-#include <cmake.h>
-#include <cstdlib>
 #include <cstring>
+#include <string>
 
 ////////////////////////////////////////////////////////////////////////////////
 RX::RX () = default;
@@ -99,7 +98,7 @@ bool RX::match (const std::string& in)
   if (! _compiled)
     compile ();
 
-  return regexec (&_regex, in.c_str (), 0, nullptr, 0) == 0 ? true : false;
+  return regexec (&_regex, in.c_str (), 0, nullptr, 0) == 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -124,7 +123,7 @@ bool RX::match (
       ++offset;
   }
 
-  return !matches.empty () ? true : false;
+  return !matches.empty ();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -151,7 +150,7 @@ bool RX::match (
       ++offset;
   }
 
-  return !start.empty () ? true : false;
+  return !start.empty ();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

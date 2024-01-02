@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2006 - 2021, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2023, Gothenburg Bit Factory.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -30,19 +30,18 @@
 #define _GNU_SOURCE
 #endif
 #include <FS.h>
-#include <cstdio>
-#include <dirent.h>
 #include <cerrno>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <dirent.h>
 #include <fcntl.h>
 #include <format.h>
 #include <fstream>
 #include <glob.h>
 #include <pwd.h>
-#include <shared.h>
-#include <cstdlib>
-#include <cstring>
+#include <string>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 #if defined SOLARIS || defined NETBSD || defined FREEBSD || defined DRAGONFLY || !defined(__GLIBC__)
@@ -159,7 +158,7 @@ std::string Path::realpath () const
   if (_data.empty ())
     return "";
 
-  char *result_c = ::realpath (_data.c_str(), NULL);
+  char *result_c = ::realpath (_data.c_str(), nullptr);
   if (result_c == nullptr)
     return "";
 
@@ -171,7 +170,7 @@ std::string Path::realpath () const
 ////////////////////////////////////////////////////////////////////////////////
 bool Path::exists () const
 {
-  return access (_data.c_str (), F_OK) ? false : true;
+  return access (_data.c_str (), F_OK) == 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -223,7 +222,7 @@ bool Path::readable () const
   if (status == -1 && errno != EACCES)
     throw format ("access error {1}: {2}", errno, strerror (errno));
 
-  return status ? false : true;
+  return status == 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -238,7 +237,7 @@ bool Path::writable () const
   if (status == -1 && errno != EACCES)
     throw format ("access error {1}: {2}", errno, strerror (errno));
 
-  return status ? false : true;
+  return status == 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -253,7 +252,7 @@ bool Path::executable () const
   if (status == -1 && errno != EACCES)
     throw format ("access error {1}: {2}", errno, strerror (errno));
 
-  return status ? false : true;
+  return status == 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -362,7 +361,7 @@ std::vector <std::string> Path::glob (const std::string& pattern)
   if (!::glob (pattern.c_str (), GLOB_ERR | GLOB_BRACE | GLOB_TILDE, nullptr, &g))
 #endif
     for (int i = 0; i < (int) g.gl_pathc; ++i)
-      results.push_back (g.gl_pathv[i]);
+      results.emplace_back (g.gl_pathv[i]);
 
   globfree (&g);
   return results;
@@ -443,7 +442,7 @@ bool File::create (int mode /* = 0640 */)
 ////////////////////////////////////////////////////////////////////////////////
 bool File::remove () const
 {
-  return unlink (_data.c_str ()) == 0 ? true : false;
+  return unlink (_data.c_str ()) == 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -870,7 +869,7 @@ bool File::write (
 ////////////////////////////////////////////////////////////////////////////////
 bool File::remove (const std::string& name)
 {
-  return unlink (expand (name).c_str ()) == 0 ? true : false;
+  return unlink (expand (name).c_str ()) == 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -997,7 +996,7 @@ bool Directory::remove_directory (const std::string& dir) const
     closedir (dp);
   }
 
-  return rmdir (dir.c_str ()) ? false : true;
+  return rmdir (dir.c_str ()) == 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1057,7 +1056,7 @@ bool Directory::up ()
 ////////////////////////////////////////////////////////////////////////////////
 bool Directory::cd () const
 {
-  return chdir (_data.c_str ()) == 0 ? true : false;
+  return chdir (_data.c_str ()) == 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

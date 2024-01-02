@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2021, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2017, 2019 - 2021, 2023, Gothenburg Bit Factory.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,6 @@
 #include <Pig.h>
 #include <algorithm>
 #include <cinttypes>
-#include <cmake.h>
 #include <cstdlib>
 #include <shared.h>
 #include <sstream>
@@ -241,7 +240,7 @@ bool Pig::getDigit2 (int& result)
   {
     if (unicodeLatinDigit ((*_text)[_cursor + 1]))
     {
-      result = strtoimax (_text->substr (_cursor, 2).c_str (), NULL, 10);
+      result = strtoimax (_text->substr (_cursor, 2).c_str (), nullptr, 10);
       _cursor += 2;
       return true;
     }
@@ -259,7 +258,7 @@ bool Pig::getDigit3 (int& result)
     {
       if (unicodeLatinDigit ((*_text)[_cursor + 2]))
       {
-        result = strtoimax (_text->substr (_cursor, 3).c_str (), NULL, 10);
+        result = strtoimax (_text->substr (_cursor, 3).c_str (), nullptr, 10);
         _cursor += 3;
         return true;
       }
@@ -280,7 +279,7 @@ bool Pig::getDigit4 (int& result)
       {
         if (unicodeLatinDigit ((*_text)[_cursor + 3]))
         {
-          result = strtoimax (_text->substr (_cursor, 4).c_str (), NULL, 10);
+          result = strtoimax (_text->substr (_cursor, 4).c_str (), nullptr, 10);
           _cursor += 4;
           return true;
         }
@@ -324,7 +323,7 @@ bool Pig::getDigits (long long& result)
 
   if (_cursor > save)
   {
-    result = strtoimax (_text->substr (save, _cursor - save).c_str (), NULL, 10);
+    result = strtoimax (_text->substr (save, _cursor - save).c_str (), nullptr, 10);
     return true;
   }
 
@@ -446,7 +445,7 @@ bool Pig::getNumber (double& result)
   std::string s;
   if (getNumber (s))
   {
-    result = std::strtod (s.c_str (), NULL);
+    result = std::strtod (s.c_str (), nullptr);
     return true;
   }
 
@@ -496,7 +495,7 @@ bool Pig::getDecimal (double& result)
   std::string s;
   if (getDecimal (s))
   {
-    result = std::strtod (s.c_str (), NULL);
+    result = std::strtod (s.c_str (), nullptr);
     return true;
   }
 
@@ -541,7 +540,7 @@ bool Pig::getQuoted (int quote, std::string& result)
       while (j >= start && (*_text)[j] == '\\')
       {
         // Toggle flag for each further backslash encountered.
-        is_escaped_quote = is_escaped_quote ? false : true;
+        is_escaped_quote = !is_escaped_quote;
         --j;
       }
 

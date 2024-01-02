@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2006 - 2021, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2017, 2019 - 2021, 2023, Gothenburg Bit Factory.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -25,12 +25,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <Color.h>
-#include <cmake.h>
 #include <cstdlib>
 #include <format.h>
 #include <shared.h>
 #include <sstream>
-#include <vector>
 
 // uint to string lookup table for Color::_colorize()
 // _colorize() gets called _a lot_, having this lookup table is a cheap
@@ -618,7 +616,7 @@ std::string Color::end () const
 ////////////////////////////////////////////////////////////////////////////////
 bool Color::nontrivial () const
 {
-  return _value != 0 ? true : false;
+  return _value != 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

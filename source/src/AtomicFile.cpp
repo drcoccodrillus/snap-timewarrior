@@ -92,9 +92,9 @@ AtomicFile::impl::impl (const Path& path)
   std::stringstream str; 
 
   std::string real_path;
-  if (path.is_link())
+  if (path.is_link ())
   {
-    real_path = path.realpath();
+    real_path = path.realpath ();
   }
   else
   {
@@ -102,7 +102,7 @@ AtomicFile::impl::impl (const Path& path)
   }
 
   str << real_path << '.' << s_pid << '-' << ++s_count << ".tmp";
-  temp_file = File (str.str());
+  temp_file = File (str.str ());
   real_file = File (real_path);
 }
 
@@ -141,7 +141,7 @@ bool AtomicFile::impl::exists () const
 ////////////////////////////////////////////////////////////////////////////////
 bool AtomicFile::impl::open ()
 {
-  assert (!temp_file._data.empty () && !real_file._data.empty ());
+  assert (! temp_file._data.empty () && ! real_file._data.empty ());
   return real_file.open ();
 }
 
@@ -231,7 +231,7 @@ void AtomicFile::impl::append (const std::string& content)
 {
   try
   {
-    if (!is_temp_active)
+    if (! is_temp_active)
     {
       is_temp_active = true;
 
@@ -435,7 +435,7 @@ void AtomicFile::read (const Path& path, std::vector <std::string>& lines)
 // finalize_all - Close / Flush all temporary files and rename to final.
 void AtomicFile::finalize_all ()
 {
-  if (!impl::allow_atomics)
+  if (! impl::allow_atomics)
   {
     throw std::string {"Unable to update database."};
   }

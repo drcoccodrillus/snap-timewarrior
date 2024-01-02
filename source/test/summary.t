@@ -174,6 +174,24 @@ W10 2017-03-09 Thu @4 Tag1 8:43:08 9:38:15 0:55:07 0:55:07
                                                    0:55:07
 """, out)
 
+    def test_with_id_filter(self):
+        """Summary should print data filtered by id"""
+        self.t("track Tag1 2017-03-09T08:43:08 - 2017-03-09T09:38:15")
+        self.t("track Tag2 2017-03-09T11:38:39 - 2017-03-09T11:45:35")
+        self.t("track Tag2 Tag3 2017-03-09T11:46:21 - 2017-03-09T12:00:17")
+        self.t("track Tag2 Tag4 2017-03-09T12:01:49 - 2017-03-09T12:28:46")
+
+        code, out, err = self.t("summary @2 @4 :ids")
+
+        self.assertIn("""
+Wk  Date       Day ID Tags          Start      End    Time   Total
+--- ---------- --- -- ---------- -------- -------- ------- -------
+W10 2017-03-09 Thu @4 Tag1        8:43:08  9:38:15 0:55:07
+                   @2 Tag2, Tag3 11:46:21 12:00:17 0:13:56 1:09:03
+
+                                                           1:09:03
+""", out)
+
     def test_non_contiguous_with_tag_filter(self):
         """Summary should print data filtered by tag when tags are non-contiguous"""
         self.t("track Tag1 2017-03-09T08:43:08 - 2017-03-09T09:38:15")
@@ -352,15 +370,14 @@ W\d{1,2} \d{4}-\d{2}-\d{2} .{3}       ?0:00:00 0:00:00 0:00:00 0:00:00
 [ ]+0:00:00
 """)
 
-    def test_multibyte_char_annotation_truncated(self):
-        """Summary correctly truncates long annotation containing multibyte characters"""
-        # Using a blue heart emoji as an example of a multibyte (4 bytes in
-        # this case) character.
-        long_enough_annotation = "a" + "\N{blue heart}" * 20
-        self.t("track FOO sod - sod")
+    def test_multibyte_char_annotation_wrapped(self):
+        """Summary correctly wraps long annotation containing multibyte characters"""
+        # Using a blue heart emoji as an example of a multibyte (4 bytes in this case) character.
+        long_enough_annotation = "'" + ("a" + "💙" * 5 + " ") * 5 + "'"
+        self.t("track FOO sod - sond")
         self.t("anno @1 " + long_enough_annotation)
         code, out, err = self.t("summary :anno")
-        self.assertIn("a" + "\N{blue heart}" * 11 + "...", out)
+        self.assertRegex(out, r"(a💙{5} )\s{0,11}0:00:00")
 
 
 if __name__ == "__main__":

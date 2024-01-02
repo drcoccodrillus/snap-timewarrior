@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2006 - 2021, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2021, 2023, Gothenburg Bit Factory.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -28,16 +28,11 @@
 #include <cctype>
 #include <cmake.h>
 #include <cmath>
-#include <csignal>
+#include <cstring>
 #include <format.h>
 #include <iomanip>
-#include <iostream>
 #include <sstream>
-#include <cstring>
 #include <strings.h>
-#include <sys/select.h>
-#include <ctime>
-#include <unistd.h>
 #include <utf8.h>
 
 ////////////////////////////////////////////////////////////////////////////////

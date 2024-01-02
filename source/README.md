@@ -23,7 +23,7 @@ It is a portable, well-supported and very active Open Source project.
 Please visit [timewarrior.net](https://timewarrior.net/docs/) for extensive documentation, downloads, news and more.
 
 ## Installing
-[![Arch](https://img.shields.io/archlinux/v/community/x86_64/timew)](https://archlinux.org/packages/community/x86_64/timew/)
+[![Arch Linux](https://img.shields.io/archlinux/v/extra/x86_64/timew)](https://archlinux.org/packages/extra/x86_64/timew/)
 [![Debian](https://img.shields.io/debian/v/timewarrior/testing)](https://packages.debian.org/search?keywords=timewarrior&searchon=names&suite=all&section=all)
 [![Fedora](https://img.shields.io/fedora/v/timew)](https://bodhi.fedoraproject.org/updates/?packages=timew)
 [![Homebrew](https://img.shields.io/homebrew/v/timewarrior)](https://formulae.brew.sh/formula/timewarrior#default)
@@ -47,26 +47,26 @@ Building Timewarrior yourself requires
 There are two ways to retrieve the Timewarrior sources:
 
 * Clone the repository from GitHub,
-
-    git clone --recurse-submodules https://github.com/GothenburgBitFactory/timewarrior
-    cd timewarrior
-
+  ```
+  git clone --recurse-submodules https://github.com/GothenburgBitFactory/timewarrior
+  cd timewarrior
+  ```
 * Or download the tarball with curl,
-
-    curl -O https://github.com/GothenburgBitFactory/timewarrior/releases/download/v1.6.0/timew-1.6.0.tar.gz
-
+  ```
+  curl -O https://github.com/GothenburgBitFactory/timewarrior/releases/download/v1.7.0/timew-1.7.0.tar.gz
+  ```
   and expand the tarball
-
-    tar xzf timew-1.6.0.tar.gz
-    cd timew-1.6.0
-
+  ```
+  tar xzf timew-1.7.0.tar.gz
+  cd timew-1.7.0
+  ```
 Build Timewarrior, optionally run the test suite, and install it.
-
-    cmake -DCMAKE_BUILD_TYPE=release
-    make
-    [make test]
-    sudo make install
-
+```
+cmake -DCMAKE_BUILD_TYPE=release .
+make
+[make test]
+sudo make install
+```
 This copies files into the right place (default under `/usr/local`), and installs man pages.
 
 Add the optional parameter `-DCMAKE_INSTALL_PREFIX=/path/to/your/install/location` to the `cmake` command if you want to install Timewarrior at a location other than `/usr/local`.

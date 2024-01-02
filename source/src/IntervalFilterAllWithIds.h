@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2021, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2021 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -42,8 +42,8 @@ public:
 
 private:
   const std::set <int> _ids {};
-  std::set<int>::iterator _id_it;
-  std::set<int>::iterator _id_end;
+  std::set <int>::iterator _id_it;
+  std::set <int>::iterator _id_end;
 };
 
 #endif //INCLUDE_INTERVALFILTERALLWITHIDS

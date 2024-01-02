@@ -1,4 +1,4 @@
-// ///////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 //
 //  Copyright , Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
@@ -22,7 +22,7 @@
 //
 //  https://www.opensource.org/licenses/mit-license.php
 //
-// ///////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 //
 
 #include <commands.h>
@@ -60,7 +60,7 @@ int CmdAnnotations (
     {
       throw std::string ("There is no active time tracking.");
     }
-    else if (!intervals.at (0).is_open ())
+    else if (! intervals.at (0).is_open ())
     {
       throw std::string ("At least one ID must be specified. See 'timew help annotations'.");
     }
@@ -84,7 +84,7 @@ int CmdAnnotations (
             break;
           }
         }
-        if (!found)
+        if (! found)
         {
           throw format ("ID '@{1}' does not correspond to any tracking.", id);
         }

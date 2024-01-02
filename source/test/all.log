@@ -1,10 +1,10 @@
-# 1694967818.796923 ==> 2023-09-17 18:23:38
+# 1703370636.261555 ==> 2023-12-23 23:30:36
 # DatetimeParser.t
 1..361
-# local midnight today 1694901600
+# local midnight today 1703286000
 # local midnight 2013-12-06 1386284400
 # local midnight 2013-12-01 1385852400
-# utc midnight today 1694908800
+# utc midnight today 1703289600
 # utc midnight 2013-12-06 1386288000
 # utc midnight 2013-12-01 1385856000
 # ld 86400
@@ -371,33 +371,11 @@ ok 359 - DatetimeParser::parse_range negative 'jan:' --> fail
 ok 360 - DatetimeParser::parse_range ("mon") --> [start,end)
 ok 361 - DatetimeParser::parse_range negative 'mon:' --> fail
 # 361 passed, 0 failed, 0 skipped. 100% passed.
-# test_totals.t
-1..17
-ok 1 - test_totals.t: Test format_seconds with 1 hour
-ok 2 - test_totals.t: Test format_seconds with 1 minute
-ok 3 - test_totals.t: Test format_seconds with less than 1 minute
-ok 4 - test_totals.t: Test format_seconds with more than 1 hour
-ok 5 - test_totals.t: totals extension should report error on empty database (colored)
-ok 6 - test_totals.t: totals extension should report error on emtpy range (colored)
-ok 7 - test_totals.t: totals extension should print report for filled database (colored)
-ok 8 - test_totals.t: totals extension should handle interval with empty tag list (colored)
-ok 9 - test_totals.t: totals extension should handle interval without tags (colored)
-ok 10 - test_totals.t: totals extension should handle open interval (colored)
-ok 11 - test_totals.t: totals extension should report error on empty database
-ok 12 - test_totals.t: totals extension should report error on emtpy range
-ok 13 - test_totals.t: totals extension should print report for filled database
-ok 14 - test_totals.t: totals extension should handle interval with empty tag list
-ok 15 - test_totals.t: totals extension should handle interval without tags
-ok 16 - test_totals.t: totals extension should handle open interval
-ok 17 - test_totals.t: totals extension should print report for time delta larger than 24 hours
 # Datafile.t
 1..2
 ok 1 - Datafile::deleteInterval throws on error
 ok 2 - Datafile::deleteInterval does not throw on success
 # 2 passed, 0 failed, 0 skipped. 100% passed.
-# version.t
-1..1
-ok 1 - version.t: Verify that  'timew --version' returns something valid
 # range.t
 1..101
 ok 1 - Range().is_started -> false
@@ -1008,15 +986,28 @@ ok 94 - subtractRanges: results[0].start = 20160101T080000
 ok 95 - subtractRanges: results[0].end   = 20160101T120000
 ok 96 - subtractRanges: all_day - 2 overlapping months = 0 ranges
 # 96 passed, 0 failed, 0 skipped. 100% passed.
-# help.t
-1..7
-ok 1 - help.t: timew command with --help should show help page
-ok 2 - help.t: timew command with -h should show help page
-ok 3 - help.t: timew --help should print usage
-ok 4 - help.t: timew -h should print usage
-ok 5 - help.t: timew help with command should show man page
-ok 6 - help.t: timew help with unknown argument should show error message
-ok 7 - help.t: timew help without command should print usage
+# test_totals.t
+1..17
+ok 1 - test_totals.t: Test format_seconds with 1 hour
+ok 2 - test_totals.t: Test format_seconds with 1 minute
+ok 3 - test_totals.t: Test format_seconds with less than 1 minute
+ok 4 - test_totals.t: Test format_seconds with more than 1 hour
+ok 5 - test_totals.t: totals extension should report error on empty database (colored)
+ok 6 - test_totals.t: totals extension should report error on emtpy range (colored)
+ok 7 - test_totals.t: totals extension should print report for filled database (colored)
+ok 8 - test_totals.t: totals extension should handle interval with empty tag list (colored)
+ok 9 - test_totals.t: totals extension should handle interval without tags (colored)
+ok 10 - test_totals.t: totals extension should handle open interval (colored)
+ok 11 - test_totals.t: totals extension should report error on empty database
+ok 12 - test_totals.t: totals extension should report error on emtpy range
+ok 13 - test_totals.t: totals extension should print report for filled database
+ok 14 - test_totals.t: totals extension should handle interval with empty tag list
+ok 15 - test_totals.t: totals extension should handle interval without tags
+ok 16 - test_totals.t: totals extension should handle open interval
+ok 17 - test_totals.t: totals extension should print report for time delta larger than 24 hours
+# version.t
+1..1
+ok 1 - version.t: Verify that  'timew --version' returns something valid
 # AtomicFile.t
 1..22
 ok 1 - AtomicFileTest: Shall not exists before finalize
@@ -1152,6 +1143,15 @@ ok 62 - hasTag negative
 ok 63 - JSON '{"id":0,"tags":["one-two","three"]}'
 ok 64 - Interval().serialize -> 'inc # "foo_bar"'
 # 64 passed, 0 failed, 0 skipped. 100% passed.
+# help.t
+1..7
+ok 1 - help.t: timew command with --help should show help page
+ok 2 - help.t: timew command with -h should show help page
+ok 3 - help.t: timew --help should print usage
+ok 4 - help.t: timew -h should print usage
+ok 5 - help.t: timew help with command should show man page
+ok 6 - help.t: timew help with unknown argument should show error message
+ok 7 - help.t: timew help without command should print usage
 # ids.t
 1..3
 ok 1 - ids.t: test_ids_in_output (TestIds)
@@ -1167,9 +1167,9 @@ ok 4 - fill.t: Add closed interval into a gap without fill
 # 
 # Wk  Date       Day ID Tags   Start End     Time    Total
 # --- ---------- --- -- ---- ------- --- -------- --------
-# W37 2023-09-17 Sun @1 tag3 0:00:00   - 18:23:41 18:23:41
+# W51 2023-12-23 Sat @1 tag3 0:00:00   - 23:30:38 23:30:38
 # 
-#                                                 18:23:41
+#                                                 23:30:38
 # 
 # ---  tap output end  ---
 # --- tap output start ---
@@ -1251,6 +1251,22 @@ ok 9 - annotate.t: Calling 'annotate' without annotation removes annotation
 ok 10 - annotate.t: Adding annotation with missing id on empty database is an error
 ok 11 - annotate.t: Adding annotation with missing id on inactive time tracking is an error
 ok 12 - annotate.t: Use open interval when adding annotation with missing id and active time tracking
+# untag.t
+1..14
+ok 1 - untag.t: Calling untag with a non-existent interval reference is an error
+ok 2 - untag.t: Remove a tag from a closed interval
+ok 3 - untag.t: Remove a tag from multiple intervals
+ok 4 - untag.t: Remove a tag from an open interval
+ok 5 - untag.t: Remove tags from a closed interval
+ok 6 - untag.t: Remove tags from multiple intervals
+ok 7 - untag.t: Remove tags from an open interval
+ok 8 - untag.t: Removing tag with missing id on empty database is an error
+ok 9 - untag.t: Removing tag with missing id on inactive time tracking is an error
+ok 10 - untag.t: Calling command 'untag' without tags is an error
+ok 11 - untag.t: Use open interval when removing tags with missing id and active time tracking
+ok 12 - untag.t: Untag a synthetic interval.
+ok 13 - untag.t: Call 'untag' with identical ids
+ok 14 - untag.t: Call 'untag' with identical tags
 # lengthen.t
 1..5
 ok 1 - lengthen.t: Lengthen an interval to enclose a month border
@@ -1269,22 +1285,6 @@ ok 6 - export.t: Give specific IDs on CLI
 ok 7 - export.t: Export with tag filter
 ok 8 - export.t: Single unobstructed interval
 ok 9 - export.t: Test trivial export
-# untag.t
-1..14
-ok 1 - untag.t: Calling untag with a non-existent interval reference is an error
-ok 2 - untag.t: Remove a tag from a closed interval
-ok 3 - untag.t: Remove a tag from multiple intervals
-ok 4 - untag.t: Remove a tag from an open interval
-ok 5 - untag.t: Remove tags from a closed interval
-ok 6 - untag.t: Remove tags from multiple intervals
-ok 7 - untag.t: Remove tags from an open interval
-ok 8 - untag.t: Removing tag with missing id on empty database is an error
-ok 9 - untag.t: Removing tag with missing id on inactive time tracking is an error
-ok 10 - untag.t: Calling command 'untag' without tags is an error
-ok 11 - untag.t: Use open interval when removing tags with missing id and active time tracking
-ok 12 - untag.t: Untag a synthetic interval.
-ok 13 - untag.t: Call 'untag' with identical ids
-ok 14 - untag.t: Call 'untag' with identical tags
 # join.t
 1..3
 ok 1 - join.t: Join closed and open interval
@@ -1386,6 +1386,13 @@ ok 3 - extensions.t: Default range is overridden when range is given on the comm
 ok 1 - write-failure.t: write failures shall not corrupt the database # skip
 # SKIP:
 #       fiu-run is not installed
+# clock.t
+1..5
+ok 1 - clock.t: Verify that 'start' closes an open interval and starts a new one
+ok 2 - clock.t: Verify that 'start' creates an open interval
+ok 3 - clock.t: Verify that start/stop creates and closes an interval
+ok 4 - clock.t: Verify that starting multiple tags and stopping one leaves an open interval
+ok 5 - clock.t: Verify that stopping an unstarted interval does nothing
 # quiet.t
 1..2
 ok 1 - quiet.t: Default command should obey :quiet hint
@@ -1405,13 +1412,6 @@ ok 10 - track.t: Test track with future interval is not an error
 ok 11 - track.t: Call 'track' with new tag
 ok 12 - track.t: Call 'track' with previous tag
 ok 13 - track.t: Test trivial track
-# clock.t
-1..5
-ok 1 - clock.t: Verify that 'start' closes an open interval and starts a new one
-ok 2 - clock.t: Verify that 'start' creates an open interval
-ok 3 - clock.t: Verify that start/stop creates and closes an interval
-ok 4 - clock.t: Verify that starting multiple tags and stopping one leaves an open interval
-ok 5 - clock.t: Verify that stopping an unstarted interval does nothing
 # split.t
 1..3
 ok 1 - split.t: Calling split with a non-existent interval reference is an error
@@ -1527,10 +1527,10 @@ ok 8 - move.t: Move a synthetic interval away from exclusion
 ok 9 - move.t: timew move should work with both synthetic and non-synethic intervals in database
 ok 10 - move.t: Calling move with a non-existent interval reference is an error
 # summary.t
-1..18
+1..19
 ok 1 - summary.t: Summary should print warning if no data in range
 ok 2 - summary.t: Summary should be printed if data is available
-ok 3 - summary.t: Summary correctly truncates long annotation containing multibyte characters
+ok 3 - summary.t: Summary correctly wraps long annotation containing multibyte characters
 ok 4 - summary.t: Summary should print data filtered by tag when tags are non-contiguous
 ok 5 - summary.t: Summary should work with :all hint
 ok 6 - summary.t: Summary should handle :all hint with first interval that starts later in day than the latest interval
@@ -1538,14 +1538,15 @@ ok 7 - summary.t: Summary should print closed interval with :all hint
 ok 8 - summary.t: Summary should print data filtered by date
 ok 9 - summary.t: Summary should skip days with no data
 ok 10 - summary.t: Summary should display empty intervals at midnight
-ok 11 - summary.t: Summary should work with 'today'
-ok 12 - summary.t: Summary should work with 'yesterday'
-ok 13 - summary.t: Summary should print open interval
-ok 14 - summary.t: Summary should print open interval with :all hint
-ok 15 - summary.t: Summary should print data filtered by date range
-ok 16 - summary.t: Summary should display daily total
-ok 17 - summary.t: Summary should print data filtered by tag
-ok 18 - summary.t: Summary should display week change
+ok 11 - summary.t: Summary should print data filtered by tag
+ok 12 - summary.t: Summary should work with 'today'
+ok 13 - summary.t: Summary should work with 'yesterday'
+ok 14 - summary.t: Summary should print open interval
+ok 15 - summary.t: Summary should print open interval with :all hint
+ok 16 - summary.t: Summary should print data filtered by date range
+ok 17 - summary.t: Summary should display daily total
+ok 18 - summary.t: Summary should print data filtered by tag
+ok 19 - summary.t: Summary should display week change
 # continue.t
 1..22
 ok 1 - continue.t: Verify that continuing a closed interval works
@@ -1601,4 +1602,4 @@ ok 26 - undo.t: Test undo of command 'tag'
 ok 27 - undo.t: Test undo of command 'track'
 ok 28 - undo.t: Test undo of command 'track' with adjust hint
 ok 29 - undo.t: Test undo of command 'untag'
-# 1694967887.897098 ==> 2023-09-17 18:24:47
+# 1703370704.688961 ==> 2023-12-23 23:31:44

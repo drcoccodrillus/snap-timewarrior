@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2018 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2018 - 2019, 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -34,7 +34,7 @@ void Transaction::addUndoAction (
    _actions.emplace_back (type, before, after);
 }
 
-std::vector<UndoAction> Transaction::getActions () const
+std::vector <UndoAction> Transaction::getActions () const
 {
   return _actions;
 }

@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2018 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2018 - 2019, 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,10 +37,10 @@ public:
 
   std::string toString() const;
 
-  std::vector<UndoAction> getActions () const;
+  std::vector <UndoAction> getActions () const;
 
 private:
-  std::vector<UndoAction> _actions {};
+  std::vector <UndoAction> _actions {};
 };
 
 #endif

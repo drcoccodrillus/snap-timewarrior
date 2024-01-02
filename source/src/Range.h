@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -50,10 +50,10 @@ public:
 
   bool contains (const Datetime&) const;
 
-  bool overlaps (const Range &) const;
+  bool overlaps (const Range&) const;
   bool encloses (const Range&) const;
-  bool startsWithin (const Range &) const;
-  bool endsWithin (const Range &) const;
+  bool startsWithin (const Range&) const;
+  bool endsWithin (const Range&) const;
   Range intersect (const Range&) const;
   bool intersects (const Range&) const;
   Range combine (const Range&) const;

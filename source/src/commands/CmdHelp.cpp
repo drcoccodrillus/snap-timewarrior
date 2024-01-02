@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2020, 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2020, 2022 - 2023, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -69,7 +69,7 @@ int CmdHelpUsage (const Extensions& extensions)
             << "       timew week [<interval>] [<tag> ...]\n"
             << '\n';
 
-  if (!extensions.all ().empty ())
+  if (! extensions.all ().empty ())
   {
     std::cout << "Extensions (extensions do not provide help):\n";
 
