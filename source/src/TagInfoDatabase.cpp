@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2018 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2018 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -46,6 +46,7 @@ int TagInfoDatabase::incrementTag (const std::string& tag)
     return -1;
   }
 
+  _is_modified = true;
   return search->second.increment ();
 }
 
@@ -63,6 +64,7 @@ int TagInfoDatabase::decrementTag (const std::string& tag)
     throw format ("Trying to decrement non-existent tag '{1}'", tag);
   }
 
+  _is_modified = true;
   return search->second.decrement ();
 }
 
@@ -71,7 +73,33 @@ int TagInfoDatabase::decrementTag (const std::string& tag)
 //
 void TagInfoDatabase::add (const std::string& tag, const TagInfo& tagInfo)
 {
+  _is_modified = true;
   _tagInformation.emplace (tag, tagInfo);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Return the current set of tag names
+//
+std::set <std::string> TagInfoDatabase::tags () const
+{
+  std::set <std::string> tags; 
+
+  for (auto& item : _tagInformation)
+  {
+    tags.insert (item.first);
+  }
+
+  return tags;
+}
+
+bool TagInfoDatabase::is_modified () const
+{
+  return _is_modified;
+}
+
+void TagInfoDatabase::clear_modified ()
+{
+  _is_modified = false;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

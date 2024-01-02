@@ -1,7 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+
 ###############################################################################
 #
-# Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+# Copyright 2016 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,10 +26,10 @@
 #
 ###############################################################################
 
-from __future__ import print_function
-import sys
-import json
 import datetime
+import json
+
+import sys
 from dateutil import tz
 
 DATEFORMAT = "%Y%m%dT%H%M%SZ"
@@ -40,8 +41,8 @@ def format_seconds(seconds):
     Convert seconds: 3661
     To formatted: "   1:01:01"
     """
-    hours = int(seconds / 3600)
-    minutes = int(seconds % 3600 / 60)
+    hours = seconds // 3600
+    minutes = seconds % 3600 // 60
     seconds = seconds % 60
     return "{:4d}:{:02d}:{:02d}".format(hours, minutes, seconds)
 

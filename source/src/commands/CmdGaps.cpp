@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,6 +37,8 @@ int CmdGaps (
   Rules& rules,
   Database& database)
 {
+  auto verbose = rules.getBoolean ("verbose");
+
   // If filter is empty, choose 'today'.
   auto filter = getFilter (cli);
   if (! filter.is_started ())
@@ -118,7 +120,7 @@ int CmdGaps (
   }
   else
   {
-    if (rules.getBoolean ("verbose"))
+    if (verbose)
       std::cout << "No gaps found.\n";
   }
 

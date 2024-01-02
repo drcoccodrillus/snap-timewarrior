@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,6 +37,8 @@ int CmdFill (
   Database& database,
   Journal& journal)
 {
+  auto verbose = rules.getBoolean ("verbose");
+
   std::set <int> ids = cli.getIds ();
 
   if (ids.empty ())
@@ -63,7 +65,7 @@ int CmdFill (
     autoFill (rules, database, to);
     validate (cli, rules, database, to);
     std::cout << "# to " << to.dump () << "\n";
-    database.addInterval (to, rules.getBoolean ("verbose"));
+    database.addInterval (to, verbose);
 
     // Note: Feedback generated inside autoFill().
   }

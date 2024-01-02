@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2018 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2018 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -38,78 +38,53 @@ int CmdAnnotate (
   Database& database,
   Journal& journal)
 {
+  const bool verbose = rules.getBoolean ("verbose");
+
   std::set <int> ids = cli.getIds ();
   std::string annotation = cli.getAnnotation ();
 
-  // Load the data.
-  // Note: There is no filter.
-  Interval filter;
-  auto tracked = getTracked (database, rules, filter);
-
-  bool dirty = true;
-
   journal.startTransaction ();
-
-  for (auto& id : ids)
-  {
-    if (id > static_cast <int> (tracked.size ()))
-    {
-      throw format ("ID '@{1}' does not correspond to any tracking.", id);
-    }
-
-    if (tracked[tracked.size() - id].synthetic && dirty)
-    {
-      auto latest = getLatestInterval(database);
-      auto exclusions = getAllExclusions (rules, filter);
-
-      Interval modified {latest};
-
-      // Update database.
-      database.deleteInterval (latest);
-      for (auto& interval : flatten (modified, exclusions))
-        database.addInterval (interval, rules.getBoolean ("verbose"));
-
-      dirty = false;
-    }
-  }
+  flattenDatabase (database, rules);
+  std::vector <Interval> intervals;
 
   if (ids.empty ())
   {
-    if (tracked.empty ())
+    auto latest = getLatestInterval (database);
+
+    if (latest.empty ())
     {
       throw std::string ("There is no active time tracking.");
     }
-
-    if (!tracked.back ().is_open ())
+    else if (!latest.is_open ())
     {
       throw std::string ("At least one ID must be specified. See 'timew help annotate'.");
     }
 
-    ids.insert (1);
+    intervals.push_back (latest);
+  }
+  else
+  {
+    intervals = getIntervalsByIds (database, rules, ids);
   }
 
-  // Apply tags to ids.
-  for (auto& id : ids)
+  // Apply annotations to intervals.
+  for (const auto& interval : intervals)
   {
-    if (id > static_cast <int> (tracked.size ()))
-    {
-      throw format ("ID '@{1}' does not correspond to any tracking.", id);
-    }
+    Interval modified {interval};
 
-    Interval i = tracked[tracked.size () - id];
-    i.setAnnotation (annotation);
+    modified.setAnnotation (annotation);
 
-    database.modifyInterval (tracked[tracked.size () - id], i, rules.getBoolean ("verbose"));
+    database.modifyInterval (interval, modified, verbose);
 
-    if (rules.getBoolean ("verbose"))
+    if (verbose)
     {
       if (annotation.empty ())
       {
-        std::cout << "Removed annotation from @" << id << std::endl;
+        std::cout << "Removed annotation from @" << modified.id << std::endl;
       }
       else
       {
-        std::cout << "Annotated @" << id << " with \"" << annotation << "\"" << std::endl;
+        std::cout << "Annotated @" << modified.id << " with \"" << annotation << "\"" << std::endl;
       }
     }
   }

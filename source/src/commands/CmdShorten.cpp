@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -39,71 +39,47 @@ int CmdShorten (
   Database& database,
   Journal& journal)
 {
+  const bool verbose = rules.getBoolean ("verbose");
+
   std::set <int> ids = cli.getIds ();
 
   if (ids.empty ())
-    throw std::string ("IDs must be specified. See 'timew help shorten'.");
-
-  std::string delta;
-  for (auto& arg : cli._args)
   {
-    if (arg.hasTag ("FILTER") &&
-        arg._lextype == Lexer::Type::duration)
-      delta = arg.attribute ("raw");
+    throw std::string ("IDs must be specified. See 'timew help shorten'.");
   }
+
+  Duration dur = cli.getDuration ();
 
   journal.startTransaction ();
 
-  // Load the data.
-  // Note: There is no filter.
-  Interval filter;
-  auto tracked = getTracked (database, rules, filter);
-
-  bool dirty = true;
-
-  for (auto& id : ids)
-  {
-    if (id > static_cast <int> (tracked.size ()))
-      throw format ("ID '@{1}' does not correspond to any tracking.", id);
-
-    if (tracked[tracked.size() - id].synthetic && dirty)
-    {
-      auto latest = getLatestInterval(database);
-      auto exclusions = getAllExclusions (rules, filter);
-
-      Interval modified {latest};
-
-      // Update database.
-      database.deleteInterval (latest);
-      for (auto& interval : flatten (modified, exclusions))
-        database.addInterval (interval, rules.getBoolean ("verbose"));
-
-      dirty = false;
-    }
-  }
+  flattenDatabase (database, rules);
+  std::vector <Interval> intervals = getIntervalsByIds (database, rules, ids);
 
   // Shorten intervals specified by ids
-  for (auto& id : ids)
+  for (auto& interval : intervals)
   {
-    if (id > static_cast <int> (tracked.size ()))
-      throw format ("ID '@{1}' does not correspond to any tracking.", id);
+    if (interval.is_open ())
+    {
+      throw format ("Cannot shorten open interval @{1}", interval.id);
+    }
 
-    Interval i = tracked[tracked.size () - id];
-    if (i.is_open ())
-      throw format ("Cannot shorten open interval @{1}", id);
+    if (dur > (interval.end - interval.start))
+    {
+      throw format ("Cannot shorten interval @{1} by {2} because it is only {3} in length.",
+                    interval.id, dur.formatHours (),
+                    Duration (interval.end - interval.start).formatHours ());
+    }
 
-    Duration dur (delta);
-    if (dur > (i.end - i.start))
-      throw format ("Cannot shorten interval @{1} by {2} because it is only {3} in length.", id, dur.formatHours (), Duration (i.end - i.start).formatHours ());
+    database.deleteInterval (interval);
 
-    database.deleteInterval (tracked[tracked.size () - id]);
+    interval.end -= dur.toTime_t ();
+    validate (cli, rules, database, interval);
+    database.addInterval (interval, verbose);
 
-    i.end -= dur.toTime_t ();
-    validate (cli, rules, database, i);
-    database.addInterval (i, rules.getBoolean ("verbose"));
-
-    if (rules.getBoolean ("verbose"))
-      std::cout << "Shortened @" << id << " by " << dur.formatHours () << '\n';
+    if (verbose)
+    {
+      std::cout << "Shortened @" << interval.id << " by " << dur.formatHours () << '\n';
+    }
   }
 
   journal.endTransaction ();

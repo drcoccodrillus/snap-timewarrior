@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -40,15 +40,17 @@
 Interval                getFilter         (const CLI&);
 std::vector <Range>     getHolidays       (const Rules&);
 std::vector <Range>     getAllExclusions  (const Rules&, const Range&);
-std::vector <Interval>  getAllInclusions  (Database&);
+std::vector <Interval>  getIntervalsByIds (Database&, const Rules&, const std::set <int>&);
 std::vector <Interval>  subset            (const Interval&, const std::vector <Interval>&);
 std::vector <Range>     subset            (const Range&, const std::vector <Range>&);
 std::vector <Interval>  subset            (const Range&, const std::vector <Interval>&);
+void                    flattenDatabase   (Database&, const Rules&);
 std::vector <Interval>  flatten           (const Interval&, const std::vector <Range>&);
 std::vector <Range>     merge             (const std::vector <Range>&);
 std::vector <Range>     addRanges         (const Range&, const std::vector <Range>&, const std::vector <Range>&);
 std::vector <Range>     subtractRanges    (const std::vector <Range>&, const std::vector <Range>&);
 Range                   outerRange        (const std::vector <Interval>&);
+bool                    matchesRange      (const Interval&, const Range&);
 bool                    matchesFilter     (const Interval&, const Interval&);
 Interval                clip              (const Interval&, const Range&);
 std::vector <Interval>  getTracked        (Database&, const Rules&, Interval&);

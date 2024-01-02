@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016, 2018 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016, 2018 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,13 +24,223 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <cassert>
 #include <Database.h>
 #include <format.h>
 #include <JSON.h>
+#include <IntervalFactory.h>
 #include <iostream>
 #include <iomanip>
 #include <shared.h>
 #include <timew.h>
+#include <AtomicFile.h>
+
+////////////////////////////////////////////////////////////////////////////////
+Database::iterator::iterator (files_iterator fbegin, files_iterator fend) :
+          files_it(fbegin),
+          files_end(fend)
+{
+    if (files_end != files_it)
+    {
+      auto &lines = files_it->allLines ();
+      lines_it = lines.rbegin ();
+      lines_end = lines.rend ();
+      while ((lines_it == lines_end) && (files_it != files_end))
+      {
+        ++files_it;
+        if (files_it != files_end)
+        {
+          auto& lines = files_it->allLines ();
+          lines_it = lines.rbegin ();
+          lines_end = lines.rend ();
+        }
+      }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+Database::iterator& Database::iterator::operator++()
+{
+  if (files_it != files_end)
+  {
+    if (lines_it != lines_end)
+    {
+      ++lines_it;
+
+      // If we are at the end of the current file, we will need to advance to
+      // the next file here. A file may be empty, which is why we need to wait
+      // until we are pointing at a valid line.
+      while ((lines_it == lines_end) && (files_it != files_end))
+      {
+        ++files_it;
+        if (files_it != files_end)
+        {
+          auto& lines = files_it->allLines ();
+          lines_it = lines.rbegin ();
+          lines_end = lines.rend ();
+        }
+      }
+    }
+  }
+  return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool Database::iterator::operator==(const iterator & other) const
+{
+  return (other.files_it == other.files_end) ?
+          files_it == files_end :
+         ((files_it == other.files_it) &&
+          (files_end == other.files_end) &&
+          (lines_it == other.lines_it) &&
+          (lines_end == other.lines_end));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool Database::iterator::operator!=(const iterator & other) const
+{
+  return ! (*this == other);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+const std::string& Database::iterator::operator*() const
+{
+  assert(lines_it != lines_end);
+  return *lines_it;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+const std::string* Database::iterator::operator->() const
+{
+  assert(lines_it != lines_end);
+  return &(*lines_it);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+Database::reverse_iterator::reverse_iterator (files_iterator fbegin,
+                                              files_iterator fend) :
+          files_it(fbegin),
+          files_end(fend)
+{
+    if (files_end != files_it)
+    {
+      lines_it = files_it->allLines ().begin ();
+      lines_end = files_it->allLines ().end ();
+      while ((lines_it == lines_end) && (files_it != files_end))
+      {
+        ++files_it;
+        if (files_it != files_end)
+        {
+          auto& lines = files_it->allLines ();
+          lines_it = lines.begin ();
+          lines_end = lines.end ();
+        }
+      }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+Database::reverse_iterator& Database::reverse_iterator::operator++()
+{
+  if (files_it != files_end)
+  {
+    if (lines_it != lines_end)
+    {
+      ++lines_it;
+
+      // If we are at the end of the current file, we will need to advance to
+      // the next file here. A file may be empty, which is why we need to wait
+      // until we are pointing at a valid line.
+      while ((lines_it == lines_end) && (files_it != files_end))
+      {
+        ++files_it;
+        if (files_it != files_end)
+        {
+          lines_it = files_it->allLines ().begin ();
+          lines_end = files_it->allLines ().end ();
+        }
+      }
+    }
+  }
+  return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool
+Database::reverse_iterator::operator==(const reverse_iterator & other) const
+{
+  return (other.files_it == other.files_end) ?
+          files_it == files_end :
+         ((files_it == other.files_it) &&
+          (files_end == other.files_end) &&
+          (lines_it == other.lines_it) &&
+          (lines_end == other.lines_end));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool
+Database::reverse_iterator::operator!=(const reverse_iterator & other) const
+{
+  return ! (*this == other);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+const std::string& Database::reverse_iterator::operator*() const
+{
+  assert (lines_it != lines_end);
+  return *lines_it;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+const std::string* Database::reverse_iterator::operator->() const
+{
+  return &operator*();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+Database::iterator Database::begin ()
+{
+  if (_files.empty ())
+  {
+    initializeDatafiles ();
+  }
+
+  return iterator (_files.rbegin (), _files.rend ());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+Database::iterator Database::end ()
+{
+  if (_files.empty ())
+  {
+    initializeDatafiles ();
+  }
+
+  return iterator (_files.rend (), _files.rend ());
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+Database::reverse_iterator Database::rbegin ()
+{
+  if (_files.empty ())
+  {
+    initializeDatafiles ();
+  }
+
+  return reverse_iterator(_files.begin (), _files.end ());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+Database::reverse_iterator Database::rend ()
+{
+  if (_files.empty ())
+  {
+    initializeDatafiles ();
+  }
+
+  return reverse_iterator (_files.end (), _files.end ());
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 void Database::initialize (const std::string& location, Journal& journal)
@@ -48,7 +258,10 @@ void Database::commit ()
     file.commit ();
   }
 
-  File::write (_location + "/tags.data", _tagInfoDatabase.toJson ());
+  if (_tagInfoDatabase.is_modified ())
+  {
+    AtomicFile::write (_location + "/tags.data", _tagInfoDatabase.toJson ());
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -64,18 +277,17 @@ std::vector <std::string> Database::files () const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Walk backwards through the files until an interval is found.
-std::string Database::lastLine ()
+std::set <std::string> Database::tags () const
 {
-  if (_files.empty ())
-  {
-    initializeDatafiles ();
-  }
+  return _tagInfoDatabase.tags ();
+}
 
-  std::vector <Datafile>::reverse_iterator ri;
-  for (ri = _files.rbegin (); ri != _files.rend (); ri++)
+////////////////////////////////////////////////////////////////////////////////
+// Return most recent line from database 
+std::string Database::getLatestEntry ()
+{
+  for (auto& line : *this)
   {
-    auto line = ri->lastLine ();
     if (! line.empty ())
     {
       return line;
@@ -86,30 +298,11 @@ std::string Database::lastLine ()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-std::vector <std::string> Database::allLines ()
-{
-  if (_files.empty ())
-  {
-    initializeDatafiles ();
-  }
-
-  std::vector <std::string> all;
-  for (auto& file : _files)
-  {
-    auto i = file.allLines ();
-    all.insert (all.end (),
-                std::make_move_iterator (i.begin ()),
-                std::make_move_iterator (i.end ()));
-  }
-
-  return all;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 void Database::addInterval (const Interval& interval, bool verbose)
 {
-  auto tags = interval.tags ();
+  assert ( (interval.end == 0) || (interval.start <= interval.end));
 
+  auto tags = interval.tags ();
   for (auto& tag : tags)
   {
     if (_tagInfoDatabase.incrementTag (tag) == -1 && verbose)
@@ -184,7 +377,7 @@ unsigned int Database::getDatafile (int year, int month)
        << std::setw (2) << std::setfill ('0') << month
        << ".data";
   auto name = file.str ();
-  auto basename = File (name).name ();
+  auto basename = Path (name).name ();
 
   // If the datafile is already initialized, return.
   for (unsigned int i = 0; i < _files.size (); ++i)
@@ -258,47 +451,83 @@ std::vector <Range> Database::segmentRange (const Range& range)
   return segments;
 }
 
+bool Database::empty ()
+{
+  return Database::begin () == Database::end ();
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 void Database::initializeTagDatabase ()
 {
+  _tagInfoDatabase = TagInfoDatabase ();
+  Path tags_path (_location + "/tags.data");
   std::string content;
+  const bool exists = tags_path.exists ();
 
-  if (!File::read (_location + "/tags.data", content))
+  if (exists && File::read (tags_path, content))
   {
-    auto intervals = getAllInclusions (*this);
-
-    if (intervals.empty ())
+    try
     {
+      json::object *json = dynamic_cast <json::object *>(json::parse (content));
+
+      if (content.empty () || (json == nullptr))
+      {
+          throw std::string ("Contents invalid.");
+      }
+
+      for (auto &pair : json->_data)
+      {
+        auto key = str_replace (pair.first, "\\\"", "\"");
+        auto *value = (json::object *) pair.second;
+        auto iter = value->_data.find ("count");
+
+        if (iter == value->_data.end ())
+        {
+          throw format ("Failed to find \"count\" member for tag \"{1}\" in tags database.", key);
+        }
+
+        auto number = dynamic_cast<json::number *> (iter->second);
+        _tagInfoDatabase.add (key, TagInfo{(unsigned int) number->_dvalue});
+      }
+
+      // Since we just loaded the database from the file, there we can clear the
+      // modified state so that we will not write it back out unless there is a
+      // new change.
+      _tagInfoDatabase.clear_modified ();
+
       return;
     }
-
-    std::cout << "Tag info database does not exist. Recreating from interval data..." << std::endl  ;
-
-    for (auto& interval : intervals)
+    catch (const std::string& error)
     {
-      for (auto& tag : interval.tags ())
-      {
-        _tagInfoDatabase.incrementTag (tag);
-      }
+      std::cerr << "Error parsing tags database: " << error << '\n';
     }
   }
-  else
+
+  // We always want the tag database file to exists.
+  _tagInfoDatabase = TagInfoDatabase();
+  AtomicFile::write (_location + "/tags.data", _tagInfoDatabase.toJson ());
+
+  auto it = Database::begin ();
+  auto end = Database::end ();
+  
+  if (it == end)
   {
-    auto *json = (json::object *) json::parse (content);
+    return;
+  }
 
-    for (auto &pair : json->_data)
+  if (!exists)
+  {
+    std::cout << "Tags database does not exist. ";
+  }
+  
+  std::cout << "Recreating from interval data..." << std::endl;
+
+  for (; it != end; ++it)
+  {
+    Interval interval = IntervalFactory::fromSerialization (*it);
+    for (auto& tag : interval.tags ())
     {
-      auto key = str_replace (pair.first, "\\\"", "\"");
-      auto *value = (json::object *) pair.second;
-      auto iter = value->_data.find ("count");
-
-      if (iter == value->_data.end ())
-      {
-        throw format ("Failed to find \"count\" member for tag \"{1}\" in tags database. Database corrupted?", key);
-      }
-
-      auto number = dynamic_cast<json::number *> (iter->second);
-      _tagInfoDatabase.add (key, TagInfo{(unsigned int) number->_dvalue});
+      _tagInfoDatabase.incrementTag (tag);
     }
   }
 }
@@ -318,7 +547,7 @@ void Database::initializeDatafiles ()
     if (file[file.length () - 8] == '-' &&
         file.find (".data") == file.length () - 5)
     {
-      auto basename = File (file).name ();
+      auto basename = Path (file).name ();
       auto year  = strtol (basename.substr (0, 4).c_str (), NULL, 10);
       auto month = strtol (basename.substr (5, 2).c_str (), NULL, 10);
       getDatafile (year, month);

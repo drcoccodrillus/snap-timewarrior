@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2020, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -105,6 +105,7 @@ void initializeEntities (CLI& cli)
   cli.entity ("hint", ":quarter");
   cli.entity ("hint", ":quiet");
   cli.entity ("hint", ":week");
+  cli.entity ("hint", ":fortnight");
   cli.entity ("hint", ":year");
   cli.entity ("hint", ":yes");
   cli.entity ("hint", ":yesterday");
@@ -185,9 +186,12 @@ void initializeDataJournalAndRules (
     data.create (0700);
 
   // Load the configuration data.
-  File configFile (dbLocation);
+  Path configFile (dbLocation);
   configFile += "timewarrior.cfg";
-  configFile.create (0600);
+  if (! configFile.exists ())
+  {
+    File (configFile).create (0600);
+  }
   rules.load (configFile._data);
 
   // This value is not written out to disk, as there would be no point. Having
