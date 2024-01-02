@@ -1,0 +1,204 @@
+Rules System
+============
+The Timewarrior rule system reads your ~/.timewarrior/timewarrior.cfg file and
+uses the combination of configuration settings and logic within to:
+
+- Define configuration and customization details
+- Define tags, exclusions, constraints
+- Define various policies
+
+The rules are a mechanism to apply late-bound logic and data to various
+functions. Whenever data changes, the rule system is run, which will run each
+rule in turn, if it applies, going from top to bottom in the rules file. There
+are no chained rules, but errors will be able to terminate rule processing and
+program execution.
+
+As much functionality as possible is to be deferred to the rules system, which
+will initially be minimal, but grow to be come more capable.
+
+
+Format
+------
+The rules are written as UTF8 text in the ~/.timewarrior/timewarrior.cfg text
+file. Other rules files may be included:
+
+  import /path/to/other/rule/file
+
+The syntax of rules is Python-like, in that indentation is significant.
+
+
+Types of Rules
+--------------
+There are several different types of rules, for example there is the rule that
+defines all exclusions:
+
+  define exclusions:
+    ...
+
+There are general rules triggered by changes to the data:
+
+  define rule one:
+    ...
+
+There are rules that define tags and their metadata:
+
+  define tags:
+    "tag1":
+      ...
+
+There are rules that will serve as hooks:
+
+  define rules:
+    on_stop:
+      ...
+
+
+Rule Type: Exclusions
+---------------------
+Because exclusions are resolved at run time, and only when needed, they should
+be stored in a readily-interpreted form:
+
+  define exclusions:
+    monday    = <8:00:00 12:00:00-12:45:00 >17:30:00
+    tuesday   = <8:00:00 12:00:00-12:45:00 >18:30:00
+    wednesday = <8:00 12:00-13:30 >17:30
+    thursday  = <8:00 12:00-12:45 >17:30
+    friday    = <8:00 12:00-12:45 >17:30
+
+    days:
+      2016_01_01 = Working
+      2016_01_02 = Off
+
+If you want to track your lunch breaks, then you would make a tag for it, and
+track it like any other project. If you do not want to track that time, add an
+exclusion for it.
+
+
+Rule Type: General
+------------------
+There are rules triggered by changes to the data. In this example, rule 'one'
+is a constraint that prevents the value 'foo' from exceeding three. It is
+triggered by a change to 'foo', which is a DOM reference, and can prevent the
+update by failing:
+
+  define rules:
+    one:
+      tagset = tag1
+      if foo > 3:
+        error "The value of 'foo' may not exceed 3."
+
+Note that this rule is defined as applying to the tagset 'tag1'.
+
+
+Rule Type: Tag
+--------------
+A defined tag is a way to associate metadata with a tag, such as a description
+and start/end dates for use:
+
+  define tags:
+    "tag1":
+      description = "Description of tag1"
+      start       = 2016-01-01
+      end         = 2016-06-30
+      budget      = 20 hours per week
+      budget      = 400 hours total
+      overlap     = yes
+
+
+Rule Type: Theme
+----------------
+A color theme is defined by a rule, and consists of color definitions for
+various report and feedback elements:
+
+  define theme:
+    description = "A monochrome, 256-color theme"
+    color:
+      today = "black on rgb521"
+      ...
+    palette:
+      color1 = "white on red"
+      color2 = "white on blue"
+      ...
+
+The palette group is a list (more is better) of themed colors for use when auto-
+coloring tags.
+
+There is only one theme namespace, so if multiple themes are imported, the last
+one can override all the prior theme settings. This means themes can be layered,
+but they would need to be designed for this.
+
+
+Rule Type: Hook
+---------------
+While there may not be hooks in the traditional sense, with fixed arguments,
+there will be rules that have the same role. Hook rules will allow an internal
+event to trigger a rule that calls an external script, and passes an arbitrary
+set of arguments.
+
+[Mechanism TBD]
+
+    define rules:
+      on_start:
+        ...
+
+    define rules:
+      on_stop:
+        ...
+
+    define rules:
+      on_modify:
+        ...
+
+These rules can run an external script and provide arguments, based on rules
+DOM access:
+
+    define rules:
+      on_modify:
+        run /path/to/my/script <dom1> <dom2>
+
+
+Rules Type: Hint
+----------------
+Hints may be defined using the rules system, to augment the built-in hints that
+are used by almost every command.
+
+    define hints:
+      staff:
+        tag 'Staff Meeting'
+        tag 'Admin'
+
+[More TBD]
+
+
+--- Raw Notes ---
+
+- Need to distinguish between regular time and over time, with different rates
+  and limits.
+
+- Policy support involves things like:
+  - warn after 40 hrs/wk
+  - cut off tracking a tag at x hrs/wk
+  - auto-tag intervals that exceed 40 hrs/wk
+  - auto-tag intervals during exclusion time
+
+- Need to distinguish between rules that will be supported at 1.0.0, and the
+  long term enhancements.
+
+- There will need to be several built-in functions, for use by rules:
+
+    error("...")         Emits and terminates
+    warning("...")       Emits and continues
+    info("...")          Emits and continues
+    sum_week("tag1")     Sums minutes in the current week for "tag1"
+
+  These are not good examples.
+
+- Need reports to help users doing fixed-rate work - finding the longest task
+  for example.
+
+- If an interval has more than one tag with a defined color, and is being
+  rendered, then use the first tag color. It doesn't really matter which.
+
+- Use display granularity/resolution to see more or less details.  This would
+  combine nicely with a tag hierarchy. (Tomas Babej)
+
