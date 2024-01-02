@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,7 +37,7 @@ int CmdHelpUsage (const Extensions& extensions)
             << "Usage: timew [--version]\n"
             << "       timew cancel\n"
             << "       timew config [<name> [<value | '']]\n"
-            << "       timew continue\n"
+            << "       timew continue [@<id>] [<date>|<interval>]\n"
             << "       timew day [<interval>] [<tag> ...]\n"
             << "       timew delete @<id> [@<id> ...]\n"
             << "       timew diagnostics\n"
@@ -61,7 +61,7 @@ int CmdHelpUsage (const Extensions& extensions)
             << "       timew stop [<tag> ...]\n"
             << "       timew summary [<interval>] [<tag> ...]\n"
             << "       timew tag @<id> [@<id> ...] <tag> [<tag> ...]\n"
-            << "       timew tags\n"
+            << "       timew tags [<interval>] [<tag> ...]\n"
             << "       timew track <interval> [<tag> ...]\n"
             << "       timew untag @<id> [@<id> ...] <tag> [<tag> ...]\n"
             << "       timew week [<interval>] [<tag> ...]\n"
@@ -169,17 +169,35 @@ int CmdHelp (
     //              12345678901234567890123456789012345678901234567890123456789012345678901234567890
     else if (words[0] == "continue")
       std::cout << '\n'
-                << "Syntax: timew continue\n"
+                << "Syntax: timew continue [<ID>] [<date>|<interval>]\n"
                 << '\n'
-                << "Resumes tracking the most recently closed interval. For exqample:\n"
+                << "Resumes tracking of a closed interval. For example:\n"
                 << '\n'
                 << "  $ timew track 9am - 10am tag1 tag2\n"
                 << "  $ timew continue\n"
                 << '\n'
-                << "The 'continue' command creates a new interval, starting now, and using the tags\n"
-                << "'tag1' and 'tag2'.\n"
+                << "This continues the most recent interval. One can refer to another closed\n"
+                << "interval by referencing its id:\n"
                 << '\n'
-                << "This command is a convenient way to resume work without re-entering the tags.\n"
+                << "  $ timew track 9am - 10am tag1 tag2\n"
+                << "  $ timew track 11am - 1pm tag3\n"
+                << "  $ timew continue @2\n"
+                << '\n'
+                << "The 'continue' command creates a new interval, starting now, and using the tags\n"
+                << "'tag1' and 'tag2'. (Using the 'summary' command and specifying the ':ids' hint\n"
+                << "shows interval IDs.) Independently from an ID, one can specify a new start time\n"
+                << "or an interval range:\n"
+                << '\n'
+                << "  $ timew continue @2 4min ago\n"
+                << '\n'
+                << "This continues the interval referenced by ID 2 with a new start time (4 minutes\n"
+                << "before now)\n"
+                << '\n'
+                << "  $ timew continue 18pm - 19pm\n"
+                << '\n'
+                << "This adds a copy of the latest interval with a new interval range.\n"
+                << '\n'
+                << "'continue' is a convenient way to resume work without re-entering the tags.\n"
                 << '\n'
                 << "See also 'start', 'stop'.\n"
                 << '\n';
@@ -241,15 +259,24 @@ int CmdHelp (
                 << "  <epoch>                               POSIX time\n"
                 << "  later                                 2038-01-18T0:00:00 (Y2K38)\n"
                 << "  someday                               2038-01-18T0:00:00 (Y2K38)\n"
-                << "  soy, eoy                              Previous start/end of year\n"
-                << "  socy, eocy                            Start/end of current year\n"
-                << "  soq, eoq                              Previous start/end of quarter\n"
-                << "  socq, eocq                            Start/end of current quarter\n"
-                << "  som, eom                              Previous start/end of month\n"
-                << "  socm, eocm                            Start/end of current month\n"
-                << "  sow, eow                              Previous start/end of week\n"
-                << "  socw, eocw                            Start/end of current week\n"
+                << "  sopd, eopd                            Start/end of previous day\n"
+                << "  sod, eod                              Start/end of current day\n"
+                << "  sond, eond                            Start/end of next day\n"
+                << "  sopw, eopw                            Start/end of previous week\n"
+                << "  sow, eow                              Start/end of current week\n"
+                << "  sonw, eonw                            Start/end of next week\n"
+                << "  sopww, eopww                          Start/end of previous work week (mon - fri)\n"
                 << "  soww, eoww                            Start/end of current work week (mon - fri)\n"
+                << "  sonww, eonww                          Start/end of next work week (mon - fri)\n"
+                << "  sopm, eopm                            Start/end of previous month\n"
+                << "  som, eom                              Start/end of current month\n"
+                << "  sonm, eonm                            Start/end of next month\n"
+                << "  sopq, eopq                            Start/end of previous quarter\n"
+                << "  soq, eoq                              Start/end of current quarter\n"
+                << "  sonq, eonq                            Start/end of next quarter\n"
+                << "  sopy, eopy                            Start/end of previous year\n"
+                << "  soy, eoy                              Start/end of current year\n"
+                << "  sony, eony                            Start/end of next year\n"
                 << "  easter                                Easter Sunday\n"
                 << "  eastermonday                          Easter Monday\n"
                 << "  ascension                             Ascension\n"
@@ -557,6 +584,13 @@ int CmdHelp (
                 << "  :lastmonth     Last month\n"
                 << "  :lastquarter   Last quarter\n"
                 << "  :lastyear      Last year\n"
+                << "  :monday        Previous monday\n"
+                << "  :tuesday       Previous tuesday\n"
+                << "  :wednesday     Previous wednesday\n"
+                << "  :thursday      Previous thursday\n"
+                << "  :friday        Previous friday\n"
+                << "  :saturday      Previous saturday\n"
+                << "  :sunday        Previous sunday\n"
                 << '\n'
                 << '\n';
 
@@ -770,7 +804,7 @@ int CmdHelp (
                 << '\n'
                 << "If there is a previous open interval, it will be closed at the given start time.\n"
                 << '\n'
-                << "Quotes are harmless if used unecessarily.\n"
+                << "Quotes are harmless if used unnecessarily.\n"
                 << '\n'
                 << "See also 'continue', 'stop', 'track'.\n"
                 << '\n';
@@ -842,9 +876,10 @@ int CmdHelp (
     //              12345678901234567890123456789012345678901234567890123456789012345678901234567890
     else if (words[0] == "tags")
       std::cout << '\n'
-                << "Syntax: timew tags\n"
+                << "Syntax: timew tags [<interval>] [<tag> ...]\n"
                 << '\n'
-                << "Displays all the tags that have been used.\n"
+                << "Displays all the tags that have been used by default. When a filter is specified,\n"
+                << "shows only the tags that were used during that time.\n"
                 << '\n';
 
     // Ruler                 1         2         3         4         5         6         7         8

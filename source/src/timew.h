@@ -57,7 +57,7 @@ Interval                getLatestInterval (Database&);
 Range                   getFullDay        (const Datetime&);
 
 // validate.cpp
-void autoFill (const Rules&, Database&, const Interval&, Interval&);
+void autoFill (const Rules&, Database&, Interval&);
 void validate (const CLI& cli, const Rules& rules, Database&, Interval&);
 
 // init.cpp
@@ -79,6 +79,7 @@ int quantizeToNMinutes (const int, const int);
 bool dayIsHoliday (const Rules&, const Datetime&);
 bool findHint (const CLI&, const std::string&);
 std::string minimalDelta (const Datetime&, const Datetime&);
+std::vector <Interval> getOverlaps (Database&, const Rules&, const Interval&);
 
 // log.cpp
 void enableDebugMode (bool);
@@ -87,9 +88,11 @@ void setDebugColor (const Color&);
 void debug (const std::string&);
 
 // utiŀ.cpp
-std::string osName ();
 std::string escape (const std::string&, int);
 std::string quoteIfNeeded (const std::string&);
+std::string join(const std::string& glue, const std::set <std::string>& array);
+std::string joinQuotedIfNeeded(const std::string& glue, const std::set <std::string>& array);
+std::string joinQuotedIfNeeded(const std::string& glue, const std::vector <std::string>& array);
 
 // dom.cpp
 bool domGet (Database&, const Rules&, const std::string&, std::string&);

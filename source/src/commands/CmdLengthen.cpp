@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -39,27 +39,49 @@ int CmdLengthen (
   Database& database)
 {
   // Gather IDs and TAGs.
-  std::vector <int> ids;
+  std::vector <int> ids = cli.getIds();
+
+  if (ids.empty ())
+    throw std::string ("IDs must be specified. See 'timew help lengthen'.");
+
   std::string delta;
+
   for (auto& arg : cli._args)
   {
-    if (arg.hasTag ("ID"))
-      ids.push_back (strtol (arg.attribute ("value").c_str (), NULL, 10));
-
     if (arg.hasTag ("FILTER") &&
         arg._lextype == Lexer::Type::duration)
       delta = arg.attribute ("raw");
   }
-
-  if (! ids.size ())
-    throw std::string ("IDs must be specified. See 'timew help lengthen'.");
 
   // Load the data.
   // Note: There is no filter.
   Interval filter;
   auto tracked = getTracked (database, rules, filter);
 
-  // Apply tags to ids.
+  bool dirty = true;
+
+  for (auto& id : ids)
+  {
+    if (id > static_cast <int> (tracked.size ()))
+      throw format ("ID '@{1}' does not correspond to any tracking.", id);
+
+    if (tracked[tracked.size () - id].synthetic && dirty)
+    {
+      auto latest = getLatestInterval (database);
+      auto exclusions = getAllExclusions (rules, filter.range);
+
+      Interval modified {latest};
+
+      // Update database.
+      database.deleteInterval (latest);
+      for (auto& interval : flatten (modified, exclusions))
+        database.addInterval (interval);
+
+      dirty = false;
+    }
+  }
+
+  // Lengthen intervals specified by ids
   for (auto& id : ids)
   {
     if (id > static_cast <int> (tracked.size ()))

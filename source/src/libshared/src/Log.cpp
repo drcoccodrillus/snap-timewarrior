@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -49,6 +49,12 @@ void Log::ignore (const std::string& category)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+void Log::write (const std::string& line)
+{
+  write ("info", line);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void Log::write (const std::string& category, const std::string& line)
 {
   // Determine if this category is in the ignore list.
@@ -87,9 +93,9 @@ void Log::write (const std::string& category, const std::string& line)
       if (_repetition)
       {
         std::string message = Datetime ().toISO ()
-                            + " " + PACKAGE_VERSION
-                            + " " + category
-                            + " " + format ("(Repeated {1} times)", _repetition)
+                            + ' ' + PACKAGE_VERSION
+                            + ' ' + category
+                            + ' ' + format ("(Repeated {1} times)", _repetition)
                             + '\n';
 
         if (_name != "")
@@ -101,9 +107,9 @@ void Log::write (const std::string& category, const std::string& line)
       }
 
       std::string message = Datetime ().toISO ()
-                          + " " + PACKAGE_VERSION
-                          + " " + category
-                          + " " + line
+                          + ' ' + PACKAGE_VERSION
+                          + ' ' + category
+                          + ' ' + line
                           + '\n';
 
       if (_name != "")

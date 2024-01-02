@@ -14,8 +14,8 @@ In order to build Timewarrior, you will need:
   - make
 
 You will need a C++ compiler that supports full C++11, which includes:
-  - gcc 4.7   (released 2012-03-23)
-  - clang 3.3 (released 2013-01-07)
+  - gcc 4.9   (released 2014-04-22)
+  - clang 3.4 (released 2014-01-02)
 
 
 Basic Installation
@@ -148,8 +148,7 @@ CMake with no reported problems, and the build will fail later.  This is
 almost always because CMake is mistaken about some assumption.
 
 If a build does not succeed, please send the contents of the 'CMakeCache.txt'
-and 'CMakeFiles/CMakeOutput.log' files to support@taskwarrior.org, or post a
-message in the support forums at taskwarrior.org along with the information.
+and 'CMakeFiles/CMakeOutput.log' files to support@taskwarrior.org.
 
 If CMake runs but Timewarrior does not build, please send the contents of the
 above files as well as a transcript from the build, which is not written to a

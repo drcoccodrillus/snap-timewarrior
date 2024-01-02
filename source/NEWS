@@ -1,13 +1,34 @@
 
-New Features in 1.0.0
+New Features in 1.1.0
 
-  - All features are new.
+  - Taskwarrior integration hook now uses a project 'Home.Garden' as a single
+    tag 'Home.Garden' as well as individual 'Home', 'Garden' tags.
+  - Taskwarrior integration hook now stops the clock in more situations, such
+    as deleting or waiting a task.
+  - The 'tags' command now supports filters.
+  - New date names supported (see 'timew help date' or 'man timew').
+  - Timewarrior and Taskwarrior now use the same date handling.
+  - The 'continue' command can resume tracking by @id.
+  - When specifying a time without a date (e.g. '10:00am'), the day is assumed
+    to be today, and is no longer projected back in time.
 
-Features not implemented in 1.0.0
+New Commands in 1.1.0
 
-  - The 'undo' command.
-  - The 'fill' command and ':adjust' hint are disabled for beta.
-  - Rules.
+  -
+
+New Configuration Options 1.1.0
+
+  -
+
+Newly Deprecated Features in 1.1.0
+
+  -
+
+Removed Features in 1.1.0
+
+  - Named dates 'socw', 'socm', 'socq' and 'socy' are now named 'sow', 'som',
+    'soq' and 'soy'. Similarly the 'eocw' etc are modified. The 'c' is now
+    implicit.
 
 Known Issues
 
@@ -29,10 +50,6 @@ While Timewarrior has undergone testing, bugs are sure to remain.  If you find
 a bug, please enter a new issue at:
 
   https://bug.tasktools.org
-
-Or you can also report the issue in the forums at:
-
-  https://answers.tasktools.org
 
 Or just send a message to:
 

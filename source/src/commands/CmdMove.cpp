@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -39,25 +39,26 @@ int CmdMove (
   Database& database)
 {
   // Gather ID and TAGs.
-  int id = 0;
+  std::vector<int> ids = cli.getIds();
+
+  if (ids.size() > 1)
+  {
+    throw std::string("The 'move' command only supports a single ID.");
+  }
+
+  if (ids.empty())
+  {
+    throw std::string ("ID must be specified. See 'timew help move'.");
+  }
+
+  int id = ids[0];
+
   std::string new_start;
   for (auto& arg : cli._args)
   {
-    if (arg.hasTag ("ID"))
-    {
-      if (id)
-        throw std::string ("The 'move' command only supports a single ID.");
-      else
-        id = strtol (arg.attribute ("value").c_str (), NULL, 10);
-    }
-
-    if (arg.hasTag ("FILTER") &&
-        arg._lextype == Lexer::Type::date)
+    if (arg.hasTag ("FILTER") && arg._lextype == Lexer::Type::date)
       new_start = arg.attribute ("raw");
   }
-
-  if (! id)
-    throw std::string ("ID must be specified. See 'timew help move'.");
 
   // Load the data.
   // Note: There is no filter.
@@ -66,6 +67,19 @@ int CmdMove (
 
   if (id > static_cast <int> (tracked.size ()))
     throw format ("ID '@{1}' does not correspond to any tracking.", id);
+
+  if (tracked[tracked.size() - id].synthetic)
+  {
+    auto latest = getLatestInterval(database);
+    auto exclusions = getAllExclusions (rules, filter.range);
+
+    Interval modified {latest};
+
+    // Update database.
+    database.deleteInterval (latest);
+    for (auto& interval : flatten (modified, exclusions))
+      database.addInterval (interval);
+  }
 
   // Move start time.
   Interval i = tracked[tracked.size () - id];

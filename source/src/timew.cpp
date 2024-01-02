@@ -29,17 +29,19 @@
 #include <Database.h>
 #include <Rules.h>
 #include <Extensions.h>
+#include <Datetime.h>
 #include <Timer.h>
 #include <shared.h>
 #include <commands.h>
 #include <timew.h>
 #include <iostream>
+#include <iomanip>
 #include <new>
 
 ////////////////////////////////////////////////////////////////////////////////
 int main (int argc, const char** argv)
 {
-  Timer run_time ("timew");
+  Timer run_time;
 
   // Lightweight version checking that doesn't require initialization or I/O.
   int status = 0;
@@ -48,6 +50,15 @@ int main (int argc, const char** argv)
 
   try
   {
+    // Timewarrior has special handling needs for times, such that a time that
+    // is before the current time is not projected forwards to tomorrow. For
+    // example:
+    //
+    //   now:    2017-05-21T12:22:00
+    //   input:                10:00
+    //   result: 2017-05-21T10:00:00
+    Datetime::timeRelative = false;
+
     // Add entities so that command line tokens such as 'help' are recognized as
     // commands.
     CLI cli;
@@ -74,7 +85,7 @@ int main (int argc, const char** argv)
     initializeDataAndRules (cli, database, rules);
 
     // Load extension script info.
-    // Re-analyze command because of the new extention entities.
+    // Re-analyze command because of the new extension entities.
     Extensions extensions;
     initializeExtensions (cli, rules, extensions);
     cli.analyze ();
@@ -107,7 +118,13 @@ int main (int argc, const char** argv)
   }
 
   run_time.stop ();
-  debug (run_time.str ());
+  std::stringstream s;
+  s << "Timer timew "
+    << std::setprecision (6)
+    << std::fixed
+    << run_time.total_us () / 1000000.0
+    << " sec\n";
+  debug (s.str ());
 
   return status;
 }

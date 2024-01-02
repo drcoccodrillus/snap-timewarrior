@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -84,14 +84,7 @@ int CmdReport (
 
   rules.set ("temp.report.start", filter.range.start.toEpoch () > 0 ? filter.range.start.toISO () : "");
   rules.set ("temp.report.end",   filter.range.end.toEpoch ()   > 0 ? filter.range.end.toISO ()   : "");
-  std::string combinedTags;
-  for (auto& tag : filter.tags ())
-  {
-    if (combinedTags != "")
-      combinedTags += ",";
-    combinedTags += quoteIfNeeded (tag);
-  }
-  rules.set ("temp.report.tags", combinedTags);
+  rules.set ("temp.report.tags", joinQuotedIfNeeded (",", filter.tags ()));
   rules.set ("temp.version", VERSION);
 
   std::stringstream header;

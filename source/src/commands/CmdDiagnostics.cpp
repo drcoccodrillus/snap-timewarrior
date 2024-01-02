@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,9 +27,8 @@
 #include <cmake.h>
 #include <format.h>
 #include <timew.h>
-#include <algorithm>
 #include <iostream>
-#include <sstream>
+#include <shared.h>
 
 #ifdef HAVE_COMMIT
 #include <commit.h>
@@ -109,18 +108,8 @@ int CmdDiagnostics (
       << '\n';
 
   // Compiler compliance level.
-  std::string compliance = "non-compliant";
-#ifdef __cplusplus
-  int level = __cplusplus;
-  if (level == 199711)
-    compliance = "C++98/03";
-  else if (level == 201103)
-    compliance = "C++11";
-  else
-    compliance = format (level);
-#endif
   out << "     Compliance: "
-      << compliance
+      << cppCompliance ()
       << "\n\n";
 
   out << "Build Features\n"
@@ -214,6 +203,7 @@ int CmdDiagnostics (
     for (auto& e : exts)
       if (e.length () > longest)
         longest = e.length ();
+
     longest -= extDir._data.length () + 1;
 
     for (auto& ext : exts)

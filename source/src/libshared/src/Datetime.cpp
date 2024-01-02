@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2006 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2006 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,8 @@
 
 #include <cmake.h>
 #include <Datetime.h>
+#include <algorithm>
+#include <iostream>
 #include <sstream>
 #include <iomanip>
 #include <cassert>
@@ -60,8 +62,13 @@ static std::vector <std::string> monthNames {
 
 int Datetime::weekstart = 1; // Monday, per ISO-8601.
 int Datetime::minimumMatchLength = 3;
-bool Datetime::isoEnabled = true;
-bool Datetime::lookForwards = true;
+bool Datetime::isoEnabled            = true;
+bool Datetime::standaloneDateEnabled = true;
+bool Datetime::standaloneTimeEnabled = true;
+
+// When true, HH:MM:SS is assumed to be today if the time > now, otherwise it is
+// asumed to be tomorrow.  When false, it is always today.
+bool Datetime::timeRelative          = true;
 
 ////////////////////////////////////////////////////////////////////////////////
 Datetime::Datetime ()
@@ -144,6 +151,8 @@ bool Datetime::parse (
   if (i)
     pig.skipN (static_cast <int> (i));
 
+  auto checkpoint = pig.cursor ();
+
   // Parse epoch first, as it's the most common scenario.
   if (parse_epoch (pig))
   {
@@ -152,7 +161,7 @@ bool Datetime::parse (
     return true;
   }
 
-  else if (parse_formatted (pig, format))
+  if (parse_formatted (pig, format))
   {
     // Check the values and determine time_t.
     if (validate ())
@@ -166,17 +175,20 @@ bool Datetime::parse (
   // Allow parse_date_time and parse_date_time_ext regardless of
   // Datetime::isoEnabled setting, because these formats are relied upon by
   // the 'import' command, JSON parser and hook system.
-  else if (parse_date_time_ext   (pig) || // Strictest first.
-           parse_date_time       (pig) ||
-           (Datetime::isoEnabled &&
-            (parse_date_ext      (pig) ||
-             parse_date          (pig) ||
-             parse_time_utc_ext  (pig) ||
-             parse_time_utc      (pig) ||
-             parse_time_off_ext  (pig) ||
-             parse_time_off      (pig) ||
-             parse_time_ext      (pig) ||
-             parse_time          (pig)))) // Time last, as it is the most permissive.
+  if (parse_date_time_ext   (pig) || // Strictest first.
+      parse_date_time       (pig) ||
+      (Datetime::isoEnabled &&
+       (                                    parse_date_ext      (pig)  ||
+        (Datetime::standaloneDateEnabled && parse_date          (pig)) ||
+                                            parse_time_utc_ext  (pig)  ||
+                                            parse_time_utc      (pig)  ||
+                                            parse_time_off_ext  (pig)  ||
+                                            parse_time_off      (pig)  ||
+                                            parse_time_ext      (pig)  ||
+        (Datetime::standaloneTimeEnabled && parse_time          (pig)) // Time last, as it is the most permissive.
+       )
+      )
+     )
   {
     // Check the values and determine time_t.
     if (validate ())
@@ -187,7 +199,9 @@ bool Datetime::parse (
     }
   }
 
-  else if (parse_named (pig))
+  pig.restoreTo (checkpoint);
+
+  if (parse_named (pig))
   {
     // ::validate and ::resolve are not needed in this case.
     start = pig.cursor ();
@@ -529,79 +543,73 @@ bool Datetime::parse_formatted (Pig& pig, const std::string& format)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Note how these are all single words:
-//   <day>
-//   <month>
-//   Nth
-//   socy, eocy
-//   socq, eocq
-//   socm, eocm
-//   som, eom
-//   soq, eoq
-//   soy, eoy
-//   socw, eocw
-//   sow, eow
-//   soww, eoww
-//   sod, eod
-//   yesterday
-//   today
-//   now
-//   tomorrow
-//   later          = midnight, Jan 18th, 2038.
-//   someday        = midnight, Jan 18th, 2038.
-//   easter
-//   eastermonday
-//   ascension
-//   pentecost
-//   goodfriday
-//   midsommar      = midnight, 1st Saturday after 20th June
-//   midsommarafton = midnight, 1st Friday after 19th June
-//   juhannus       = midnight, 1st Friday after 19th June
+// Note how these are all single words.
+//
+// Examples and descriptions, assuming now == 2017-03-05T12:34:56.
+//
+//                  Example              Notes
+//                  -------------------  ------------------
+//   now            2017-03-05T12:34:56  Unaffected
+//   yesterday      2017-03-04T00:00:00  Unaffected
+//   today          2017-03-05T00:00:00  Unaffected
+//   tomorrow       2017-03-06T00:00:00  Unaffected
+//   <ordinal> 12th 2017-03-12T00:00:00
+//   <day> monday   2017-03-06T00:00:00
+//   <month> april  2017-04-01T00:00:00
+//   later          2038-01-18T00:00:00  Unaffected
+//   someday        2038-01-18T00:00:00  Unaffected
+//   sopd           2017-03-04T00:00:00  Unaffected
+//   sod            2017-03-05T00:00:00  Unaffected
+//   sond           2017-03-06T00:00:00  Unaffected
+//   eopd           2017-03-05T00:00:00  Unaffected
+//   eod            2017-03-06T00:00:00  Unaffected
+//   eond           2017-03-07T00:00:00  Unaffected
+//   sopw           2017-02-26T00:00:00  Unaffected
+//   sow            2017-03-05T00:00:00  Unaffected
+//   sonw           2017-03-12T00:00:00  Unaffected
+//   eopw           2017-03-05T00:00:00  Unaffected
+//   eow            2017-03-12T00:00:00  Unaffected
+//   eonw           2017-03-19T00:00:00  Unaffected
+//   sopww          2017-02-27T00:00:00  Unaffected
+//   soww           2017-03-06T00:00:00
+//   sonww          2017-03-06T00:00:00  Unaffected
+//   eopww          2017-03-03T00:00:00  Unaffected
+//   eoww           2017-03-10T00:00:00
+//   eonww          2017-03-17T00:00:00  Unaffected
+//   sopm           2017-02-01T00:00:00  Unaffected
+//   som            2017-03-01T00:00:00  Unaffected
+//   sonm           2017-04-01T00:00:00  Unaffected
+//   eopm           2017-03-01T00:00:00  Unaffected
+//   eom            2017-04-01T00:00:00  Unaffected
+//   eonm           2017-05-01T00:00:00  Unaffected
+//   sopq           2017-10-01T00:00:00  Unaffected
+//   soq            2017-01-01T00:00:00  Unaffected
+//   sonq           2017-04-01T00:00:00  Unaffected
+//   eopq           2017-01-01T00:00:00  Unaffected
+//   eoq            2017-04-01T00:00:00  Unaffected
+//   eonq           2017-07-01T00:00:00  Unaffected
+//   sopy           2016-01-01T00:00:00  Unaffected
+//   soy            2017-01-01T00:00:00  Unaffected
+//   sony           2018-01-01T00:00:00  Unaffected
+//   eopy           2017-01-01T00:00:00  Unaffected
+//   eoy            2018-01-01T00:00:00  Unaffected
+//   eony           2019-01-01T00:00:00  Unaffected
+//   easter         2017-04-16T00:00:00
+//   eastermonday   2017-04-16T00:00:00
+//   ascension      2017-05-25T00:00:00
+//   pentecost      2017-06-04T00:00:00
+//   goodfriday     2017-04-14T00:00:00
+//   midsommar      2017-06-24T00:00:00  midnight, 1st Saturday after 20th June
+//   midsommarafton 2017-06-23T00:00:00  midnight, 1st Friday after 19th June
+//   juhannus       2017-06-23T00:00:00  midnight, 1st Friday after 19th June
 //
 bool Datetime::parse_named (Pig& pig)
 {
   auto checkpoint = pig.cursor ();
 
+  // Experimental handling of date phrases, such as "first monday in march".
+  // Note that this requires that phrases are deliminted by EOS or WS.
   std::string token;
-  if (pig.getUntilWS (token))
-  {
-    if (initializeNow            (token) ||
-        initializeToday          (token) ||
-        initializeSod            (token) ||
-        initializeEod            (token) ||
-        initializeTomorrow       (token) ||
-        initializeYesterday      (token) ||
-        initializeDayName        (token) ||
-        initializeMonthName      (token) ||
-        initializeLater          (token) ||
-        initializeEoy            (token) ||
-        initializeSocy           (token) ||
-        initializeSoy            (token) ||
-        initializeEoq            (token) ||
-        initializeSocq           (token) ||
-        initializeSoq            (token) ||
-        initializeSocm           (token) ||
-        initializeSom            (token) ||
-        initializeEom            (token) ||
-        initializeSocw           (token) ||
-        initializeEow            (token) ||
-        initializeSow            (token) ||
-        initializeEoww           (token) ||
-        initializeOrdinal        (token) ||
-        initializeEaster         (token) ||
-        initializeMidsommar      (token) ||
-        initializeMidsommarafton (token) ||
-        initializeInformalTime   (token))
-    {
-      return true;
-    }
-  }
-
-/////
-
-  pig.restoreTo (checkpoint);
-
-  // obtain input tokens.
   std::vector <std::string> tokens;
   while (pig.getUntilWS (token))
   {
@@ -610,12 +618,69 @@ bool Datetime::parse_named (Pig& pig)
       break;
   }
 
-  if (initializeFoo (tokens))
+/*
+  // This grpoup contains "1st monday ..." which must be processed before
+  // initializeOrdinal below.
+  if (initializeNthDayInMonth (tokens))
   {
     return true;
   }
+*/
 
-/////
+  // Restoration necessary because of the tokenization.
+  pig.restoreTo (checkpoint);
+
+  if (initializeNow            (pig) ||
+      initializeYesterday      (pig) ||
+      initializeToday          (pig) ||
+      initializeTomorrow       (pig) ||
+      initializeOrdinal        (pig) ||
+      initializeDayName        (pig) ||
+      initializeMonthName      (pig) ||
+      initializeLater          (pig) ||
+      initializeSopd           (pig) ||
+      initializeSod            (pig) ||
+      initializeSond           (pig) ||
+      initializeEopd           (pig) ||
+      initializeEod            (pig) ||
+      initializeEond           (pig) ||
+      initializeSopw           (pig) ||
+      initializeSow            (pig) ||
+      initializeSonw           (pig) ||
+      initializeEopw           (pig) ||
+      initializeEow            (pig) ||
+      initializeEonw           (pig) ||
+      initializeSopww          (pig) ||  // Must appear after sopw
+      initializeSonww          (pig) ||  // Must appear after sonw
+      initializeSoww           (pig) ||  // Must appear after sow
+      initializeEopww          (pig) ||  // Must appear after eopw
+      initializeEonww          (pig) ||  // Must appear after eonw
+      initializeEoww           (pig) ||  // Must appear after eow
+      initializeSopm           (pig) ||
+      initializeSom            (pig) ||
+      initializeSonm           (pig) ||
+      initializeEopm           (pig) ||
+      initializeEom            (pig) ||
+      initializeEonm           (pig) ||
+      initializeSopq           (pig) ||
+      initializeSoq            (pig) ||
+      initializeSonq           (pig) ||
+      initializeEopq           (pig) ||
+      initializeEoq            (pig) ||
+      initializeEonq           (pig) ||
+      initializeSopy           (pig) ||
+      initializeSoy            (pig) ||
+      initializeSony           (pig) ||
+      initializeEopy           (pig) ||
+      initializeEoy            (pig) ||
+      initializeEony           (pig) ||
+      initializeEaster         (pig) ||
+      initializeMidsommar      (pig) ||
+      initializeMidsommarafton (pig) ||
+      initializeInformalTime   (pig))
+  {
+    return true;
+  }
 
   pig.restoreTo (checkpoint);
   return false;
@@ -629,8 +694,8 @@ bool Datetime::parse_epoch (Pig& pig)
   auto checkpoint = pig.cursor ();
 
   int epoch {};
-  if (pig.getDigits (epoch) &&
-      pig.eos ()            &&
+  if (pig.getDigits (epoch)             &&
+      ! unicodeLatinAlpha (pig.peek ()) &&
       epoch >= 315532800)
   {
     _date = static_cast <time_t> (epoch);
@@ -642,9 +707,9 @@ bool Datetime::parse_epoch (Pig& pig)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// date-ext 'T' time-ext 'Z'
-// date-ext 'T' time-ext offset-ext
-// date-ext 'T' time-ext
+// date_ext 'T' time_utc_ext 'Z'
+// date_ext 'T' time_off_ext
+// date_ext 'T' time_ext
 bool Datetime::parse_date_time_ext (Pig& pig)
 {
   auto checkpoint = pig.cursor ();
@@ -653,7 +718,7 @@ bool Datetime::parse_date_time_ext (Pig& pig)
       pig.skip ('T')       &&
       (parse_time_utc_ext (pig) ||
        parse_time_off_ext (pig) ||
-       parse_time_ext     (pig) ))
+       parse_time_ext     (pig)))
   {
     return true;
   }
@@ -697,8 +762,8 @@ bool Datetime::parse_date_ext (Pig& pig)
         return true;
       }
     }
-    else
-      pig.restoreTo (checkpointYear);
+
+    pig.restoreTo (checkpointYear);
 
     if (parse_month (pig, month) &&
         pig.skip ('-')           &&
@@ -710,8 +775,8 @@ bool Datetime::parse_date_ext (Pig& pig)
       _day = day;
       return true;
     }
-    else
-      pig.restoreTo (checkpointYear);
+
+    pig.restoreTo (checkpointYear);
 
     if (parse_julian (pig, julian) &&
         ! unicodeLatinDigit (pig.peek ()))
@@ -720,10 +785,11 @@ bool Datetime::parse_date_ext (Pig& pig)
       _julian = julian;
       return true;
     }
-    else
-      pig.restoreTo (checkpointYear);
+
+    pig.restoreTo (checkpointYear);
 
     if (parse_month (pig, month) &&
+        pig.peek () != '-'       &&
         ! unicodeLatinDigit (pig.peek ()))
     {
       _year = year;
@@ -731,8 +797,6 @@ bool Datetime::parse_date_ext (Pig& pig)
       _day = 1;
       return true;
     }
-    else
-      pig.restoreTo (checkpointYear);
   }
 
   pig.restoreTo (checkpoint);
@@ -753,8 +817,7 @@ bool Datetime::parse_off_ext (Pig& pig)
     int hour {0};
     int minute {0};
 
-    if (parse_off_hour (pig, hour) &&
-        ! unicodeLatinDigit (pig.peek ()))
+    if (parse_off_hour (pig, hour))
     {
       if (pig.skip (':'))
       {
@@ -780,7 +843,7 @@ bool Datetime::parse_off_ext (Pig& pig)
 
 ////////////////////////////////////////////////////////////////////////////////
 // hh:mm[:ss]
-bool Datetime::parse_time_ext (Pig& pig)
+bool Datetime::parse_time_ext (Pig& pig, bool terminated)
 {
   auto checkpoint = pig.cursor ();
 
@@ -794,7 +857,8 @@ bool Datetime::parse_time_ext (Pig& pig)
     {
       int second {};
       if (parse_second (pig, second) &&
-          ! unicodeLatinDigit (pig.peek ()))
+          ! unicodeLatinDigit (pig.peek ()) &&
+          (! terminated || (pig.peek () != '-' && pig.peek () != '+')))
       {
         _seconds = (hour * 3600) + (minute * 60) + second;
         return true;
@@ -805,10 +869,11 @@ bool Datetime::parse_time_ext (Pig& pig)
     }
 
     auto following = pig.peek ();
-    if (! unicodeLatinDigit (following) &&
-        following != 'A'                &&
-        following != 'a'                &&
-        following != 'P'                &&
+    if (! unicodeLatinDigit (following)    &&
+        (! terminated || (following != '+' && following != '-')) &&
+        following != 'A'                   &&
+        following != 'a'                   &&
+        following != 'P'                   &&
         following != 'p')
     {
       _seconds = (hour * 3600) + (minute * 60);
@@ -826,12 +891,14 @@ bool Datetime::parse_time_utc_ext (Pig& pig)
 {
   auto checkpoint = pig.cursor ();
 
-  if (parse_time_ext (pig) &&
-      pig.skip ('Z')       &&
-      ! unicodeLatinDigit (pig.peek ()))
+  if (parse_time_ext (pig, false) &&
+      pig.skip ('Z'))
   {
-    _utc = true;
-    return true;
+    if (! unicodeLatinDigit (pig.peek ()))
+    {
+      _utc = true;
+      return true;
+    }
   }
 
   pig.restoreTo (checkpoint);
@@ -844,7 +911,7 @@ bool Datetime::parse_time_off_ext (Pig& pig)
 {
   auto checkpoint = pig.cursor ();
 
-  if (parse_time_ext (pig) &&
+  if (parse_time_ext (pig, false) &&
       parse_off_ext (pig))
   {
     return true;
@@ -906,8 +973,8 @@ bool Datetime::parse_date (Pig& pig)
         return true;
       }
     }
-    else
-      pig.restoreTo (checkpointYear);
+
+    pig.restoreTo (checkpointYear);
 
     if (parse_julian (pig, julian) &&
         ! unicodeLatinDigit (pig.peek ()))
@@ -916,8 +983,8 @@ bool Datetime::parse_date (Pig& pig)
       _julian = julian;
       return true;
     }
-    else
-      pig.restoreTo (checkpointYear);
+
+    pig.restoreTo (checkpointYear);
 
     if (parse_month (pig, month))
     {
@@ -942,8 +1009,6 @@ bool Datetime::parse_date (Pig& pig)
         }
       }
     }
-    else
-      pig.restoreTo (checkpointYear);
   }
 
   pig.restoreTo (checkpoint);
@@ -956,7 +1021,7 @@ bool Datetime::parse_time_utc (Pig& pig)
 {
   auto checkpoint = pig.cursor ();
 
-  if (parse_time (pig) &&
+  if (parse_time (pig, false) &&
       pig.skip ('Z'))
   {
     _utc = true;
@@ -974,11 +1039,14 @@ bool Datetime::parse_time_off (Pig& pig)
 {
   auto checkpoint = pig.cursor ();
 
-  if (parse_time (pig) &&
+  if (parse_time (pig, false) &&
       parse_off (pig))
   {
-    if (! unicodeLatinDigit (pig.peek ()))
+    auto terminator = pig.peek ();
+    if (terminator != '-' && ! unicodeLatinDigit (terminator))
+    {
       return true;
+    }
   }
 
   pig.restoreTo (checkpoint);
@@ -988,18 +1056,21 @@ bool Datetime::parse_time_off (Pig& pig)
 ////////////////////////////////////////////////////////////////////////////////
 // hhmmss
 // hhmm
-bool Datetime::parse_time (Pig& pig)
+bool Datetime::parse_time (Pig& pig, bool terminated)
 {
   auto checkpoint = pig.cursor ();
 
   int hour {};
   int minute {};
-  int second {};
   if (parse_hour (pig, hour) &&
       parse_minute (pig, minute))
   {
+    int second {};
     parse_second (pig, second);
-    if (! unicodeLatinDigit (pig.peek ()))
+
+    auto terminator = pig.peek ();
+    if (! terminated ||
+        (! unicodeLatinDigit (terminator) && terminator != '-' && terminator != '+'))
     {
       _seconds = (hour * 3600) + (minute * 60) + second;
       return true;
@@ -1027,6 +1098,7 @@ bool Datetime::parse_off (Pig& pig)
     {
       int minute {};
       parse_off_minute (pig, minute);
+
       if (! unicodeLatinDigit (pig.peek ()))
       {
         _offset = (hour * 3600) + (minute * 60);
@@ -1240,533 +1312,141 @@ bool Datetime::parse_off_minute (Pig& pig, int& value)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool Datetime::initializeNow (const std::string& token)
+// now [ !<alpha> && !<digit> ]
+bool Datetime::initializeNow (Pig& pig)
 {
-  if (token == "now")
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("now"))
   {
-    _date = time (nullptr);
-    return true;
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      _date = time (nullptr);
+      return true;
+    }
   }
 
+  pig.restoreTo (checkpoint);
   return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool Datetime::initializeToday (const std::string& token)
+// yesterday/abbrev  [ !<alpha> && !<digit> ]
+bool Datetime::initializeYesterday (Pig& pig)
 {
-  if (token == "today")
+  auto checkpoint = pig.cursor ();
+
+  std::string token;
+  if (pig.skipPartial ("yesterday", token) &&
+      token.length () >= static_cast <std::string::size_type> (Datetime::minimumMatchLength))
   {
-    time_t now = time (nullptr);
-    struct tm* t = localtime (&now);
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
 
-    t->tm_hour = t->tm_min = t->tm_sec = 0;
-    t->tm_isdst = -1;
-    _date = mktime (t);
-
-    return true;
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_isdst = -1;
+      t->tm_mday -= 1;
+      _date = mktime (t);
+      return true;
+    }
   }
 
+  pig.restoreTo (checkpoint);
   return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool Datetime::initializeSod (const std::string& token)
+// today/abbrev  [ !<alpha> && !<digit> ]
+bool Datetime::initializeToday (Pig& pig)
 {
-  if (token == "sod")
-  {
-    time_t now = time (nullptr);
-    struct tm* t = localtime (&now);
+  auto checkpoint = pig.cursor ();
 
-    if (Datetime::lookForwards)
+  std::string token;
+  if (pig.skipPartial ("today", token) &&
+      token.length () >= static_cast <std::string::size_type> (Datetime::minimumMatchLength))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// tomcorrow/abbrev  [ !<alpha> && !<digit> ]
+bool Datetime::initializeTomorrow (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  std::string token;
+  if (pig.skipPartial ("tomorrow", token) &&
+      token.length () >= static_cast <std::string::size_type> (Datetime::minimumMatchLength))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
       t->tm_mday++;
-
-    t->tm_hour = t->tm_min = t->tm_sec = 0;
-    t->tm_isdst = -1;
-    _date = mktime (t);
-
-    return true;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-bool Datetime::initializeEod (const std::string& token)
-{
-  if (token == "eod")
-  {
-    time_t now = time (nullptr);
-    struct tm* t = localtime (&now);
-
-    t->tm_mday++;
-    t->tm_hour = t->tm_min = t->tm_sec = 0;
-    t->tm_isdst = -1;
-    _date = mktime (t);
-    return true;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-bool Datetime::initializeTomorrow (const std::string& token)
-{
-  if (closeEnough ("tomorrow", token, Datetime::minimumMatchLength))
-  {
-    time_t now = time (nullptr);
-    struct tm* t = localtime (&now);
-
-    t->tm_mday++;
-    t->tm_hour = t->tm_min = t->tm_sec = 0;
-    t->tm_isdst = -1;
-    _date = mktime (t);
-    return true;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-bool Datetime::initializeYesterday (const std::string& token)
-{
-  if (closeEnough ("yesterday", token, Datetime::minimumMatchLength))
-  {
-    time_t now = time (nullptr);
-    struct tm* t = localtime (&now);
-
-    t->tm_hour = t->tm_min = t->tm_sec = 0;
-    t->tm_isdst = -1;
-    t->tm_mday -= 1;
-    _date = mktime (t);
-    return true;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-bool Datetime::initializeDayName (const std::string& token)
-{
-  auto day = dayOfWeek (token);
-  if (day != -1)
-  {
-    time_t now = time (nullptr);
-    struct tm* t = localtime (&now);
-
-    if (Datetime::lookForwards)
-    {
-      if (t->tm_wday >= day)
-        t->tm_mday += day - t->tm_wday + 7;
-      else
-        t->tm_mday += day - t->tm_wday;
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
     }
-    else
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// <digit>+ [ "st" | "nd" | "rd" | "th" ] [ !<alpha> && !<digit> ]
+bool Datetime::initializeOrdinal (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  int number = 0;
+  if (pig.getDigits (number) &&
+      number > 0             &&
+      number <= 31)
+  {
+    int character1;
+    int character2;
+    if (pig.getCharacter (character1)     &&
+        pig.getCharacter (character2)     &&
+        ! unicodeLatinAlpha (pig.peek ()) &&
+        ! unicodeLatinDigit (pig.peek ()))
     {
-      if (t->tm_wday >= day)
-        t->tm_mday += day - t->tm_wday;
-      else
-        t->tm_mday += day - t->tm_wday - 7;
-    }
-
-    t->tm_hour = t->tm_min = t->tm_sec = 0;
-    t->tm_isdst = -1;
-    _date = mktime (t);
-    return true;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-bool Datetime::initializeMonthName (const std::string& token)
-{
-  auto month = monthOfYear (token);
-  if (month != -1)
-  {
-    time_t now = time (nullptr);
-    struct tm* t = localtime (&now);
-
-    if (Datetime::lookForwards)
-    {
-      if (t->tm_mon >= month - 1)
-        t->tm_year++;
-    }
-
-    t->tm_mon = month - 1;
-    t->tm_mday = 1;
-    t->tm_hour = t->tm_min = t->tm_sec = 0;
-    t->tm_isdst = -1;
-    _date = mktime (t);
-    return true;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-bool Datetime::initializeLater (const std::string& token)
-{
-  if (token == "later" ||
-      token == "someday")
-  {
-    time_t now = time (nullptr);
-    struct tm* t = localtime (&now);
-
-    t->tm_hour = t->tm_min = t->tm_sec = 0;
-    t->tm_year = 138;
-    t->tm_mon = 0;
-    t->tm_mday = 18;
-    t->tm_isdst = -1;
-    _date = mktime (t);
-    return true;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-bool Datetime::initializeEoy (const std::string& token)
-{
-  if (token == "eoy" ||
-      token == "eocy")
-  {
-    time_t now = time (nullptr);
-    struct tm* t = localtime (&now);
-
-    t->tm_hour = t->tm_min = t->tm_sec = 0;
-    t->tm_mon = 0;
-    t->tm_mday = 1;
-    t->tm_year++;
-    t->tm_isdst = -1;
-    _date = mktime (t);
-    return true;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-bool Datetime::initializeSocy (const std::string& token)
-{
-  if (token == "socy")
-  {
-    time_t now = time (nullptr);
-    struct tm* t = localtime (&now);
-
-    t->tm_hour = t->tm_min = t->tm_sec = 0;
-    t->tm_mon = 0;
-    t->tm_mday = 1;
-    t->tm_isdst = -1;
-    _date = mktime (t);
-    return true;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-bool Datetime::initializeSoy (const std::string& token)
-{
-  if (token == "soy")
-  {
-    time_t now = time (nullptr);
-    struct tm* t = localtime (&now);
-
-    t->tm_hour = t->tm_min = t->tm_sec = 0;
-    t->tm_mon = 0;
-    t->tm_mday = 1;
-
-    if (Datetime::lookForwards)
-      t->tm_year++;
-
-    t->tm_isdst = -1;
-    _date = mktime (t);
-    return true;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-bool Datetime::initializeEoq (const std::string& token)
-{
-  if (token == "eoq" ||
-      token == "eocq")
-  {
-    time_t now = time (nullptr);
-    struct tm* t = localtime (&now);
-
-    t->tm_hour = t->tm_min = t->tm_sec = 0;
-    t->tm_mon += 3 - (t->tm_mon % 3);
-    if (t->tm_mon > 11)
-    {
-      t->tm_mon -= 12;
-      ++t->tm_year;
-    }
-
-    t->tm_mday = 1;
-    t->tm_isdst = -1;
-    _date = mktime (t);
-    return true;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-bool Datetime::initializeSocq (const std::string& token)
-{
-  if (token == "socq")
-  {
-    time_t now = time (nullptr);
-    struct tm* t = localtime (&now);
-
-    t->tm_hour = t->tm_min = t->tm_sec = 0;
-    t->tm_mon -= t->tm_mon % 3;
-    t->tm_mday = 1;
-    t->tm_isdst = -1;
-    _date = mktime (t);
-    return true;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-bool Datetime::initializeSoq (const std::string& token)
-{
-  if (token == "soq")
-  {
-    time_t now = time (nullptr);
-    struct tm* t = localtime (&now);
-
-    if (Datetime::lookForwards)
-    {
-      t->tm_mon += 3 - (t->tm_mon % 3);
-      if (t->tm_mon > 11)
-      {
-        t->tm_mon -= 12;
-        ++t->tm_year;
-      }
-    }
-    else
-    {
-      t->tm_mon -= t->tm_mon % 3;
-    }
-
-    t->tm_hour = t->tm_min = t->tm_sec = 0;
-    t->tm_mday = 1;
-    t->tm_isdst = -1;
-    _date = mktime (t);
-    return true;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-bool Datetime::initializeSocm (const std::string& token)
-{
-  if (token == "socm")
-  {
-    time_t now = time (nullptr);
-    struct tm* t = localtime (&now);
-
-    t->tm_hour = t->tm_min = t->tm_sec = 0;
-    t->tm_mday = 1;
-    t->tm_isdst = -1;
-    _date = mktime (t);
-    return true;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-bool Datetime::initializeSom (const std::string& token)
-{
-  if (token == "som")
-  {
-    time_t now = time (nullptr);
-    struct tm* t = localtime (&now);
-
-    t->tm_hour = t->tm_min = t->tm_sec = 0;
-
-    if (Datetime::lookForwards)
-    {
-      t->tm_mon++;
-      if (t->tm_mon == 12)
-      {
-        t->tm_year++;
-        t->tm_mon = 0;
-      }
-    }
-
-    t->tm_mday = 1;
-    t->tm_isdst = -1;
-    _date = mktime (t);
-    return true;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-bool Datetime::initializeEom (const std::string& token)
-{
-  if (token == "eom" ||
-      token == "eocm")
-  {
-    time_t now = time (nullptr);
-    struct tm* t = localtime (&now);
-
-    t->tm_hour = 24;
-    t->tm_min = t->tm_sec = 0;
-    t->tm_mday = daysInMonth (t->tm_year + 1900, t->tm_mon + 1);
-    t->tm_isdst = -1;
-    _date = mktime (t);
-    return true;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-bool Datetime::initializeSocw (const std::string& token)
-{
-  if (token == "socw")
-  {
-    time_t now = time (nullptr);
-    struct tm* t = localtime (&now);
-    t->tm_hour = t->tm_min = t->tm_sec = 0;
-
-    int extra = (t->tm_wday + 6) % 7;
-    t->tm_mday -= extra;
-
-    t->tm_isdst = -1;
-    _date = mktime (t);
-    return true;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-bool Datetime::initializeEow (const std::string& token)
-{
-  if (token == "eow" ||
-      token == "eocw")
-  {
-    time_t now = time (nullptr);
-    struct tm* t = localtime (&now);
-
-    t->tm_mday += 8 - t->tm_wday;
-    t->tm_hour = t->tm_min = t->tm_sec = 0;
-    t->tm_isdst = -1;
-    _date = mktime (t);
-    return true;
-
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-bool Datetime::initializeSow (const std::string& token)
-{
-  if (token == "sow" || token == "soww")
-  {
-    time_t now = time (nullptr);
-    struct tm* t = localtime (&now);
-
-    if (Datetime::lookForwards)
-      t->tm_mday += 8 - t->tm_wday;
-    else
-      t->tm_mday -= (6 + t->tm_wday) % 7;
-
-    t->tm_hour = t->tm_min = t->tm_sec = 0;
-    t->tm_isdst = -1;
-    _date = mktime (t);
-    return true;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-bool Datetime::initializeEoww (const std::string& token)
-{
-  if (token == "eoww")
-  {
-    time_t now = time (nullptr);
-    struct tm* t = localtime (&now);
-
-    if (Datetime::lookForwards)
-      t->tm_mday += 6 - t->tm_wday;
-    else
-      t->tm_mday -= (t->tm_wday + 1) % 7;
-
-    t->tm_hour = t->tm_min = t->tm_sec = 0;
-    t->tm_isdst = -1;
-    _date = mktime (t);
-    return true;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-bool Datetime::initializeOrdinal (const std::string& token)
-{
-  if (
-      (
-       token.length () == 3                  &&
-       unicodeLatinDigit (token[0])          &&
-       ((token[1] == 's' && token[2] == 't') ||
-        (token[1] == 'n' && token[2] == 'd') ||
-        (token[1] == 'r' && token[2] == 'd') ||
-        (token[1] == 't' && token[2] == 'h'))
-      )
-      ||
-      (
-       token.length () == 4                  &&
-       unicodeLatinDigit (token[0])          &&
-       unicodeLatinDigit (token[1])          &&
-       ((token[2] == 's' && token[3] == 't') ||
-        (token[2] == 'n' && token[3] == 'd') ||
-        (token[2] == 'r' && token[3] == 'd') ||
-        (token[2] == 't' && token[3] == 'h'))
-      )
-     )
-  {
-    int number;
-    std::string ordinal;
-
-    if (unicodeLatinDigit (token[1]))
-    {
-      number = strtol (token.substr (0, 2).c_str (), nullptr, 10);
-      ordinal = lowerCase (token.substr (2));
-    }
-    else
-    {
-      number = strtol (token.substr (0, 1).c_str (), nullptr, 10);
-      ordinal = lowerCase (token.substr (1));
-    }
-
-    // Sanity check.
-    if (number <= 31)
-    {
-      // Make sure the digits and suffix agree.
       int remainder1 = number % 10;
       int remainder2 = number % 100;
-      if ((remainder2 != 11 && remainder1 == 1 && ordinal == "st") ||
-          (remainder2 != 12 && remainder1 == 2 && ordinal == "nd") ||
-          (remainder2 != 13 && remainder1 == 3 && ordinal == "rd") ||
+      if ((remainder2 != 11 && remainder1 == 1 && character1 == 's' && character2 == 't') ||
+          (remainder2 != 12 && remainder1 == 2 && character1 == 'n' && character2 == 'd') ||
+          (remainder2 != 13 && remainder1 == 3 && character1 == 'r' && character2 == 'd') ||
           ((remainder2 == 11 ||
             remainder2 == 12 ||
             remainder2 == 13 ||
             remainder1 == 0 ||
-            remainder1 > 3) && ordinal == "th"))
+            remainder1 > 3) && character1 == 't' && character2 == 'h'))
       {
         time_t now = time (nullptr);
         struct tm* t = localtime (&now);
@@ -1776,9 +1456,8 @@ bool Datetime::initializeOrdinal (const std::string& token)
         int d = t->tm_mday;
 
         // If it is this month.
-        if (! Datetime::lookForwards ||
-            (d < number &&
-             number <= daysInMonth (y, m)))
+        if (d < number &&
+            number <= daysInMonth (y, m))
         {
           t->tm_hour = t->tm_min = t->tm_sec = 0;
           t->tm_mon  = m - 1;
@@ -1808,99 +1487,1294 @@ bool Datetime::initializeOrdinal (const std::string& token)
     }
   }
 
+  pig.restoreTo (checkpoint);
   return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool Datetime::initializeEaster (const std::string& token)
+// sunday/abbrev [ !<alpha> && !<digit> && !: && != ]
+bool Datetime::initializeDayName (Pig& pig)
 {
-  if (closeEnough ("easter",       token, Datetime::minimumMatchLength) ||
-      closeEnough ("eastermonday", token, Datetime::minimumMatchLength) ||
-      closeEnough ("ascension",    token, Datetime::minimumMatchLength) ||
-      closeEnough ("pentecost",    token, Datetime::minimumMatchLength) ||
-      closeEnough ("goodfriday",   token, Datetime::minimumMatchLength))
+  auto checkpoint = pig.cursor ();
+
+  std::string token;
+  for (int day = 0; day <= 7; ++day)   // Deliberate <= so that 'sunday' is either 0 or 7.
   {
-    time_t now = time (nullptr);
-    struct tm* t = localtime (&now);
-
-    easter (t);
-    _date = mktime (t);
-
-    // If the result is earlier this year, then recalc for next year.
-    if (Datetime::lookForwards && _date < now)
+    if (pig.skipPartial (dayNames[day % 7], token) &&
+        token.length () >= static_cast <std::string::size_type> (Datetime::minimumMatchLength))
     {
-      t = localtime (&now);
+      auto following = pig.peek ();
+      if (! unicodeLatinAlpha (following) &&
+          ! unicodeLatinDigit (following) &&
+          following != ':' &&
+          following != '=')
+      {
+        time_t now = time (nullptr);
+        struct tm* t = localtime (&now);
+
+        if (t->tm_wday >= day)
+          t->tm_mday += day - t->tm_wday + 7;
+        else
+          t->tm_mday += day - t->tm_wday;
+
+        t->tm_hour = t->tm_min = t->tm_sec = 0;
+        t->tm_isdst = -1;
+        _date = mktime (t);
+        return true;
+      }
+    }
+
+    pig.restoreTo (checkpoint);
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// january/abbrev [ !<alpha> && !<digit> && !: && != ]
+bool Datetime::initializeMonthName (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  std::string token;
+  for (int month = 0; month < 12; ++month)
+  {
+    if (pig.skipPartial (monthNames[month], token) &&
+        token.length () >= static_cast <std::string::size_type> (Datetime::minimumMatchLength))
+    {
+      auto following = pig.peek ();
+      if (! unicodeLatinAlpha (following) &&
+          ! unicodeLatinDigit (following) &&
+          following != ':' &&
+          following != '=')
+      {
+        time_t now = time (nullptr);
+        struct tm* t = localtime (&now);
+
+        if (t->tm_mon >= month)
+          t->tm_year++;
+
+        t->tm_mon = month;
+        t->tm_mday = 1;
+        t->tm_hour = t->tm_min = t->tm_sec = 0;
+        t->tm_isdst = -1;
+        _date = mktime (t);
+        return true;
+      }
+    }
+
+    pig.restoreTo (checkpoint);
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// later/abbrev  [ !<alpha> && !<digit> ]
+// someday/abbrev  [ !<alpha> && !<digit> ]
+bool Datetime::initializeLater (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  std::string token;
+  if ((pig.skipPartial ("later", token) &&
+      token.length () >= static_cast <std::string::size_type> (Datetime::minimumMatchLength))
+
+      ||
+
+     (pig.skipPartial ("someday", token) &&
+      token.length () >= static_cast <std::string::size_type> (std::max (Datetime::minimumMatchLength, 4))))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_year = 138;
+      t->tm_mon = 0;
+      t->tm_mday = 18;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// sopd [ !<alpha> && !<digit> ]
+bool Datetime::initializeSopd (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("sopd"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_isdst = -1;
+      t->tm_mday -= 1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// sod [ !<alpha> && !<digit> ]
+bool Datetime::initializeSod (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("sod"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// sond [ !<alpha> && !<digit> ]
+bool Datetime::initializeSond (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("sond"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_mday++;
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// eopd [ !<alpha> && !<digit> ]
+bool Datetime::initializeEopd (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("eopd"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// eod [ !<alpha> && !<digit> ]
+bool Datetime::initializeEod (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("eod"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_mday++;
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// eond [ !<alpha> && !<digit> ]
+bool Datetime::initializeEond (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("eond"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_mday += 2;
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// sopw [ !<alpha> && !<digit> ]
+bool Datetime::initializeSopw (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("sopw"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+
+      int extra = (t->tm_wday + 6) % 7;
+      t->tm_mday -= extra;
+      t->tm_mday -= 7;
+
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// sow [ !<alpha> && !<digit> ]
+bool Datetime::initializeSow (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("sow"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+
+      int extra = (t->tm_wday + 6) % 7;
+      t->tm_mday -= extra;
+
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// sonw [ !<alpha> && !<digit> ]
+bool Datetime::initializeSonw (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("sonw"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+
+      int extra = (t->tm_wday + 6) % 7;
+      t->tm_mday -= extra;
+      t->tm_mday += 7;
+
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// eopw [ !<alpha> && !<digit> ]
+bool Datetime::initializeEopw (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("eopw"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+
+      int extra = (t->tm_wday + 6) % 7;
+      t->tm_mday -= extra;
+
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// eow [ !<alpha> && !<digit> ]
+bool Datetime::initializeEow (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("eow"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+
+      int extra = (t->tm_wday + 6) % 7;
+      t->tm_mday -= extra;
+      t->tm_mday += 7;
+
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// eonw [ !<alpha> && !<digit> ]
+bool Datetime::initializeEonw (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("eonw"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_mday += 15 - t->tm_wday;
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// sopww [ !<alpha> && !<digit> ]
+bool Datetime::initializeSopww (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("sopww"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_mday += -6 - t->tm_wday;
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// soww [ !<alpha> && !<digit> ]
+bool Datetime::initializeSoww (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("soww"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_mday += 8 - t->tm_wday;
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// sonww [ !<alpha> && !<digit> ]
+bool Datetime::initializeSonww (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("sonww"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_mday += 8 - t->tm_wday;
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// eopww [ !<alpha> && !<digit> ]
+bool Datetime::initializeEopww (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("eopww"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_mday -= (t->tm_wday + 1) % 7;
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// eoww [ !<alpha> && !<digit> ]
+bool Datetime::initializeEoww (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("eoww"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_mday += 6 - t->tm_wday;
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// eonww [ !<alpha> && !<digit> ]
+bool Datetime::initializeEonww (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("eonww"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_mday += 13 - t->tm_wday;
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// sopm [ !<alpha> && !<digit> ]
+bool Datetime::initializeSopm (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("sopm"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+
+      if (t->tm_mon == 0)
+      {
+        t->tm_year--;
+        t->tm_mon = 11;
+      }
+      else
+        t->tm_mon--;
+
+      t->tm_mday = 1;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// som [ !<alpha> && !<digit> ]
+bool Datetime::initializeSom (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("som"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_mday = 1;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// sonm [ !<alpha> && !<digit> ]
+bool Datetime::initializeSonm (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("sonm"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+
+      t->tm_mon++;
+      if (t->tm_mon > 11)
+      {
+        t->tm_year++;
+        t->tm_mon = 0;
+      }
+
+      t->tm_mday = 1;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// eopm [ !<alpha> && !<digit> ]
+bool Datetime::initializeEopm (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("eopm"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_mday = 1;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// eom [ !<alpha> && !<digit> ]
+bool Datetime::initializeEom (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("eom"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+
+      t->tm_mon++;
+      if (t->tm_mon > 11)
+      {
+        t->tm_year++;
+        t->tm_mon = 0;
+      }
+
+      t->tm_mday = 1;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// eonm [ !<alpha> && !<digit> ]
+bool Datetime::initializeEonm (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("eonm"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_mday = 1;
+      t->tm_mon += 2;
+      if (t->tm_mon > 11)
+      {
+        t->tm_year++;
+        t->tm_mon -= 12;
+      }
+
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// sopq [ !<alpha> && !<digit> ]
+bool Datetime::initializeSopq (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("sopq"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_mon -= t->tm_mon % 3;
+      t->tm_mon -= 3;
+      if (t->tm_mon < 0)
+      {
+        t->tm_mon += 12;
+        t->tm_year--;
+      }
+
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_mday = 1;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// soq [ !<alpha> && !<digit> ]
+bool Datetime::initializeSoq (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("soq"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_mon -= t->tm_mon % 3;
+      t->tm_mday = 1;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// sonq [ !<alpha> && !<digit> ]
+bool Datetime::initializeSonq (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("sonq"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_mon += 3 - (t->tm_mon % 3);
+      if (t->tm_mon > 11)
+      {
+        t->tm_mon -= 12;
+        ++t->tm_year;
+      }
+
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_mday = 1;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// eopq [ !<alpha> && !<digit> ]
+bool Datetime::initializeEopq (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("eopq"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_mon -= t->tm_mon % 3;
+      t->tm_mday = 1;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// eoq [ !<alpha> && !<digit> ]
+bool Datetime::initializeEoq (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("eoq"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_mon += 3 - (t->tm_mon % 3);
+      if (t->tm_mon > 11)
+      {
+        t->tm_mon -= 12;
+        ++t->tm_year;
+      }
+
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_mday = 1;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// eonq [ !<alpha> && !<digit> ]
+bool Datetime::initializeEonq (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("eonq"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_mon += 6 - (t->tm_mon % 3);
+      if (t->tm_mon > 11)
+      {
+        t->tm_mon -= 12;
+        ++t->tm_year;
+      }
+
+      t->tm_mday = 1;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// sopy [ !<alpha> && !<digit> ]
+bool Datetime::initializeSopy (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("sopy"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_mon = 0;
+      t->tm_mday = 1;
+      t->tm_year--;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// soy [ !<alpha> && !<digit> ]
+bool Datetime::initializeSoy (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("soy"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_mon = 0;
+      t->tm_mday = 1;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// sony [ !<alpha> && !<digit> ]
+bool Datetime::initializeSony (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("sony"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_mon = 0;
+      t->tm_mday = 1;
       t->tm_year++;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// eopy [ !<alpha> && !<digit> ]
+bool Datetime::initializeEopy (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("eopy"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_mon = 0;
+      t->tm_mday = 1;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// eoy [ !<alpha> && !<digit> ]
+bool Datetime::initializeEoy (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("eoy"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_mon = 0;
+      t->tm_mday = 1;
+      t->tm_year++;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// eony [ !<alpha> && !<digit> ]
+bool Datetime::initializeEony (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("eony"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
+      t->tm_hour = t->tm_min = t->tm_sec = 0;
+      t->tm_mon = 0;
+      t->tm_mday = 1;
+      t->tm_year += 2;
+      t->tm_isdst = -1;
+      _date = mktime (t);
+      return true;
+    }
+  }
+
+  pig.restoreTo (checkpoint);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// easter       [ !<alpha> && !<digit> ]
+// eastermonday [ !<alpha> && !<digit> ]
+// ascension    [ !<alpha> && !<digit> ]
+// pentecost    [ !<alpha> && !<digit> ]
+// goodfriday   [ !<alpha> && !<digit> ]
+bool Datetime::initializeEaster (Pig& pig)
+{
+  auto checkpoint = pig.cursor ();
+
+  std::vector <std::string> holidays = {"eastermonday", "easter", "ascension", "pentecost", "goodfriday"};
+  std::vector <int>         offsets  = {             1,        0,          39,          49,           -2};
+
+  std::string token;
+  for (int holiday = 0; holiday < 5; ++holiday)
+  {
+   if (pig.skipLiteral (holidays[holiday]) &&
+       ! unicodeLatinAlpha (pig.peek ()) &&
+       ! unicodeLatinDigit (pig.peek ()))
+    {
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
+
       easter (t);
+      _date = mktime (t);
+
+      // If the result is earlier this year, then recalc for next year.
+      if (_date < now)
+      {
+        t = localtime (&now);
+        t->tm_year++;
+        easter (t);
+      }
+
+      // Adjust according to holiday-specific offsets.
+      t->tm_mday += offsets[holiday];
+
+      _date = mktime (t);
+      return true;
     }
-
-         if (closeEnough ("goodfriday",   token, Datetime::minimumMatchLength)) t->tm_mday -= 2;
-
-    // DO NOT REMOVE THIS USELESS-LOOKING LINE.
-    // It is here to capture an exact match for 'easter', to prevent 'easter'
-    // being a partial match for 'eastermonday'.
-    else if (closeEnough ("easter",       token, Datetime::minimumMatchLength)) ;
-    else if (closeEnough ("eastermonday", token, Datetime::minimumMatchLength)) t->tm_mday += 1;
-    else if (closeEnough ("ascension",    token, Datetime::minimumMatchLength)) t->tm_mday += 39;
-    else if (closeEnough ("pentecost",    token, Datetime::minimumMatchLength)) t->tm_mday += 49;
-
-    _date = mktime (t);
-    return true;
   }
 
+  pig.restoreTo (checkpoint);
   return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool Datetime::initializeMidsommar (const std::string& token)
+// midsommar [ !<alpha> && !<digit> ]
+bool Datetime::initializeMidsommar (Pig& pig)
 {
-  if (closeEnough ("midsommar", token, Datetime::minimumMatchLength))
-  {
-    time_t now = time (nullptr);
-    struct tm* t = localtime (&now);
-    midsommar (t);
-    _date = mktime (t);
+  auto checkpoint = pig.cursor ();
 
-    // If the result is earlier this year, then recalc for next year.
-    if (Datetime::lookForwards &&
-        _date < now)
+  if (pig.skipLiteral ("midsommar"))
+  {
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
     {
-      t = localtime (&now);
-      t->tm_year++;
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
       midsommar (t);
-    }
+      _date = mktime (t);
 
-    _date = mktime (t);
-    return true;
+      // If the result is earlier this year, then recalc for next year.
+      if (_date < now)
+      {
+        t = localtime (&now);
+        t->tm_year++;
+        midsommar (t);
+      }
+
+      _date = mktime (t);
+      return true;
+    }
   }
 
+  pig.restoreTo (checkpoint);
   return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool Datetime::initializeMidsommarafton (const std::string& token)
+// midsommarafton [ !<alpha> && !<digit> ]
+// juhannus [ !<alpha> && !<digit> ]
+bool Datetime::initializeMidsommarafton (Pig& pig)
 {
-  if (closeEnough ("midsommarafton", token, Datetime::minimumMatchLength) ||
-      closeEnough ("juhannus",       token, Datetime::minimumMatchLength))
+  auto checkpoint = pig.cursor ();
+
+  if (pig.skipLiteral ("midsommarafton") ||
+      pig.skipLiteral ("juhannus"))
   {
-    time_t now = time (nullptr);
-    struct tm* t = localtime (&now);
-    midsommarafton (t);
-    _date = mktime (t);
-
-    // If the result is earlier this year, then recalc for next year.
-    if (Datetime::lookForwards &&
-        _date < now)
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
     {
-      t = localtime (&now);
-      t->tm_year++;
+      time_t now = time (nullptr);
+      struct tm* t = localtime (&now);
       midsommarafton (t);
-    }
+      _date = mktime (t);
 
-    _date = mktime (t);
-    return true;
+      // If the result is earlier this year, then recalc for next year.
+      if (_date < now)
+      {
+        t = localtime (&now);
+        t->tm_year++;
+        midsommarafton (t);
+      }
+
+      _date = mktime (t);
+      return true;
+    }
   }
 
+  pig.restoreTo (checkpoint);
   return false;
 }
 
@@ -1910,16 +2784,17 @@ bool Datetime::initializeMidsommarafton (const std::string& token)
 // 8:30am
 // 8:30a
 // 8:30
+// 8:30:00
 //
-// \d+ [ : \d{2} ] [ am | a | pm | p ]
+// \d+ [ : \d{2} ] [ am | a | pm | p ] [ !<alpha> && !<digit> && !: && !+ && !- ]
 //
-bool Datetime::initializeInformalTime (const std::string& token)
+bool Datetime::initializeInformalTime (Pig& pig)
 {
-  Pig pig (token);
+  auto checkpoint = pig.cursor ();
 
   int digit = 0;
-  bool needDesignator = true;  // Require am/pm.
-  bool haveDesignator = false;  // Require am/pm.
+  bool needDesignator = true;   // Require am/pm.
+  bool haveDesignator = false;  // Provided am/pm.
   if (pig.getDigit (digit))
   {
     int hours = digit;
@@ -1928,13 +2803,21 @@ bool Datetime::initializeInformalTime (const std::string& token)
 
     int minutes = 0;
     int seconds = 0;
-    if (pig.skip (':') &&
-        pig.getDigit2 (minutes))
+    if (pig.skip (':'))
     {
-      if (pig.skip (':') &&
-          pig.getDigits (seconds))
+      if (! pig.getDigit2 (minutes))
       {
-        // NOP
+        pig.restoreTo (checkpoint);
+        return false;
+      }
+
+      if (pig.skip (':'))
+      {
+        if (! pig.getDigits (seconds))
+        {
+          pig.restoreTo (checkpoint);
+          return false;
+        }
       }
 
       needDesignator = false;
@@ -1962,6 +2845,18 @@ bool Datetime::initializeInformalTime (const std::string& token)
       haveDesignator = true;
     }
 
+    // Informal time needs to be terminated.
+    auto following = pig.peek ();
+    if (unicodeLatinAlpha (following) ||
+        unicodeLatinDigit (following) ||
+        following == ':'              ||
+        following == '-'              ||
+        following == '+')
+    {
+      pig.restoreTo (checkpoint);
+      return false;
+    }
+
     if (haveDesignator || ! needDesignator)
     {
       // Midnight today + hours:minutes:seconds.
@@ -1971,27 +2866,27 @@ bool Datetime::initializeInformalTime (const std::string& token)
       int now_seconds  = (t->tm_hour * 3600) + (t->tm_min * 60) + t->tm_sec;
       int calc_seconds = (hours      * 3600) + (minutes   * 60) + seconds;
 
-      if (Datetime::lookForwards)
-      {
-        if (calc_seconds < now_seconds)
-          ++t->tm_mday;
-      }
-      else
-      {
-        if (calc_seconds > now_seconds)
-          --t->tm_mday;
-      }
+      if (Datetime::timeRelative &&
+          calc_seconds < now_seconds)
+        ++t->tm_mday;
 
-      t->tm_hour = hours;
-      t->tm_min = minutes;
-      t->tm_sec = seconds;
-      t->tm_isdst = -1;
-      _date = mktime (t);
+      // Basic validation.
+      if (hours   >= 0 && hours   < 24 &&
+          minutes >= 0 && minutes < 60 &&
+          seconds >= 0 && seconds < 60)
+      {
+        t->tm_hour = hours;
+        t->tm_min = minutes;
+        t->tm_sec = seconds;
+        t->tm_isdst = -1;
+        _date = mktime (t);
 
-      return true;
+        return true;
+      }
     }
   }
 
+  pig.restoreTo (checkpoint);
   return false;
 }
 
@@ -2107,8 +3002,62 @@ void Datetime::midsommarafton (struct tm* t) const
 //   by {day}
 //   first thing {day}
 //
-bool Datetime::initializeFoo (const std::vector <std::string>&)
+
+////////////////////////////////////////////////////////////////////////////////
+// <ordinal> <weekday> in|of <month>
+bool Datetime::initializeNthDayInMonth (const std::vector <std::string>& tokens)
 {
+  if (tokens.size () == 4)
+  {
+    int ordinal {0};
+    if (isOrdinal (tokens[0], ordinal))
+    {
+      auto day = Datetime::dayOfWeek (tokens[1]);
+      if (day != -1)
+      {
+        if (tokens[2] == "in" ||
+            tokens[2] == "of")
+        {
+          auto month = Datetime::monthOfYear (tokens[3]);
+          if (month != -1)
+          {
+            std::cout << "# ordinal=" << ordinal << " day=" << day << " in month=" << month << '\n';
+
+            // TODO Assume 1st of the month
+            // TODO Assume current year
+            // TODO Determine the day
+            // TODO Project forwards/backwards, to the desired day
+            // TODO Add ((ordinal - 1) * 7) days
+
+            return true;
+          }
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool Datetime::isOrdinal (const std::string& token, int& ordinal)
+{
+  Pig p (token);
+  int number;
+  std::string suffix;
+  if (p.getDigits (number) &&
+      p.getRemainder (suffix))
+  {
+    if (((number >= 11 || number <= 13) && suffix == "th") ||
+        (number % 10 == 1               && suffix == "st") ||
+        (number % 10 == 2               && suffix == "nd") ||
+        (number % 10 == 3               && suffix == "rd") ||
+        (                                  suffix == "th"))
+    {
+      ordinal = number;
+      return true;
+    }
+  }
 
   return false;
 }
@@ -2176,9 +3125,8 @@ void Datetime::resolve ()
                      t_now->tm_sec;
 
   // Project forward one day if the specified seconds are earlier in the day
-  // than the current seconds.
-  // TODO This does not cover the inverse case of subtracting 86400.
-  if (Datetime::lookForwards &&
+  // than the current seconds. Overridden by the ::timeRelative setting.
+  if (Datetime::timeRelative &&
       year    == 0           &&
       month   == 0           &&
       day     == 0           &&
@@ -2258,9 +3206,7 @@ time_t Datetime::toEpoch () const
 ////////////////////////////////////////////////////////////////////////////////
 std::string Datetime::toEpochString () const
 {
-  std::stringstream epoch;
-  epoch << _date;
-  return epoch.str ();
+  return format ("{1}", _date);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2273,11 +3219,11 @@ std::string Datetime::toISO () const
   iso << std::setw (4) << std::setfill ('0') << t->tm_year + 1900
       << std::setw (2) << std::setfill ('0') << t->tm_mon + 1
       << std::setw (2) << std::setfill ('0') << t->tm_mday
-      << "T"
+      << 'T'
       << std::setw (2) << std::setfill ('0') << t->tm_hour
       << std::setw (2) << std::setfill ('0') << t->tm_min
       << std::setw (2) << std::setfill ('0') << t->tm_sec
-      << "Z";
+      << 'Z';
 
   return iso.str ();
 }
@@ -2290,15 +3236,15 @@ std::string Datetime::toISOLocalExtended () const
 
   std::stringstream iso;
   iso << std::setw (4) << std::setfill ('0') << t->tm_year + 1900
-      << "-"
+      << '-'
       << std::setw (2) << std::setfill ('0') << t->tm_mon + 1
-      << "-"
+      << '-'
       << std::setw (2) << std::setfill ('0') << t->tm_mday
-      << "T"
+      << 'T'
       << std::setw (2) << std::setfill ('0') << t->tm_hour
-      << ":"
+      << ':'
       << std::setw (2) << std::setfill ('0') << t->tm_min
-      << ":"
+      << ':'
       << std::setw (2) << std::setfill ('0') << t->tm_sec;
 
   return iso.str ();
@@ -2841,27 +3787,5 @@ void Datetime::operator++ (int)
                        second ());
   _date = tomorrow._date;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/*
-std::string Datetime::dump () const
-{
-  std::stringstream s;
-  s << "Datetime"
-    << " y"   << _year
-    << " m"   << _month
-    << " w"   << _week
-    << " wd"  << _weekday
-    << " j"   << _julian
-    << " d"   << _day
-    << " s"   << _seconds
-    << " off" << _offset
-    << " utc" << _utc
-    << " ="   << _date
-    << "  "   << (_date ? toISO () : "");
-
-  return s.str ();
-}
-*/
 
 ////////////////////////////////////////////////////////////////////////////////

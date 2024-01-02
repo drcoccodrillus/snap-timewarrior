@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,13 +24,11 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmake.h>
 #include <Duration.h>
 #include <format.h>
 #include <commands.h>
 #include <timew.h>
 #include <iostream>
-#include <stdlib.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 int CmdFill (
@@ -38,13 +36,9 @@ int CmdFill (
   Rules& rules,
   Database& database)
 {
-  // Gather IDs and TAGs.
-  std::vector <int> ids;
-  for (auto& arg : cli._args)
-    if (arg.hasTag ("ID"))
-      ids.push_back (strtol (arg.attribute ("value").c_str (), NULL, 10));
+  std::vector <int> ids = cli.getIds();
 
-  if (! ids.size ())
+  if (ids.empty ())
     throw std::string ("IDs must be specified. See 'timew help fill'.");
 
   // Load the data.
@@ -59,11 +53,13 @@ int CmdFill (
       throw format ("ID '@{1}' does not correspond to any tracking.", id);
 
     Interval from = tracked[tracked.size () - id];
+    std::cout << "# from " << from.dump () << "\n";
     Interval to {from};
 
     database.deleteInterval (from);
-    autoFill (rules, database, filter, to);
+    autoFill (rules, database, to);
     validate (cli, rules, database, to);
+    std::cout << "# to " << to.dump () << "\n";
     database.addInterval (to);
 
     // Note: Feedback generated inside autoFill().

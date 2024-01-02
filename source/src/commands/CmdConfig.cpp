@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,15 +24,12 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmake.h>
 #include <FS.h>
-#include <JSON2.h>
+#include <JSON.h>
 #include <shared.h>
 #include <format.h>
-#include <unicode.h>
 #include <timew.h>
 #include <commands.h>
-#include <algorithm>
 #include <iostream>
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,6 +116,30 @@ static bool setConfigVariable (Database& database, const Rules& rules, std::stri
         }
       }
     }
+    if (! found)
+    {
+      // Remove name
+      if (! confirmation ||
+          confirm (format ("Are you sure you want to change the value of '{1}' from '{2}' to '{3}'?",
+                           name,
+                           rules.get (name),
+                           value)))
+      {
+        // Add blank line required by rules.
+        if (lines.size () &&
+            lines.back () != "")
+          lines.push_back ("");
+
+        // Add new line.
+        lines.push_back (name + " = " + json::encode (value));
+
+        database.undoTxnStart ();
+        database.undoTxn ("config", "", lines.back());
+        database.undoTxnEnd ();
+
+        change = true;
+      }
+    }
   }
   else
   {
@@ -134,7 +155,7 @@ static bool setConfigVariable (Database& database, const Rules& rules, std::stri
         lines.push_back ("");
 
       // Add new line.
-      lines.push_back (name + " = " + JSON2::encode (value));
+      lines.push_back (name + " = " + json::encode (value));
 
       database.undoTxnStart ();
       database.undoTxn ("config", "", lines.back ());

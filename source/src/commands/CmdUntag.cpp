@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -38,24 +38,45 @@ int CmdUntag (
   Database& database)
 {
   // Gather IDs and TAGs.
-  std::vector <int> ids;
+  std::vector <int> ids = cli.getIds();
+
+  if (ids.empty ())
+    throw std::string ("IDs must be specified. See 'timew help untag'.");
+
   std::vector <std::string> tags;
   for (auto& arg : cli._args)
   {
-    if (arg.hasTag ("ID"))
-      ids.push_back (strtol (arg.attribute ("value").c_str (), NULL, 10));
-
     if (arg.hasTag ("TAG"))
       tags.push_back (arg.attribute ("raw"));
   }
-
-  if (! ids.size ())
-    throw std::string ("IDs must be specified. See 'timew help untag'.");
 
   // Load the data.
   // Note: There is no filter.
   Interval filter;
   auto tracked = getTracked (database, rules, filter);
+
+  bool dirty = true;
+
+  for (auto& id : ids)
+  {
+    if (id > static_cast <int> (tracked.size ()))
+      throw format ("ID '@{1}' does not correspond to any tracking.", id);
+
+    if (tracked[tracked.size() - id].synthetic && dirty)
+    {
+      auto latest = getLatestInterval(database);
+      auto exclusions = getAllExclusions (rules, filter.range);
+
+      Interval modified {latest};
+
+      // Update database.
+      database.deleteInterval (latest);
+      for (auto& interval : flatten (modified, exclusions))
+        database.addInterval (interval);
+
+      dirty = false;
+    }
+  }
 
   // Apply tags to ids.
   for (auto& id : ids)
@@ -73,10 +94,7 @@ int CmdUntag (
 
     if (rules.getBoolean ("verbose"))
     {
-      std::cout << "Removed";
-      for (auto& tag : tags)
-        std::cout << ' ' << quoteIfNeeded (tag);
-      std::cout << " from @" << id << '\n';
+      std::cout << "Removed " << joinQuotedIfNeeded (" ", tags) << " from @" << id << '\n';
     }
   }
 

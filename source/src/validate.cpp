@@ -34,14 +34,13 @@
 //   The :fill hint is used to eliminate gaps on interval modification, and only
 //   a single interval is affected.
 //
-//   Fill works by extending an interval in both directions if possible, to abut
-//   either an interval or an exclusion, while being conћtrained by a filter
-//   range.
+//   Fill works by extending an interval in both directions if possible, to
+//   about either an interval or an exclusion, while being constrained by a
+//   filter range.
 //
 void autoFill (
   const Rules& rules,
   Database& database,
-  const Interval& filter,
   Interval& interval)
 {
   // An empty filter allows scanning beyond interval.range.
@@ -52,7 +51,7 @@ void autoFill (
   for (auto earlier = tracked.rbegin (); earlier != tracked.rend (); ++earlier)
   {
     if (! earlier->range.is_open () &&
-        earlier->range.end < interval.range.start)
+        earlier->range.end <= interval.range.start)
     {
       interval.range.start = earlier->range.end;
         if (rules.getBoolean ("verbose"))
@@ -70,7 +69,7 @@ void autoFill (
   {
     for (auto& later : tracked)
     {
-      if (interval.range.end < later.range.start)
+      if (interval.range.end <= later.range.start)
       {
         interval.range.end = later.range.start;
         if (rules.getBoolean ("verbose"))
@@ -98,73 +97,81 @@ static void autoAdjust (
   Database& database,
   Interval& interval)
 {
-  // Without (adjust == true), overlapping intervals are an error condition.
-
-  // An empty filter allows scanning beyond interval.range.
-  Interval range_filter;
-  auto tracked = getTracked (database, rules, range_filter);
-
-  // Find all overlapping intervals.
-  std::vector <Interval> overlapping;
-  for (auto& track : tracked)
-    if (interval.range.overlap (track.range))
-      overlapping.push_back (track);
-
-  // Diagnostics.
+  auto overlaps = getOverlaps (database, rules, interval);
   debug ("Input         " + interval.dump ());
   debug ("Overlaps with");
-  for (auto& overlap : overlapping)
-    debug ("             " + overlap.dump ());
+  for (auto& overlap : overlaps)
+    debug ("              " + overlap.dump ());
 
-  // Overlaps are forbidden.
-  if (! adjust && overlapping.size ())
-    throw std::string ("You cannot overlap intervals. Correct the start/end "
-                       "time, or specify the :adjust hint.");
+  if (! overlaps.empty ())
+  {
+    if (! adjust)
+      throw std::string("You cannot overlap intervals. Correct the start/end "
+                          "time, or specify the :adjust hint.");
 
-  // TODO Accumulate identifiable and correctable cases here.
-/*
+    // implement overwrite resolution, i.e. the new interval overwrites existing intervals
+    for (auto& overlap : overlaps)
+    {
+      bool start_within_overlap = overlap.range.contains (interval.range.start);
+      bool end_within_overlap = interval.range.end != 0 && overlap.range.contains (interval.range.end);
 
-  ext      [-----]
-  new   [-----]
+      if (start_within_overlap && !end_within_overlap)
+      {
+        // start date of new interval within old interval
+        Interval modified {overlap};
+        modified.range.end = interval.range.start;
+        database.modifyInterval (overlap, modified);
+      }
+      else if (!start_within_overlap && end_within_overlap)
+      {
+        // end date of new interval within old interval
+        Interval modified {overlap};
+        modified.range.start = interval.range.end;
+        database.modifyInterval (overlap, modified);
+      }
+      else if (!start_within_overlap && !end_within_overlap)
+      {
+        // new interval encloses old interval
+        database.deleteInterval (overlap);
+      }
+      else
+      {
+        // new interval enclosed by old interval
+        Interval split2 {overlap};
+        Interval split1 {overlap};
 
-  ext   [-----]
-  new      [-----]
+        split1.range.end = interval.range.start;
+        split2.range.start = interval.range.end;
 
-  ext      [-]
-  new   [-----]
+        if (split1.range.is_empty ())
+        {
+          database.deleteInterval (overlap);
+        }
+        else
+        {
+          database.modifyInterval (overlap, split1);
+        }
 
-  ext   [-----]
-  new      [-]
-
-  ext   [-----]
-  new   [-----]
-
-  ext      [-----]
-  new   [--
-
-  ext   [-----]
-  new      [--
-
-  ext      [-]
-  new   [--
-
-  ext   [-----]
-  new      [-
-
-  ext   [-----]
-  new   [--
-
-*/
-
+        if (! split2.range.is_empty ())
+        {
+          database.addInterval (split2);
+        }
+      }
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Warn on new tag.
 static void warnOnNewTag (
-  const Rules& rules,
-  Database& database,
-  const Interval& interval)
+  const Rules&,
+  Database&,
+  const Interval&)
 {
+  // TODO This warning is not working properly, because when an interval is
+  //      modified, it is first deleted, then added. This causes this code to
+  //      determine that it is always a new tag.
+/*
   if (rules.getBoolean ("verbose"))
   {
     std::set <std::string> tags;
@@ -184,6 +191,7 @@ static void warnOnNewTag (
       if (tags.find (tag) == tags.end ())
         std::cout << "Note: '" << tag << "' is a new tag.\n";
   }
+*/
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -200,14 +208,11 @@ void validate (
 
   // All validation performed here.
   if (findHint (cli, ":fill"))
-    autoFill (rules, database, filter, interval);
+    autoFill (rules, database, interval);
 
   autoAdjust (findHint (cli, ":adjust"), rules, database, interval);
 
-  // TODO This warning is not working properly, because when an interval is
-  //      modified, it ifirst deleted, then added. This causes this code to
-  //      dertmine that it is always a new tag.
-  //warnOnNewTag (rules, database, interval);
+  warnOnNewTag (rules, database, interval);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

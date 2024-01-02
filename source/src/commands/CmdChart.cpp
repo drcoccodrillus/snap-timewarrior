@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,16 +24,13 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmake.h>
 #include <Composite.h>
-#include <Color.h>
 #include <Duration.h>
 #include <Range.h>
 #include <commands.h>
 #include <timew.h>
 #include <shared.h>
 #include <format.h>
-#include <algorithm>
 #include <iostream>
 #include <iomanip>
 #include <cassert>
@@ -56,7 +53,7 @@ int CmdChartDay (
   Rules& rules,
   Database& database)
 {
-  // Create a filter, and if empty, choose the current month.
+  // Create a filter, and if empty, choose the current day.
   auto filter = getFilter (cli);
   if (! filter.range.is_started ())
   {
@@ -75,14 +72,14 @@ int CmdChartWeek (
   Rules& rules,
   Database& database)
 {
-  // Create a filter, and if empty, choose the current month.
+  // Create a filter, and if empty, choose the current week.
   auto filter = getFilter (cli);
   if (! filter.range.is_started ())
   {
     if (rules.has ("reports.week.range"))
       expandIntervalHint (rules.get ("reports.week.range"), filter.range);
     else
-      filter.range = Range (Datetime ("socw"), Datetime ("eocw"));
+      filter.range = Range (Datetime ("sow"), Datetime ("eow"));
   }
 
   return renderChart (cli, "week", filter, rules, database);
@@ -101,7 +98,7 @@ int CmdChartMonth (
     if (rules.has ("reports.month.range"))
       expandIntervalHint (rules.get ("reports.month.range"), filter.range);
     else
-      filter.range = Range (Datetime ("socm"), Datetime ("eocm"));
+      filter.range = Range (Datetime ("som"), Datetime ("eom"));
   }
 
   return renderChart (cli, "month", filter, rules, database);
@@ -158,6 +155,9 @@ int renderChart (
                (rules.getBoolean ("reports." + type + ".weekday") ? 4 : 0);
 
   auto cell = rules.getInteger ("reports." + type + ".cell");
+  if (cell < 1)
+    throw format ("The value for 'reports.{1}.cell' must be at least 1.", type);
+
   auto chars_per_hour = 60 / cell;
 
   // Each day is rendered separately.
@@ -167,7 +167,10 @@ int renderChart (
     // Render the exclusion blocks.
     int num_lines = 1;
     if (rules.has ("reports." + type + ".lines"))
-      num_lines = rules.getInteger ("reports." + type + ".lines");
+      num_lines = rules.getInteger ("reports." + type + ".lines", num_lines);
+
+    if (num_lines < 1)
+      throw format ("Invalid value for 'reports.{1}.lines': '{2}'", type, rules.get ("reports." + type + ".lines"));
 
     int spacing = 1;
     if (rules.has ("reports." + type + ".spacing"))
@@ -292,6 +295,9 @@ static void renderAxis (
   int last_hour)
 {
   auto cell = rules.getInteger ("reports." + type + ".cell");
+  if (cell < 1)
+    throw format ("The value for 'reports.{1}.cell' must be at least 1.", type);
+
   auto chars_per_hour = 60 / cell;
 
   auto spacing = rules.getInteger ("reports." + type + ".spacing");
@@ -408,6 +414,9 @@ static std::string renderSubTotal (
     int spacing = rules.getInteger ("reports." + type + ".spacing");
 
     auto cell = rules.getInteger ("reports." + type + ".cell");
+    if (cell < 1)
+      throw format ("The value for 'reports.{1}.cell' must be at least 1.", type);
+
     auto chars_per_hour = 60 / cell;
 
     std::string pad (indent + ((last_hour - first_hour + 1) * (chars_per_hour + spacing)) + 1, ' ');
@@ -440,6 +449,9 @@ static void renderExclusionBlocks (
   const std::vector <Range>& excluded)
 {
   auto cell = rules.getInteger ("reports." + type + ".cell");
+  if (cell < 1)
+    throw format ("The value for 'reports.{1}.cell' must be at least 1.", type);
+
   auto chars_per_hour = 60 / cell;
 
   auto spacing = rules.getInteger ("reports." + type + ".spacing");
@@ -503,6 +515,8 @@ static void renderInterval (
 {
   Datetime now;
   auto cell = rules.getInteger ("reports." + type + ".cell");
+  if (cell < 1)
+    throw format ("The value for 'reports.{1}.cell' must be at least 1.", type);
   auto spacing = rules.getInteger ("reports." + type + ".spacing");
 
   // Ignore any track that doesn't overlap with day.
@@ -524,13 +538,14 @@ static void renderInterval (
 
   auto start_mins = (clipped.range.start.hour () - first_hour) * 60 + clipped.range.start.minute ();
   auto end_mins   = (clipped.range.end.hour ()   - first_hour) * 60 + clipped.range.end.minute ();
-  if (end_mins == 0)
-    end_mins = (23 * 60) + 59;
+
+  if (clipped.range.end.hour () == 0)
+    end_mins += (clipped.range.end.day() - clipped.range.start.day()) * 24 * 60;
 
   work = clipped.range.total ();
 
   auto start_block = quantizeToNMinutes (start_mins, cell) / cell;
-  auto end_block   = quantizeToNMinutes (end_mins == 0 ? 60 : end_mins, cell) / cell;
+  auto end_block   = quantizeToNMinutes (end_mins == start_mins ? start_mins + 60 : end_mins, cell) / cell;
 
   int start_offset = start_block + (spacing * (start_mins / 60));
   int end_offset   = end_block   + (spacing * (end_mins   / 60));

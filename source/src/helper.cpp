@@ -144,10 +144,21 @@ bool expandIntervalHint (
   {
     {":yesterday",   {"yesterday", "today"}},
     {":day",         {"today",     "eod"}},
-    {":week",        {"socw",      "eocw"}},
-    {":month",       {"socm",      "eocm"}},
-    {":quarter",     {"socq",      "eocq"}},
-    {":year",        {"socy",      "eocy"}},
+    {":week",        {"sow",       "eow"}},
+    {":month",       {"som",       "eom"}},
+    {":quarter",     {"soq",       "eoq"}},
+    {":year",        {"soy",       "eoy"}},
+  };
+
+  static std::vector <std::string> dayNames
+  {
+    ":sunday",
+    ":monday",
+    ":tuesday",
+    ":wednesday",
+    ":thursday",
+    ":friday",
+    ":saturday"
   };
 
   // Some hints are just synonyms.
@@ -165,17 +176,17 @@ bool expandIntervalHint (
   // Some require math.
   if (hint == ":lastweek")
   {
-    // Note: Simply subtracting (7 * 86400) from socw, eocw fails to consider
+    // Note: Simply subtracting (7 * 86400) from sow, eow fails to consider
     //       daylight savings.
-    Datetime socw ("socw");
-    int sy = socw.year ();
-    int sm = socw.month ();
-    int sd = socw.day ();
+    Datetime sow ("sow");
+    int sy = sow.year ();
+    int sm = sow.month ();
+    int sd = sow.day ();
 
-    Datetime eocw ("eocw");
-    int ey = eocw.year ();
-    int em = eocw.month ();
-    int ed = eocw.day ();
+    Datetime eow ("eow");
+    int ey = eow.year ();
+    int em = eow.month ();
+    int ed = eow.day ();
 
     sd -= 7;
     if (sd < 1)
@@ -263,6 +274,24 @@ bool expandIntervalHint (
     Datetime now;
     range.start = Datetime (now.year () - 1,  1,  1);
     range.end   = Datetime (now.year (),      1,  1);
+    debug (format ("Hint {1} expanded to {2} - {3}",
+                   hint,
+                   range.start.toISOLocalExtended (),
+                   range.end.toISOLocalExtended ()));
+    return true;
+  }
+  else if (std::find (dayNames.begin (), dayNames.end (), hint) != dayNames.end ())
+  {
+    int wd = std::find (dayNames.begin (), dayNames.end (), hint) - dayNames.begin ();
+
+    Datetime now;
+    int dow = now.dayOfWeek ();
+    Datetime sd = now - (86400 * dow) + (86400 * (wd - 7 * (wd <= dow ? 0 : 1)));
+    Datetime ed = sd + 86400;
+
+    range.start = Datetime (sd.year(), sd.month(), sd.day());
+    range.end   = Datetime (ed.year(), ed.month(), ed.day());
+
     debug (format ("Hint {1} expanded to {2} - {3}",
                    hint,
                    range.start.toISOLocalExtended (),
@@ -408,6 +437,23 @@ std::string minimalDelta (const Datetime& left, const Datetime& right)
   }
 
   return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+std::vector <Interval> getOverlaps (
+  Database& database,
+  const Rules& rules,
+  const Interval& interval)
+{
+  Interval range_filter;
+  auto tracked = getTracked (database, rules, range_filter);
+
+  std::vector <Interval> overlaps;
+  for (auto& track : tracked)
+    if (interval.range.overlap (track.range))
+      overlaps.push_back (track);
+
+  return overlaps;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

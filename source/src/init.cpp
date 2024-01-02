@@ -26,17 +26,9 @@
 
 #include <cmake.h>
 #include <timew.h>
-#include <CLI.h>
-#include <Database.h>
-#include <Rules.h>
-#include <Extensions.h>
-#include <Datetime.h>
 #include <shared.h>
 #include <format.h>
-#include <FS.h>
 #include <commands.h>
-#include <vector>
-#include <string>
 #include <cstring>
 #include <unistd.h>
 #include <iostream>
@@ -73,6 +65,7 @@ void initializeEntities (CLI& cli)
   cli.entity ("command", "lengthen");
   cli.entity ("command", "move");
   cli.entity ("command", "report");
+  cli.entity ("command", "resize");
   cli.entity ("command", "shorten");
   cli.entity ("command", "show");
   cli.entity ("command", "split");
@@ -110,6 +103,13 @@ void initializeEntities (CLI& cli)
   cli.entity ("hint", ":year");
   cli.entity ("hint", ":yes");
   cli.entity ("hint", ":yesterday");
+  cli.entity ("hint", ":monday");
+  cli.entity ("hint", ":tuesday");
+  cli.entity ("hint", ":wednesday");
+  cli.entity ("hint", ":thursday");
+  cli.entity ("hint", ":friday");
+  cli.entity ("hint", ":saturday");
+  cli.entity ("hint", ":sunday");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -212,9 +212,6 @@ void initializeDataAndRules (
 
   // Initialize the database (no data read), but files are enumerated.
   database.initialize (data._data);
-
-  // Set date names like "monday" to represent the past, not the future.
-  Datetime::lookForwards = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -254,7 +251,7 @@ int dispatchCommand (
   std::string command = cli.getCommand ();
   if (command != "")
   {
-    // These signatures are æxpected to be all different, therefore no
+    // These signatures are expected to be all different, therefore no
     // command to fn mapping.
          if (command == "cancel")      status = CmdCancel        (     rules, database            );
     else if (command == "config")      status = CmdConfig        (cli, rules, database            );
@@ -276,6 +273,7 @@ int dispatchCommand (
     else if (command == "month")       status = CmdChartMonth    (cli, rules, database            );
     else if (command == "move")        status = CmdMove          (cli, rules, database            );
     else if (command == "report")      status = CmdReport        (cli, rules, database, extensions);
+    else if (command == "resize")      status = CmdResize        (cli, rules, database            );
     else if (command == "shorten")     status = CmdShorten       (cli, rules, database            );
     else if (command == "show")        status = CmdShow          (     rules                      );
     else if (command == "split")       status = CmdSplit         (cli, rules, database            );
@@ -283,7 +281,7 @@ int dispatchCommand (
     else if (command == "stop")        status = CmdStop          (cli, rules, database            );
     else if (command == "summary")     status = CmdSummary       (cli, rules, database            );
     else if (command == "tag")         status = CmdTag           (cli, rules, database            );
-    else if (command == "tags")        status = CmdTags          (     rules, database            );
+    else if (command == "tags")        status = CmdTags          (cli, rules, database            );
     else if (command == "track")       status = CmdTrack         (cli, rules, database            );
     else if (command == "untag")       status = CmdUntag         (cli, rules, database            );
     else if (command == "week")        status = CmdChartWeek     (cli, rules, database            );
@@ -291,7 +289,16 @@ int dispatchCommand (
   }
   else
   {
-    status = CmdDefault (rules, database);
+    auto words = cli.getWords ();
+
+    if (words.size () > 0)
+    {
+      throw format ("'{1}' is not a timew command. See 'timew help'.", words[0]);
+    }
+    else
+    {
+      status = CmdDefault (rules, database);
+    }
   }
 
   return status;
