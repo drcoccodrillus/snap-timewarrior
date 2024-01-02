@@ -44,6 +44,9 @@
 //
 Interval getFilter (const CLI& cli)
 {
+  // One instance, so we can directly compare.
+  Datetime now;
+
   Interval filter;
   std::string start;
   std::string end;
@@ -114,7 +117,7 @@ Interval getFilter (const CLI& cli)
   if (args.size () == 1 &&
       args[0] == "<date>")
   {
-    filter.range = {Datetime (start), Datetime ()};
+    filter.range = {Datetime (start), 0};
   }
 
   // from <date>
@@ -122,7 +125,7 @@ Interval getFilter (const CLI& cli)
            args[0] == "from" &&
            args[1] == "<date>")
   {
-    filter.range = {Datetime (start), Datetime ()};
+    filter.range = {Datetime (start), 0};
   }
 
   // <date> to/- <date>
@@ -134,7 +137,7 @@ Interval getFilter (const CLI& cli)
     filter.range = {Datetime (start), Datetime (end)};
   }
 
-  // from/since <date> to/- <date>
+  // from <date> to/- <date>
   else if (args.size () == 4                   &&
            args[0] == "from"                   &&
            args[1] == "<date>"                 &&
@@ -153,7 +156,7 @@ Interval getFilter (const CLI& cli)
     filter.range = {Datetime (start), Datetime (start) + Duration (duration).toTime_t ()};
   }
 
-  // from/since <date> for <duration>
+  // from <date> for <duration>
   else if (args.size () == 4       &&
            args[0] == "from"       &&
            args[1] == "<date>"     &&
@@ -186,7 +189,7 @@ Interval getFilter (const CLI& cli)
            args[0] == "<duration>" &&
            args[1] == "ago")
   {
-    filter.range = {Datetime () - Duration (duration).toTime_t (), Datetime ()};
+    filter.range = {now - Duration (duration).toTime_t (), 0};
   }
 
   // for <duration>
@@ -194,14 +197,14 @@ Interval getFilter (const CLI& cli)
            args[0] == "for"        &&
            args[1] == "<duration>")
   {
-    filter.range = {Datetime () - Duration (duration).toTime_t (), Datetime ()};
+    filter.range = {now - Duration (duration).toTime_t (), now};
   }
 
   // <duration>
   else if (args.size () == 1 &&
            args[0] == "<duration>")
   {
-    filter.range = {Datetime () - Duration (duration).toTime_t (), Datetime ()};
+    filter.range = {now - Duration (duration).toTime_t (), now};
   }
 
   // Unrecognized date range construct.
@@ -210,13 +213,12 @@ Interval getFilter (const CLI& cli)
     throw std::string ("Unrecognized date range: '") + join (" ", args) + "'.";
   }
 
-  if (filter.range.start > filter.range.end)
+  if (filter.range.start > now)
+    throw std::string ("Time tracking cannot be set in the future.");
+
+  if (filter.range.end != 0 && filter.range.start > filter.range.end)
     throw std::string ("The end of a date range must be after the start.");
 
-/*
-  std::cout << "# getFilter:\n"
-            << "#   " << filter.dump () << "\n";
-*/
   return filter;
 }
 
@@ -305,13 +307,6 @@ std::vector <Range> getAllExclusions (
       for (auto& r : exclusion.ranges (range))
         exclusionRanges.push_back (r);
 
-/*
-  auto all = addRanges (range, results, exclusionRanges);
-  std::cout << "# getAllExclusions:\n";
-  for (auto& r : all)
-    std::cout << "#   " << r.dump () << "\n";
-  return all;
-*/
   return merge (addRanges (range, results, exclusionRanges));
 }
 
@@ -326,11 +321,6 @@ std::vector <Interval> getAllInclusions (Database& database)
     all.push_back (i);
   }
 
-/*
-  std::cout << "# getAllInclusions:\n";
-  for (auto& i : all)
-    std::cout << "#   " << i.dump () << "\n";
-*/
   return all;
 }
 
@@ -344,11 +334,6 @@ std::vector <Interval> subset (
     if (matchesFilter (interval, filter))
       all.push_back (interval);
 
-/*
-  std::cout << "# subset (filter intervals):\n";
-  for (auto& i : all)
-    std::cout << "#   " << i.dump () << "\n";
-*/
   return all;
 }
 
@@ -362,11 +347,6 @@ std::vector <Range> subset (
     if (range.overlap (r))
       all.push_back (r);
 
-/*
-  std::cout << "# subset (ranges):\n";
-  for (auto& r : all)
-    std::cout << "#   " << r.dump () << "\n";
-*/
   return all;
 }
 
@@ -380,11 +360,6 @@ std::vector <Interval> subset (
     if (range.overlap (interval.range))
       all.push_back (interval);
 
-/*
-  std::cout << "# subset (intervals):\n";
-  for (auto& i : all)
-    std::cout << "#   " << i.dump () << "\n";
-*/
   return all;
 }
 
@@ -426,11 +401,6 @@ std::vector <Interval> flatten (
     }
   }
 
-/*
-  std::cout << "#   results:\n";
-  for (auto& i : all)
-    std::cout << "#     " << i.dump () << "\n";
-*/
   return all;
 }
 
@@ -490,11 +460,6 @@ std::vector <Range> addRanges (
     if (limits.overlap (addition))
       results.push_back (addition);
 
-/*
-  std::cout << "# addRange:\n";
-  for (auto& result : results)
-    std::cout << "#   " << result.dump () << "\n";
-*/
   return results;
 }
 
@@ -516,11 +481,6 @@ std::vector <Range> subtractRanges (
     results = split_results;
   }
 
-/*
-  std::cout << "# subtractRange:\n";
-  for (auto& result : results)
-    std::cout << "#   " << result.dump () << "\n";
-*/
   return results;
 }
 
@@ -546,9 +506,6 @@ Range outerRange (const std::vector <Interval>& intervals)
       outer.end = Datetime ();
   }
 
-/*
-  std::cout << "# outerRange " << outer.dump () << "\n";
-*/
   return outer;
 }
 
@@ -626,12 +583,6 @@ Interval clip (const Interval& interval, const Range& range)
       clipped.range.end > range.end)
     clipped.range.end = range.end;
 
-/*
-  std::cout << "# clip:\n"
-            << "#   input   " << interval.dump () << "\n"
-            << "#   range   " << range.dump () << "\n"
-            << "#   clipped " << clipped.dump () << "\n";
-*/
   return clipped;
 }
 
@@ -641,7 +592,7 @@ std::vector <Interval> getTracked (
   const Rules& rules,
   Interval& filter)
 {
-  auto inclusions = subset (filter, getAllInclusions (database));
+  auto inclusions = getAllInclusions (database);
 
   // Exclusions are only usable within a range, so if no filter range exists,
   // determine the outermost range of the inclusions, ie:
@@ -654,21 +605,40 @@ std::vector <Interval> getTracked (
     auto outer = outerRange (inclusions);
     if (outer.total ())
       filter.range = outer;
+
+    if (inclusions.size() > 0) {
+      auto latest = inclusions.back();
+      if (latest.range.is_open()) {;
+        filter.range.end = 0;
+      }
+    }
   }
 
-  // Get the set of expanded exclusions that overlap the range defined by the
-  // timeline.
-  auto exclusions = getAllExclusions (rules, filter.range);
-  std::vector <Interval> intervals;
-  if (! exclusions.empty ())
+  std::vector <Interval> intervals = inclusions;
+
+  if (intervals.size () > 0)
   {
-    for (auto& inclusion : inclusions)
-      for (auto& interval : flatten (inclusion, exclusions))
-        intervals.push_back (interval);
-  }
-  else
-  {
-    intervals = inclusions;
+    auto latest = inclusions.back ();
+
+    if (latest.range.is_open ())
+    {
+      // Get the set of expanded exclusions that overlap the range defined by the
+      // timeline.
+      auto exclusions = getAllExclusions (rules, filter.range);
+      if (! exclusions.empty ())
+      {
+        intervals.pop_back ();
+
+        for (auto& interval : flatten (latest, exclusions))
+        {
+          if (latest.synthetic ||
+              latest.range != interval.range)
+            interval.synthetic = true;
+
+          intervals.push_back (interval);
+        }
+      }
+    }
   }
 
   // Assign an ID to each interval.
@@ -676,7 +646,7 @@ std::vector <Interval> getTracked (
     intervals[i].id = intervals.size () - i;
 
   debug (format ("Loaded {1} tracked intervals", intervals.size ()));
-  return intervals;
+  return subset (filter, intervals);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

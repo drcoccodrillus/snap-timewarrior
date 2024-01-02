@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2013 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2013 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -87,10 +87,33 @@ public:
   bool isOperator     (std::string&, Lexer::Type&);
   bool isWord         (std::string&, Lexer::Type&);
 
+  // Disabling features.
+  void noString ()    { _enableString    = false; }
+  void noDate ()      { _enableDate      = false; }
+  void noDuration ()  { _enableDuration  = false; }
+  void noUUID ()      { _enableUUID      = false; }
+  void noHexNumber () { _enableHexNumber = false; }
+  void noWord ()      { _enableWord      = false; }
+  void noURL ()       { _enableURL       = false; }
+  void noPath ()      { _enablePath      = false; }
+  void noPattern ()   { _enablePattern   = false; }
+  void noOperator ()  { _enableOperator  = false; }
+
 private:
-  std::string _text   {};
-  std::size_t _cursor {0};
-  std::size_t _eos    {0};
+  std::string _text          {};
+  std::size_t _cursor        {0};
+  std::size_t _eos           {0};
+
+  bool        _enableString    {true};
+  bool        _enableDate      {true};
+  bool        _enableDuration  {true};
+  bool        _enableUUID      {true};
+  bool        _enableHexNumber {true};
+  bool        _enableWord      {true};
+  bool        _enableURL       {true};
+  bool        _enablePath      {true};
+  bool        _enablePattern   {true};
+  bool        _enableOperator  {true};
 };
 
 #endif

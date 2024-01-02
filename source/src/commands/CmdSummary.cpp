@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,14 +24,12 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmake.h>
 #include <Table.h>
 #include <Duration.h>
 #include <shared.h>
 #include <format.h>
 #include <commands.h>
 #include <timew.h>
-#include <algorithm>
 #include <iostream>
 
 // Implemented in CmdChart.cpp.
@@ -47,6 +45,9 @@ int CmdSummary (
   auto filter = getFilter (cli);
   if (! filter.range.is_started ())
     filter.range = Range (Datetime ("today"), Datetime ("tomorrow"));
+
+  if (! filter.range.is_ended())
+    filter.range.end = filter.range.start + Duration("1d").toTime_t();
 
   // Load the data.
   auto tracked = getTracked (database, rules, filter);
@@ -104,13 +105,7 @@ int CmdSummary (
       if (track.range.is_open () && day <= Datetime ())
         today.end = Datetime ();
 
-      std::string tags = "";
-      for (auto& tag : track.tags ())
-      {
-        if (tags != "")
-          tags += ", ";
-        tags += tag;
-      }
+      std::string tags = join(", ", track.tags());
 
       if (ids)
         table.set (row, 3, format ("@{1}", track.id), colorID);
@@ -155,11 +150,7 @@ int CmdSummary (
 
       if (filter.tags ().size ())
       {
-        std::vector <std::string> tags;
-        for (auto& tag : filter.tags ())
-          tags.push_back (quoteIfNeeded (tag));
-
-        std::cout << " tagged with " << join (", ", tags);
+        std::cout << " tagged with " << joinQuotedIfNeeded (", ", filter.tags ());
       }
 
       std::cout << ".\n";

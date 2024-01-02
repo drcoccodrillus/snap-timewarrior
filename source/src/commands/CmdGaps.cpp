@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,7 +24,6 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmake.h>
 #include <Table.h>
 #include <Duration.h>
 #include <format.h>

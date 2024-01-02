@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2006 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2006 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -33,9 +33,10 @@
 #include <iomanip>
 #include <cctype>
 #include <strings.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/select.h>
-#include <cerrno>
+#include <time.h>
 #include <csignal>
 #include <cmath>
 
@@ -160,6 +161,193 @@ std::string rightJustify (const std::string& input, const int width)
            ? std::string (width - len, ' ')
            : "")
          + input;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+std::string commify (const std::string& data)
+{
+  // First scan for decimal point and end of digits.
+  int decimalPoint = -1;
+  int end          = -1;
+
+  int i;
+  for (int i = 0; i < (int) data.length (); ++i)
+  {
+    if (isdigit (data[i]))
+      end = i;
+
+    if (data[i] == '.')
+      decimalPoint = i;
+  }
+
+  std::string result;
+  if (decimalPoint != -1)
+  {
+    // In reverse order, transfer all digits up to, and including the decimal
+    // point.
+    for (i = (int) data.length () - 1; i >= decimalPoint; --i)
+      result += data[i];
+
+    int consecutiveDigits = 0;
+    for (; i >= 0; --i)
+    {
+      if (isdigit (data[i]))
+      {
+        result += data[i];
+
+        if (++consecutiveDigits == 3 && i && isdigit (data[i - 1]))
+        {
+          result += ',';
+          consecutiveDigits = 0;
+        }
+      }
+      else
+        result += data[i];
+    }
+  }
+  else
+  {
+    // In reverse order, transfer all digits up to, but not including the last
+    // digit.
+    for (i = (int) data.length () - 1; i > end; --i)
+      result += data[i];
+
+    int consecutiveDigits = 0;
+    for (; i >= 0; --i)
+    {
+      if (isdigit (data[i]))
+      {
+        result += data[i];
+
+        if (++consecutiveDigits == 3 && i && isdigit (data[i - 1]))
+        {
+          result += ',';
+          consecutiveDigits = 0;
+        }
+      }
+      else
+        result += data[i];
+    }
+  }
+
+  // reverse result into data.
+  std::string done;
+  for (int i = (int) result.length () - 1; i >= 0; --i)
+    done += result[i];
+
+  return done;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Convert a quantity in bytes to a more readable format.
+std::string formatBytes (size_t bytes)
+{
+  char formatted[24];
+
+       if (bytes >=  995000000) sprintf (formatted, "%.1f GiB", bytes / 1000000000.0);
+  else if (bytes >=     995000) sprintf (formatted, "%.1f MiB", bytes /    1000000.0);
+  else if (bytes >=        995) sprintf (formatted, "%.1f KiB", bytes /       1000.0);
+  else                          sprintf (formatted, "%d B",     (int)bytes);
+
+  return commify (formatted);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Convert a quantity in seconds to a more readable format.
+std::string formatTime (time_t seconds)
+{
+  char formatted[24];
+  float days = (float) seconds / 86400.0;
+
+       if (seconds >= 86400 * 365) sprintf (formatted, "%.1f y", (days / 365.0));
+  else if (seconds >= 86400 * 84)  sprintf (formatted, "%1d mo", (int) (days / 30));
+  else if (seconds >= 86400 * 13)  sprintf (formatted, "%d wk",  (int) (float) (days / 7.0));
+  else if (seconds >= 86400)       sprintf (formatted, "%d d",   (int) days);
+  else if (seconds >= 3600)        sprintf (formatted, "%d h",   (int) (seconds / 3600));
+  else if (seconds >= 60)          sprintf (formatted, "%d m",   (int) (seconds / 60));
+  else if (seconds >= 1)           sprintf (formatted, "%d s",   (int) seconds);
+  else                             strcpy (formatted, "-");
+
+  return std::string (formatted);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+std::string printable (const std::string& input)
+{
+  // Sanitize 'message'.
+  std::string sanitized = input;
+  std::string::size_type bad;
+  while ((bad = sanitized.find ("\r")) != std::string::npos)
+    sanitized.replace (bad, 1, "\\r");
+
+  while ((bad = sanitized.find ("\n")) != std::string::npos)
+    sanitized.replace (bad, 1, "\\n");
+
+  while ((bad = sanitized.find ("\f")) != std::string::npos)
+    sanitized.replace (bad, 1, "\\f");
+
+  while ((bad = sanitized.find ("\t")) != std::string::npos)
+    sanitized.replace (bad, 1, "\\t");
+
+  while ((bad = sanitized.find ("\v")) != std::string::npos)
+    sanitized.replace (bad, 1, "\\v");
+
+  return sanitized;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+std::string printable (char input)
+{
+  // Sanitize 'message'.
+  char stringized[2] = {0};
+  stringized[0] = input;
+
+  std::string sanitized = stringized;
+  switch (input)
+  {
+  case '\r': sanitized = "\\r"; break;
+  case '\n': sanitized = "\\n"; break;
+  case '\f': sanitized = "\\f"; break;
+  case '\t': sanitized = "\\t"; break;
+  case '\v': sanitized = "\\v"; break;
+  default:   sanitized = input; break;
+  }
+
+  return sanitized;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Iterate over the input, converting text to 'x'.
+// Does not modify color codes.
+std::string obfuscateText (const std::string& input)
+{
+  std::stringstream output;
+  std::string::size_type i = 0;
+  int character;
+  bool inside = false;
+
+  while ((character = utf8_next_char (input, i)))
+  {
+    if (inside)
+    {
+      output << (char) character;
+
+      if (character == 'm')
+        inside = false;
+    }
+    else
+    {
+      if (character == 033)
+        inside = true;
+
+      if (inside || character == ' ')
+        output << (char) character;
+      else
+        output << 'x';
+    }
+  }
+
+  return output.str ();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

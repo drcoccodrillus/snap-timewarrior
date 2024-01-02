@@ -1,4 +1,62 @@
-? ()
+master/HEAD
+
+- TI-91 Timewarrior does not compile on DragonFly
+          (thanks to Michael Neumann)
+- TW-1936 Tweak tests to have fuller TAP compliance
+          (thanks to Paul J. Fenwick)
+- Datetime::timeRelative now controls whether "0:00:01" means today or is
+  projected to tomorrow if before the current time.
+
+tasksh-1.2.0 (2017-05-10)
+
+- TI-53 Fix musl-libc compatibility
+          (thanks to Toyam Cox).
+- Define PATH_MAX if it's not defined
+          (thanks to Iain R. Learmonth).
+- Removed 'std::' from stdtoimax call.
+          (thanks to fornwall).
+- When Lexer::noOperator () is called, prevent ::isWord boundaries from being
+  comprised of operators.
+- Added Pig::getCharacter, which was oddly missing.
+- Added 'Tree' class.
+- Added FS error handling for POSIX call failure.
+- Updated Timer class to use std::chrono.
+- Args now tolerates undeclared option queries.
+- Added case (in)sentitive find functions.
+- Pig no longer makes a copy of the input string.
+- Fixed bug where Pig::getUntil included the terminator if it was the last
+  character.
+- Table now uses the correct include latch.
+- Migrated obfuscateText from Taskwarrior.
+- Added unicodeHorizontalWhitespace and unicodeVerticalWhitespace.
+- Added unicodePunctuation.
+- Added unicodeAlpha.
+- Added osName.
+- Duration::formatVague can now pad all values to the same length.
+- Combined JSON.h, JSON2.h, eliminated duplicate encode/decode implementations.
+- Table::addRow{,Odd,Even} allows a user-specified notion of 'odd' row.
+- Added isIPv4Address and isIPv6Address.
+- Added PEG parser.
+- Added Packrat parser.
+- Datetime/Duration can now parse dates from an embedded string, with negative
+  lookahead.
+- Table supports unwrapped columns.
+- Table supports colored columns.
+
+tasksh-1.1.0 (2016-09-05)
+anomaly-1.1.0 (2016-09-04)
+
+- TD-120  Missing cmakedefine for HAVE_GET_CURRENT_DIR_NAME
+          (Thanks to Jörg Krause, Ben Boeckel).
+- TW-1845 Cygwin build fails, missing get_current_dir_name
+          (thanks to hosaka).
+- Lexer can now disable individual token types.
+- Pig is more careful about string bounds in ::peek.
+- Pig can extract substrings.
+- FS now has strict error handling, requiring that file existence is checked before
+  readability.
+
+timew-1.0.0 (2016-08-17)
 
 - TI-30   10:00am isn't recognized as date
           (thanks to Yurї Videneev).

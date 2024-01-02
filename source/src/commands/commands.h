@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -49,13 +49,14 @@ int CmdJoin          (const CLI&, Rules&, Database&                   );
 int CmdLengthen      (const CLI&, Rules&, Database&                   );
 int CmdMove          (const CLI&, Rules&, Database&                   );
 int CmdReport        (const CLI&, Rules&, Database&, const Extensions&);
+int CmdResize        (const CLI&, Rules&, Database&                   );
 int CmdShorten       (const CLI&, Rules&, Database&                   );
 int CmdShow          (            Rules&                              );
 int CmdSplit         (const CLI&, Rules&, Database&                   );
 int CmdStart         (const CLI&, Rules&, Database&                   );
 int CmdStop          (const CLI&, Rules&, Database&                   );
 int CmdTag           (const CLI&, Rules&, Database&                   );
-int CmdTags          (            Rules&, Database&                   );
+int CmdTags          (const CLI&, Rules&, Database&                   );
 int CmdTrack         (const CLI&, Rules&, Database&                   );
 int CmdUntag         (const CLI&, Rules&, Database&                   );
 

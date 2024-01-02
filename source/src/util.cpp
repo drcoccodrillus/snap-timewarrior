@@ -29,34 +29,6 @@
 #include <string>
 
 ////////////////////////////////////////////////////////////////////////////////
-std::string osName ()
-{
-#if defined (DARWIN)
-  return "Darwin";
-#elif defined (SOLARIS)
-  return "Solaris";
-#elif defined (CYGWIN)
-  return "Cygwin";
-#elif defined (HAIKU)
-  return "Haiku";
-#elif defined (OPENBSD)
-  return "OpenBSD";
-#elif defined (FREEBSD)
-  return "FreeBSD";
-#elif defined (NETBSD)
-  return "NetBSD";
-#elif defined (LINUX)
-  return "Linux";
-#elif defined (KFREEBSD)
-  return "GNU/kFreeBSD";
-#elif defined (GNUHURD)
-  return "GNU/Hurd";
-#else
-  return STRING_DOM_UNKNOWN;
-#endif
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // Escape all 'c' --> '\c'.
 std::string escape (const std::string& input, int c)
 {
@@ -87,7 +59,7 @@ std::string quoteIfNeeded (const std::string& input)
 
   auto quote = input.find ('"');
   auto space = input.find (' ');
-  auto op    = input.find_first_of ("+-/()<^!=~");
+  auto op    = input.find_first_of ("+-/()<^!=~_");
 
   if (quote == std::string::npos &&
       space == std::string::npos &&
@@ -101,6 +73,69 @@ std::string quoteIfNeeded (const std::string& input)
     output = input;
 
   return std::string ("\"") + output + "\"";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+std::string join(const std::string& glue, const std::set <std::string>& array)
+{
+  if (array.empty ())
+  {
+    return "";
+  }
+
+  auto iterator = array.begin ();
+
+  std::string value = *iterator++;
+
+  while (iterator != array.end ())
+  {
+    value += glue + *iterator++;
+  }
+
+  return value;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+std::string joinQuotedIfNeeded(const std::string& glue, const std::set <std::string>& array)
+{
+  if (array.empty ())
+  {
+    return "";
+  }
+
+  auto iterator = array.begin ();
+
+  std::string value = *iterator++;
+
+  while (iterator != array.end ())
+  {
+    value += glue + quoteIfNeeded(*iterator++);
+  }
+
+  return value;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+std::string joinQuotedIfNeeded(const std::string& glue, const std::vector <std::string>& array)
+{
+  if (array.empty ())
+  {
+    return "";
+  }
+
+  auto iterator = array.begin ();
+
+  std::string value = *iterator++;
+
+  while (iterator != array.end ())
+  {
+    value += glue + quoteIfNeeded(*iterator++);
+  }
+
+  return value;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

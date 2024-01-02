@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2012 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2012 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -36,13 +36,15 @@ class Args
 public:
   Args () = default;
 
-  void addOption (const std::string&, bool defaultValue = false);
+  void addOption (const std::string&, bool defaultValue = true);
   void addNamed  (const std::string&, const std::string& defaultValue = "");
   void limitPositionals (int);
+  void enableNegatives ();
 
   void scan (int, const char**);
 
   bool getOption (const std::string&) const;
+  int getOptionCount (const std::string&) const;
   std::string getNamed (const std::string&) const;
   int getPositionalCount () const;
   std::string getPositional (int) const;
@@ -50,10 +52,16 @@ public:
   std::string dump () const;
 
 private:
+  bool canonicalizeOption (const std::string&, std::string&) const;
+  bool canonicalizeNamed (const std::string&, std::string&) const;
+
+private:
   std::map <std::string, bool>        _options     {};
+  std::map <std::string, int>         _optionCount {};
   std::map <std::string, std::string> _named       {};
   std::vector <std::string>           _positionals {};
   int                                 _limit       {-1};
+  bool                                _negatives   {false};
 };
 
 #endif

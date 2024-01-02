@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2006 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2006 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -32,10 +32,37 @@
 #include <unistd.h>
 
 ////////////////////////////////////////////////////////////////////////////////
+void Table::add (const std::string& col, bool alignLeft, bool wrap)
+{
+  _columns.push_back (col);
+  _align.push_back (alignLeft);
+  _wrap.push_back (wrap);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 int Table::addRow ()
 {
   _data.push_back (std::vector <std::string> (_columns.size (), ""));
   _color.push_back (std::vector <Color> (_columns.size (), Color::nocolor));
+  _oddness.push_back (_data.size () % 2 ? true : false);
+  return _data.size () - 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+int Table::addRowOdd ()
+{
+  _data.push_back (std::vector <std::string> (_columns.size (), ""));
+  _color.push_back (std::vector <Color> (_columns.size (), Color::nocolor));
+  _oddness.push_back (true);
+  return _data.size () - 1;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+int Table::addRowEven ()
+{
+  _data.push_back (std::vector <std::string> (_columns.size (), ""));
+  _color.push_back (std::vector <Color> (_columns.size (), Color::nocolor));
+  _oddness.push_back (false);
   return _data.size () - 1;
 }
 
@@ -93,7 +120,7 @@ std::string Table::render ()
   for (unsigned int col = 0; col < _columns.size (); ++col)
   {
     // Headers factor in to width calculations.
-    unsigned int global_min = utf8_width (_columns[col]);
+    unsigned int global_min = utf8_text_width (_columns[col]);
     unsigned int global_ideal = global_min;
 
     for (unsigned int row = 0; row < _data.size (); ++row)
@@ -157,7 +184,7 @@ std::string Table::render ()
   for (unsigned int c = 0; c < _columns.size (); ++c)
   {
     headers.push_back ({});
-    renderCell (headers[c], _columns[c], widths[c], _align[c], _header);
+    renderCell (headers[c], _columns[c], widths[c], _align[c], _wrap[c], _header);
 
     if (headers[c].size () > max_lines)
       max_lines = headers[c].size ();
@@ -226,8 +253,8 @@ std::string Table::render ()
     max_lines = 0;
 
     // Alternate rows based on |s % 2|
-    bool odd = (row % 2) ? true : false;
-    Color row_color = odd ? _odd : _even;
+    auto oddness = _oddness[row];
+    Color row_color = oddness ? _odd : _even;
 
     // TODO row_color.blend (provided color);
     // TODO Problem: colors for columns are specified, not rows,
@@ -240,15 +267,19 @@ std::string Table::render ()
       cell_color.blend (_color[row][col]);
 
       cells.push_back (std::vector <std::string> ());
-      renderCell (cells[col], _data[row][col], widths[col], _align[col], cell_color);
+      renderCell (cells[col], _data[row][col], widths[col], _align[col], _wrap[col], cell_color);
 
       if (cells[col].size () > max_lines)
         max_lines = cells[col].size ();
+
+      if (_obfuscate)
+        for (auto& value : cells[col])
+          value = obfuscateText (value);
     }
 
     for (unsigned int i = 0; i < max_lines; ++i)
     {
-      out += left_margin + (odd ? extra_odd : extra_even);
+      out += left_margin + (oddness ? extra_odd : extra_even);
 
       for (unsigned int col = 0; col < _columns.size (); ++col)
       {
@@ -257,7 +288,7 @@ std::string Table::render ()
           if (row_color.nontrivial ())
             out += row_color.colorize (intra);
           else
-            out += (odd ? intra_odd : intra_even);
+            out += (oddness ? intra_odd : intra_even);
         }
 
         if (i < cells[col].size ())
@@ -270,7 +301,7 @@ std::string Table::render ()
         }
       }
 
-      out += (odd ? extra_odd : extra_even);
+      out += (oddness ? extra_odd : extra_even);
 
       // Trim right.
       out.erase (out.find_last_not_of (" ") + 1);
@@ -308,20 +339,35 @@ void Table::renderCell (
   const std::string& value,
   int width,
   bool alignLeft,
+  bool wrap,
   const Color& color) const
 {
-  std::vector <std::string> raw;
-  wrapText (raw, value, width, false);
+  if (wrap)
+  {
+    std::vector <std::string> raw;
+    wrapText (raw, value, width, false);
 
-  for (const auto& line : raw)
+    for (const auto& line : raw)
+      if (alignLeft)
+        lines.push_back (
+          color.colorize (
+            leftJustify (line, width)));
+      else
+        lines.push_back (
+          color.colorize (
+            rightJustify (line, width)));
+  }
+  else
+  {
     if (alignLeft)
       lines.push_back (
         color.colorize (
-          leftJustify (line, width)));
+          leftJustify (value, width)));
     else
       lines.push_back (
         color.colorize (
-          rightJustify (line, width)));
+          rightJustify (value, width)));
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

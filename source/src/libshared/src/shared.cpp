@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2006 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2006 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -40,6 +40,7 @@
 #include <cmath>
 #include <cstring>
 #include <sys/wait.h>
+#include <format.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 void wrapText (
@@ -97,6 +98,24 @@ std::vector <std::string> split (const std::string& input)
   }
 
   return results;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+std::string join (
+  const std::string& separator,
+  const std::vector<int>& items)
+{
+  std::stringstream s;
+  auto size = items.size ();
+  for (unsigned int i = 0; i < size; ++i)
+  {
+    if (i)
+      s << separator;
+
+    s << items[i];
+  }
+
+  return s.str ();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -318,7 +337,7 @@ bool extractLine (
         {
           if (hyphenate)
           {
-            line = text.substr (offset, last_bytes - offset - 1) + "-";
+            line = text.substr (offset, last_bytes - offset - 1) + '-';
             offset = last_last_bytes;
           }
           else
@@ -337,6 +356,98 @@ bool extractLine (
 
   return true;
 }
+/*
+
+TODO Resolve above against below, which is from Taskwarrior 2.6.0, and known to
+     be wrong.
+////////////////////////////////////////////////////////////////////////////////
+// Break UTF8 text into chunks no more than width characters.
+bool extractLine (
+  std::string& line,
+  const std::string& text,
+  int width,
+  bool hyphenate,
+  unsigned int& offset)
+{
+  // Terminate processing.
+  if (offset >= text.length ())
+    return false;
+
+  int line_length                     {0};
+  int character                       {0};
+  std::string::size_type lastWordEnd  {std::string::npos};
+  bool something                      {false};
+  std::string::size_type cursor       {offset};
+  std::string::size_type prior_cursor {offset};
+  while ((character = utf8_next_char (text, cursor)))
+  {
+    // Premature EOL.
+    if (character == '\n')
+    {
+      line = text.substr (offset, line_length);
+      offset = cursor;
+      return true;
+    }
+
+    if (! Lexer::isWhitespace (character))
+    {
+      something = true;
+      if (! text[cursor] || Lexer::isWhitespace (text[cursor]))
+        lastWordEnd = prior_cursor;
+    }
+
+    line_length += mk_wcwidth (character);
+
+    if (line_length >= width)
+    {
+      // Backtrack to previous word end.
+      if (lastWordEnd != std::string::npos)
+      {
+        // Eat one WS after lastWordEnd.
+        std::string::size_type lastBreak = lastWordEnd;
+        utf8_next_char (text, lastBreak);
+
+        // Position offset at following char.
+        std::string::size_type nextStart = lastBreak;
+        utf8_next_char (text, nextStart);
+
+        line = text.substr (offset, lastBreak - offset);
+        offset = nextStart;
+        return true;
+      }
+
+      // No backtrack, possible hyphenation.
+      else if (hyphenate)
+      {
+        line = text.substr (offset, prior_cursor - offset) + '-';
+        offset = prior_cursor;
+        return true;
+      }
+
+      // No hyphenation, just truncation.
+      else
+      {
+        line = text.substr (offset, cursor - offset);
+        offset = cursor;
+        return true;
+      }
+    }
+
+    // Hindsight.
+    prior_cursor = cursor;
+  }
+
+  // Residual text.
+  if (something)
+  {
+    line = text.substr (offset, cursor - offset);
+     offset = cursor;
+    return true;
+  }
+
+  return false;
+}
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 bool compare (
@@ -368,6 +479,76 @@ bool closeEnough (
     return compare (reference.substr (0, attempt.length ()), attempt, false);
 
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+int matchLength (
+  const std::string& left,
+  const std::string& right)
+{
+  int pos = 0;
+  while (left[pos] &&
+         right[pos] &&
+         left[pos] == right[pos])
+    ++pos;
+
+  return pos;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+std::string::size_type find (
+  const std::string& text,
+  const std::string& pattern,
+  bool sensitive)
+{
+  return find (text, pattern, 0, sensitive);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+std::string::size_type find (
+  const std::string& text,
+  const std::string& pattern,
+  std::string::size_type begin,
+  bool sensitive)
+{
+  // Implement a sensitive find, which is really just a loop withing a loop,
+  // comparing lower-case versions of each character in turn.
+  if (!sensitive)
+  {
+    // Handle empty pattern.
+    const char* p = pattern.c_str ();
+    size_t len = pattern.length ();
+    if (len == 0)
+      return 0;
+
+    // Handle bad begin.
+    if (begin >= text.length ())
+      return std::string::npos;
+
+    // Evaluate these once, for performance reasons.
+    const char* start = text.c_str ();
+    const char* t = start + begin;
+    const char* end = start + text.size ();
+
+    for (; t <= end - len; ++t)
+    {
+      int diff = 0;
+      for (size_t i = 0; i < len; ++i)
+        if ((diff = tolower (t[i]) - tolower (p[i])))
+          break;
+
+      // diff == 0 means there was no break from the loop, which only occurs
+      // when a difference is detected.  Therefore, the loop terminated, and
+      // diff is zero.
+      if (diff == 0)
+        return t - start;
+    }
+
+    return std::string::npos;
+  }
+
+  // Otherwise, just use std::string::find.
+  return text.find (pattern, begin);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -420,7 +601,7 @@ int autoComplete (
 
       // Maintain a list of partial matches.
       else if (length >= (unsigned) minimum &&
-               length <= item.length ()    &&
+               length <= item.length ()     &&
                partial == item.substr (0, length))
         matches.push_back (item);
     }
@@ -614,6 +795,69 @@ int execute (
     throw std::string (std::strerror (errno));
 
   return status;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+std::string osName ()
+{
+#if defined (DARWIN)
+  return "Darwin";
+#elif defined (SOLARIS)
+  return "Solaris";
+#elif defined (CYGWIN)
+  return "Cygwin";
+#elif defined (HAIKU)
+  return "Haiku";
+#elif defined (OPENBSD)
+  return "OpenBSD";
+#elif defined (FREEBSD)
+  return "FreeBSD";
+#elif defined (NETBSD)
+  return "NetBSD";
+#elif defined (DRAGONFLY)
+  return "Dragonfly";
+#elif defined (LINUX)
+  return "Linux";
+#elif defined (KFREEBSD)
+  return "GNU/kFreeBSD";
+#elif defined (GNUHURD)
+  return "GNU/Hurd";
+#else
+  return "<unknown>";
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// 16.8 Predefined macro names [cpp.predefined]
+//
+// The following macro names shall be defined by the implementation:
+//
+// __cplusplus
+//   The name __cplusplus is defined to the value 201402L when compiling a C++
+//   translation unit.156
+//
+// ---
+//   156) It is intended that future versions of this standard will replace the
+//   value of this macro with a greater value. Non-conforming compilers should
+//   use a value with at most five decimal digits.
+std::string cppCompliance ()
+{
+#ifdef __cplusplus
+  auto level = __cplusplus;
+
+       if (level == 199711) return "C++98/03";
+  else if (level == 201103) return "C++11";
+  else if (level == 201402) return "C++14";
+
+  // This is a hack.  Replace with correct value on standard publication.
+  else if (level >  201700) return "C++17";
+
+  // Unknown, just show the value.
+  else if (level >   99999) return format (__cplusplus);
+#endif
+
+  // No C++.
+  return "non-compliant";
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -120,19 +120,27 @@ std::vector <Range> Exclusion::ranges (const Range& range) const
   else if ((dayOfWeek = Datetime::dayOfWeek (_tokens[1])) != -1)
   {
     Datetime start (range.start.year (), range.start.month (), range.start.day (), 0, 0, 0);
-    while (start <= range.end)
+
+    Range myRange = {range};
+
+    if (myRange.is_open())
+    {
+      myRange.end = Datetime("tomorrow");
+    }
+
+    while (start <= myRange.end)
     {
       if (start.dayOfWeek () == dayOfWeek)
       {
         Datetime end = start;
         ++end;
 
-        // Now that 'start' and 'end' respresent the correct day, compose a set
+        // Now that 'start' and 'end' represent the correct day, compose a set
         // of Range objects for each time block.
         for (unsigned int block = 2; block < _tokens.size (); ++block)
         {
           auto r = rangeFromTimeBlock (_tokens[block], start, end);
-          if (range.overlap (r))
+          if (myRange.overlap (r))
             results.push_back (r);
         }
       }

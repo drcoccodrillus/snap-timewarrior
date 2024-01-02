@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2006 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2006 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,10 +35,14 @@
 bool setVariableInFile   (const std::string&, const std::string&, const std::string&);
 bool unsetVariableInFile (const std::string&, const std::string&);
 
+// ct.cpp
+std::vector <std::tuple <std::string, int>> foo (File&);
+
 class Configuration : public std::map <std::string, std::string>
 {
 public:
   void load  (const std::string&, int nest = 1);
+  void save ();
   void parse (const std::string&, int nest = 1);
 
   bool        has        (const std::string&) const;
@@ -50,12 +54,16 @@ public:
   void set (const std::string&, const int);
   void set (const std::string&, const double);
   void set (const std::string&, const std::string&);
+  void setIfBlank (const std::string&, const std::string&);
   std::vector <std::string> all () const;
 
   std::string file () const;
 
+  bool dirty ();
+
 private:
   File _original_file {};
+  bool _dirty         {false};
 };
 
 #endif

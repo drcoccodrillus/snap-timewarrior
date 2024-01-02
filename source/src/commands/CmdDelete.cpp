@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,11 +24,9 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cmake.h>
 #include <timew.h>
 #include <format.h>
 #include <iostream>
-#include <stdlib.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 int CmdDelete (
@@ -37,12 +35,9 @@ int CmdDelete (
   Database& database)
 {
   // Gather IDs.
-  std::vector <int> ids;
-  for (auto& arg : cli._args)
-    if (arg.hasTag ("ID"))
-      ids.push_back (strtol (arg.attribute ("value").c_str (), NULL, 10));
+  std::vector <int> ids = cli.getIds();
 
-  if (! ids.size ())
+  if (ids.empty ())
     throw std::string ("IDs must be specified. See 'timew help delete'.");
 
   // Load the data.
@@ -50,12 +45,32 @@ int CmdDelete (
   Interval filter;
   auto tracked = getTracked (database, rules, filter);
 
-  // Apply tags to ids.
+  bool dirty = true;
+
   for (auto& id : ids)
   {
     if (id > static_cast <int> (tracked.size ()))
       throw format ("ID '@{1}' does not correspond to any tracking.", id);
 
+    if (tracked[tracked.size() - id].synthetic && dirty)
+    {
+      auto latest = getLatestInterval(database);
+      auto exclusions = getAllExclusions (rules, filter.range);
+
+      Interval modified {latest};
+
+      // Update database.
+      database.deleteInterval (latest);
+      for (auto& interval : flatten (modified, exclusions))
+        database.addInterval (interval);
+
+      dirty = false;
+    }
+  }
+
+  // Delete intervals by id
+  for (auto& id : ids)
+  {
     database.deleteInterval (tracked[tracked.size () - id]);
 
     if (rules.getBoolean ("verbose"))

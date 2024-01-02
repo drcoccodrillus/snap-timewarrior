@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -62,7 +62,12 @@ int CmdStop (
   // If a stop date is specified (and occupies filter.range.start) then use
   // that instead of the current time.
   if (filter.range.start.toEpoch () != 0)
+  {
+    if (modified.range.start >= filter.range.start)
+      throw std::string ("The end of a date range must be after the start.");
+
     modified.range.end = filter.range.start;
+  }
   else
     modified.range.end = Datetime ();
 

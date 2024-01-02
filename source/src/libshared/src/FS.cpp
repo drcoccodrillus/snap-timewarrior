@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2006 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2006 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -41,7 +41,7 @@
 #include <shared.h>
 #include <format.h>
 
-#if defined SOLARIS || defined NETBSD || defined FREEBSD
+#if defined SOLARIS || defined NETBSD || defined FREEBSD || defined DRAGONFLY || !defined(__GLIBC__)
 #include <limits.h>
 #endif
 
@@ -77,7 +77,7 @@ Path::Path (const Path& other)
 Path::Path (const std::string& in)
 {
   _original = in;
-  _data = expand (in);
+  _data     = expand (in);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -101,7 +101,7 @@ bool Path::operator== (const Path& other)
 ////////////////////////////////////////////////////////////////////////////////
 Path& Path::operator+= (const std::string& dir)
 {
-  _data += "/" + dir;
+  _data += '/' + dir;
   return *this;
 }
 
@@ -159,10 +159,14 @@ bool Path::exists () const
 ////////////////////////////////////////////////////////////////////////////////
 bool Path::is_directory () const
 {
-  struct stat s {};
-  if (! stat (_data.c_str (), &s) &&
-      S_ISDIR (s.st_mode))
-    return true;
+  if (exists ())
+  {
+    struct stat s {};
+    if (stat (_data.c_str (), &s))
+      throw format ("stat error {1}: {2}", errno, strerror (errno));
+
+    return S_ISDIR (s.st_mode);
+  }
 
   return false;
 }
@@ -180,29 +184,46 @@ bool Path::is_absolute () const
 bool Path::is_link () const
 {
   struct stat s {};
-  if (! lstat (_data.c_str (), &s) &&
-      S_ISLNK (s.st_mode))
-    return true;
+  if (lstat (_data.c_str (), &s))
+    throw format ("lstat error {1}: {2}", errno, strerror (errno));
 
-  return false;
+  return S_ISLNK (s.st_mode);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// EACCES is a permissions problem which is exactly what this method is trying
+// to determine.
 bool Path::readable () const
 {
-  return access (_data.c_str (), R_OK) ? false : true;
+  auto status = access (_data.c_str (), R_OK);
+  if (status == -1 && errno != EACCES)
+    throw format ("access error {1}: {2}", errno, strerror (errno));
+
+  return status ? false : true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// EACCES is a permissions problem which is exactly what this method is trying
+// to determine.
 bool Path::writable () const
 {
-  return access (_data.c_str (), W_OK) ? false : true;
+  auto status = access (_data.c_str (), W_OK);
+  if (status == -1 && errno != EACCES)
+    throw format ("access error {1}: {2}", errno, strerror (errno));
+
+  return status ? false : true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// EACCES is a permissions problem which is exactly what this method is trying
+// to determine.
 bool Path::executable () const
 {
-  return access (_data.c_str (), X_OK) ? false : true;
+  auto status = access (_data.c_str (), X_OK);
+  if (status == -1 && errno != EACCES)
+    throw format ("access error {1}: {2}", errno, strerror (errno));
+
+  return status ? false : true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -231,7 +252,7 @@ std::string Path::expand (const std::string& in)
 {
   std::string copy = in;
 
-  auto tilde = copy.find ("~");
+  auto tilde = copy.find ('~');
   std::string::size_type slash;
 
   if (tilde != std::string::npos)
@@ -255,7 +276,7 @@ std::string Path::expand (const std::string& in)
     }
 
     // Convert: ~foo/x --> /home/foo/x
-    else if ((slash = copy.find  ("/", tilde)) != std::string::npos)
+    else if ((slash = copy.find ('/', tilde)) != std::string::npos)
     {
       std::string name = copy.substr (tilde + 1, slash - tilde - 1);
       struct passwd* pw = getpwnam (name.c_str ());
@@ -274,7 +295,7 @@ std::string Path::expand (const std::string& in)
            in[0] != '.' &&
            in[0] != '/')
   {
-    copy = Directory::cwd () + "/" + in;
+    copy = Directory::cwd () + '/' + in;
   }
 
   return copy;
@@ -400,6 +421,8 @@ bool File::open ()
         _locked = false;
         return true;
       }
+      else
+        throw format ("fopen error {1}: {2}", errno, strerror (errno));
     }
     else
       return true;
@@ -416,7 +439,9 @@ void File::close ()
     if (_locked)
       unlock ();
 
-    fclose (_fh);
+    if (fclose (_fh))
+      throw format ("fclose error {1}: {2}", errno, strerror (errno));
+
     _fh = nullptr;
     _h = -1;
     _locked = false;
@@ -530,7 +555,9 @@ void File::append (const std::string& line)
   if (_fh)
   {
     fseek (_fh, 0, SEEK_END);
-    fputs (line.c_str (), _fh);
+
+    if (fputs (line.c_str (), _fh) == EOF)
+      throw format ("fputs error {1}: {2}", errno, strerror (errno));
   }
 }
 
@@ -544,8 +571,10 @@ void File::append (const std::vector <std::string>& lines)
   if (_fh)
   {
     fseek (_fh, 0, SEEK_END);
+
     for (auto& line : lines)
-      fputs (line.c_str (), _fh);
+      if (fputs (line.c_str (), _fh) == EOF)
+        throw format ("fputs error {1}: {2}", errno, strerror (errno));
   }
 }
 
@@ -556,7 +585,8 @@ void File::write_raw (const std::string& line)
     open ();
 
   if (_fh)
-    fputs (line.c_str (), _fh);
+    if (fputs (line.c_str (), _fh) == EOF)
+      throw format ("fputs error {1}: {2}", errno, strerror (errno));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -589,54 +619,54 @@ void File::truncate ()
 mode_t File::mode ()
 {
   struct stat s;
-  if (!stat (_data.c_str (), &s))
-    return s.st_mode;
+  if (stat (_data.c_str (), &s))
+    throw format ("stat error {1}: {2}", errno, strerror (errno));
 
-  return 0;
+  return s.st_mode;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 size_t File::size () const
 {
   struct stat s;
-  if (!stat (_data.c_str (), &s))
-    return s.st_size;
+  if (stat (_data.c_str (), &s))
+    throw format ("stat error {1}: {2}", errno, strerror (errno));
 
-  return 0;
+  return s.st_size;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 time_t File::mtime () const
 {
   struct stat s;
-  if (!stat (_data.c_str (), &s))
-    return s.st_mtime;
+  if (stat (_data.c_str (), &s))
+    throw format ("stat error {1}: {2}", errno, strerror (errno));
 
-  return 0;
+  return s.st_mtime;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 time_t File::ctime () const
 {
   struct stat s;
-  if (!stat (_data.c_str (), &s))
-    return s.st_ctime;
+  if (stat (_data.c_str (), &s))
+    throw format ("stat error {1}: {2}", errno, strerror (errno));
 
-  return 0;
+  return s.st_ctime;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 time_t File::btime () const
 {
   struct stat s;
-  if (!stat (_data.c_str (), &s))
-#ifdef HAVE_ST_BIRTHTIME
-    return s.st_birthtime;
-#else
-    return s.st_ctime;
-#endif
+  if (stat (_data.c_str (), &s))
+    throw format ("stat error {1}: {2}", errno, strerror (errno));
 
-  return 0;
+#ifdef HAVE_ST_BIRTHTIME
+  return s.st_birthtime;
+#else
+  return s.st_ctime;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -647,7 +677,9 @@ bool File::create (const std::string& name, int mode /* = 0640 */)
   if (out.good ())
   {
     out.close ();
-    chmod (full_name.c_str (), mode);
+    if (chmod (full_name.c_str (), mode))
+      throw format ("chmod error {1}: {2}", errno, strerror (errno));
+
     return true;
   }
 
@@ -828,6 +860,8 @@ Directory& Directory::operator= (const Directory& other)
 ////////////////////////////////////////////////////////////////////////////////
 bool Directory::create (int mode /* = 0755 */)
 {
+  // No error handling because we want failure to be silent, somewhat emulating
+  // "mkdir -p".
   return mkdir (_data.c_str (), mode) == 0 ? true : false;
 }
 
@@ -846,29 +880,33 @@ bool Directory::remove_directory (const std::string& dir) const
     struct dirent* de;
     while ((de = readdir (dp)) != nullptr)
     {
-      if (!strcmp (de->d_name, ".") ||
-          !strcmp (de->d_name, ".."))
+      if (! strcmp (de->d_name, ".") ||
+          ! strcmp (de->d_name, ".."))
         continue;
 
 #if defined (SOLARIS) || defined (HAIKU)
       struct stat s;
-      lstat ((dir + "/" + de->d_name).c_str (), &s);
+      if (lstat ((dir + '/' + de->d_name).c_str (), &s))
+        throw format ("lstat error {1}: {2}", errno, strerror (errno));
+
       if (S_ISDIR (s.st_mode))
-        remove_directory (dir + "/" + de->d_name);
+        remove_directory (dir + '/' + de->d_name);
       else
-        unlink ((dir + "/" + de->d_name).c_str ());
+        unlink ((dir + '/' + de->d_name).c_str ());
 #else
       if (de->d_type == DT_UNKNOWN)
       {
         struct stat s;
-        lstat ((dir + "/" + de->d_name).c_str (), &s);
+        if (lstat ((dir + '/' + de->d_name).c_str (), &s))
+          throw format ("lstat error {1}: {2}", errno, strerror (errno));
+
         if (S_ISDIR (s.st_mode))
           de->d_type = DT_DIR;
       }
       if (de->d_type == DT_DIR)
-        remove_directory (dir + "/" + de->d_name);
+        remove_directory (dir + '/' + de->d_name);
       else
-        unlink ((dir + "/" + de->d_name).c_str ());
+        unlink ((dir + '/' + de->d_name).c_str ());
 #endif
     }
 
@@ -956,23 +994,27 @@ void Directory::list (
 
 #if defined (SOLARIS) || defined (HAIKU)
       struct stat s;
-      stat ((base + "/" + de->d_name).c_str (), &s);
+      if (stat ((base + '/' + de->d_name).c_str (), &s))
+        throw format ("stat error {1}: {2}", errno, strerror (errno));
+
       if (recursive && S_ISDIR (s.st_mode))
-        list (base + "/" + de->d_name, results, recursive);
+        list (base + '/' + de->d_name, results, recursive);
       else
-        results.push_back (base + "/" + de->d_name);
+        results.push_back (base + '/' + de->d_name);
 #else
       if (recursive && de->d_type == DT_UNKNOWN)
       {
         struct stat s;
-        lstat ((base + "/" + de->d_name).c_str (), &s);
+        if (lstat ((base + '/' + de->d_name).c_str (), &s))
+          throw format ("lstat error {1}: {2}", errno, strerror (errno));
+
         if (S_ISDIR (s.st_mode))
           de->d_type = DT_DIR;
       }
       if (recursive && de->d_type == DT_DIR)
-        list (base + "/" + de->d_name, results, recursive);
+        list (base + '/' + de->d_name, results, recursive);
       else
-        results.push_back (base + "/" + de->d_name);
+        results.push_back (base + '/' + de->d_name);
 #endif
     }
 

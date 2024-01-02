@@ -36,7 +36,7 @@ W17 2016-04-29 Fri Research, C17, Dept Meeting, Planning  7:59
                    Total                                 31:11
 
 
-(total by tag: Reasearch)
+(total by tag: Research)
 
 Tags            Wk  Date       Day Start End   Time  Sub
 --------------- --- ---------- --- ----- ----- ----- -----
@@ -65,4 +65,17 @@ W17 Dept Meeting       1:30
 W17 Planning           1:00
                       -----
     Total             31:11
+
+
+Aaron Evers suggests:
+
+Tag   Description Time    Total
+----- ----------- ------- -------
+Item1 Task one    1:00:00
+      Task two    1:00:00
+      Task three  0:30:00
+                          2:30:00
+Item2 Task one    2:30:00
+      Task two    0:30:00
+                          3:00:00
 

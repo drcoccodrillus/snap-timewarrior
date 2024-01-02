@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2006 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2006 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -30,6 +30,8 @@
 #include <sstream>
 #include <iomanip>
 #include <vector>
+
+bool Duration::standaloneSecondsEnabled = true;
 
 #define DAY    86400
 #define HOUR    3600
@@ -172,7 +174,7 @@ bool Duration::parse (const std::string& input, std::string::size_type& start)
   if (i)
     pig.skipN (static_cast <int> (i));
 
-  if (parse_seconds (pig))
+  if (Duration::standaloneSecondsEnabled && parse_seconds (pig))
   {
     // ::resolve is not needed in this case.
     start = pig.cursor ();
@@ -197,9 +199,10 @@ bool Duration::parse_seconds (Pig& pig)
   auto checkpoint = pig.cursor ();
 
   int epoch {};
-  if (pig.getDigits (epoch) &&
-      pig.eos ()            &&
-      epoch > 60)
+  if (pig.getDigits (epoch)             &&
+      ! unicodeLatinAlpha (pig.peek ()) &&
+      (epoch == 0 ||
+       epoch > 60))
   {
     _period = static_cast <time_t> (epoch);
     return true;
@@ -259,7 +262,10 @@ bool Duration::parse_designated (Pig& pig)
         pig.restore ();
     }
 
-    if (pig.cursor () - checkpoint >= 3)
+    auto following = pig.peek ();
+    if (pig.cursor () - checkpoint >= 3   &&
+        ! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
       return true;
   }
 
@@ -283,9 +289,11 @@ bool Duration::parse_weeks (Pig& pig)
     else
       pig.restore ();
 
-    if (pig.eos () || unicodeWhitespace (pig.peek ()))
-      if (pig.cursor () - checkpoint >= 3)
-        return true;
+    auto following = pig.peek ();
+    if (pig.cursor () - checkpoint >= 3   &&
+        ! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
+      return true;
   }
 
   pig.restoreTo (checkpoint);
@@ -307,8 +315,9 @@ bool Duration::parse_units (Pig& pig)
   std::string unit;
   if (pig.getOneOf (units, unit))
   {
-    if (pig.eos () ||
-        unicodeWhitespace (pig.peek ()))
+    auto following = pig.peek ();
+    if (! unicodeLatinAlpha (following) &&
+        ! unicodeLatinDigit (following))
     {
       for (unsigned int i = 0; i < NUM_DURATIONS; i++)
       {
@@ -350,8 +359,9 @@ bool Duration::parse_units (Pig& pig)
         return false;
       }
 
-      if (pig.eos () ||
-          unicodeWhitespace (pig.peek ()))
+      auto following = pig.peek ();
+      if (! unicodeLatinAlpha (following) &&
+          ! unicodeLatinDigit (following))
       {
         // Linear lookup - should instead be logarithmic.
         double seconds = 1;
@@ -481,18 +491,18 @@ const std::string Duration::formatISO () const
 // >= 1min    {n}min
 //            {n}s
 //
-const std::string Duration::formatVague () const
+const std::string Duration::formatVague (bool padding) const
 {
   float days = (float) _period / 86400.0;
 
   std::stringstream formatted;
-       if (_period >= 86400 * 365) formatted << std::fixed << std::setprecision (1) << (days / 365) << "y";
-  else if (_period >= 86400 * 90)  formatted << static_cast <int> (days / 30)       << "mo";
-  else if (_period >= 86400 * 14)  formatted << static_cast <int> (days / 7)        << "w";
-  else if (_period >= 86400)       formatted << static_cast <int> (days)            << "d";
-  else if (_period >= 3600)        formatted << static_cast <int> (_period / 3600)  << "h";
-  else if (_period >= 60)          formatted << static_cast <int> (_period / 60)    << "min";
-  else if (_period >= 1)           formatted << static_cast <int> (_period)         << "s";
+       if (_period >= 86400 * 365) formatted << std::fixed << std::setprecision (1) << (days / 365) << (padding ? "y  " : "y");
+  else if (_period >= 86400 * 90)  formatted << static_cast <int> (days / 30)       << (padding ? "mo " : "mo");
+  else if (_period >= 86400 * 14)  formatted << static_cast <int> (days / 7)        << (padding ? "w  " : "w");
+  else if (_period >= 86400)       formatted << static_cast <int> (days)            << (padding ? "d  " : "d");
+  else if (_period >= 3600)        formatted << static_cast <int> (_period / 3600)  << (padding ? "h  " : "h");
+  else if (_period >= 60)          formatted << static_cast <int> (_period / 60)    << "min";  // Longest suffix - no padding
+  else if (_period >= 1)           formatted << static_cast <int> (_period)         << (padding ? "s  " : "s");
 
   return formatted.str ();
 }
@@ -538,24 +548,5 @@ void Duration::resolve ()
                 _seconds;
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/*
-std::string Duration::dump () const
-{
-  std::stringstream s;
-  s << "Duration"
-    << " y"  << _year
-    << " mo" << _month
-    << " d"  << _day
-    << " h"  << _hours
-    << " mi" << _minutes
-    << " s"  << _seconds
-    << " ="  << _period
-    << "  "  << (_period ? format () : "");
-
-  return s.str ();
-}
-*/
 
 ////////////////////////////////////////////////////////////////////////////////

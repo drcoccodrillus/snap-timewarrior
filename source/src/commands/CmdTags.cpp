@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -33,21 +33,19 @@
 #include <iostream>
 
 ////////////////////////////////////////////////////////////////////////////////
-int CmdTags (Rules& rules, Database& database)
+int CmdTags (
+  const CLI& cli,
+  Rules& rules,
+  Database& database)
 {
+  // Create a filter, with no default range.
+  auto filter = getFilter (cli);
+
   // Generate a unique, ordered list of tags.
   std::set <std::string> tags;
-  for (auto& line : database.allLines ())
-  {
-    if (line[0] == 'i')
-    {
-      Interval interval;
-      interval.initialize (line);
-
-      for (auto& tag : interval.tags ())
-        tags.insert (tag);
-    }
-  }
+  for (const auto& interval : getTracked (database, rules, filter))
+    for (auto& tag : interval.tags ())
+      tags.insert (tag);
 
   // Shows all tags.
   if (tags.size ())

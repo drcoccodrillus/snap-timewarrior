@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -45,6 +45,16 @@ int CmdStart (
   auto latest = getLatestInterval (database);
   if (latest.range.is_open ())
   {
+    // If the new interval tags match those of the currently open interval, then
+    // do nothing - the tags are already being tracked.
+    if (latest.tags () == filter.tags ())
+    {
+      if (rules.getBoolean ("verbose"))
+        std::cout << intervalSummarize (database, rules, latest);
+
+      return 0;
+    }
+
     // Stop it, at the given start time, if applicable.
     Interval modified {latest};
     if (filter.range.start.toEpoch () != 0)
@@ -55,7 +65,9 @@ int CmdStart (
     // Update database.
     database.deleteInterval (latest);
     for (auto& interval : flatten (modified, exclusions))
+    {
       database.addInterval (interval);
+    }
 
     if (rules.getBoolean ("verbose"))
       std::cout << intervalSummarize (database, rules, modified);

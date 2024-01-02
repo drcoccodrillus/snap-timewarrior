@@ -1,4 +1,4 @@
-.TH timew 1 2016-08-17 "${PACKAGE_STRING}" "User Manuals"
+.TH timew 1 2018-01-13 "${PACKAGE_STRING}" "User Manuals"
 
 .SH NAME
 timew \- A command line time tracker.
@@ -61,13 +61,15 @@ See also 'hints', 'show'.
 
 .TP
 .B timew continue
-Resumes tracking the most recently closed interval. For example:
+Resumes tracking of closed intervals. For example:
 
   $ timew track 9am - 10am tag1 tag2
-  $ timew continue
+  $ timew track 11am - 1pm tag3
+  $ timew continue @2
 
 The 'continue' command creates a new interval, starting now, and using the
 tags 'tag1' and 'tag2'.
+Using the 'summary' command and specifying the ':ids' hint shows interval IDs.
 This command is a convenient way to resume work without re-entering the
 tags.
 
@@ -125,7 +127,27 @@ Exports all the tracked time in JSON format. Supports filtering. For example:
 .TP
 .B timew extensions
 Displays the directory containing the extension programs and a table showing
-each extention and its status. See also 'diagnostics'.
+each extension and its status. See also 'diagnostics'.
+
+.TP
+.B timew fill @<id> [@<id> ...]
+
+The 'fill' command is used to adjust any interval to fill in surrounding gaps.
+Using the 'summary' command, and specifying the ':ids' hint shows interval IDs.
+Using the right ID, you can identify an interval to fill. For example, show
+the IDs:
+
+  $ timew summary :week :ids
+
+Then having selected '@2' as the interval you wish to fill:
+
+  $ timew fill @2
+
+Note that you can fill multiple intervals:
+
+  $ timew fill @2 @10 @23
+
+See also 'hints'.
 
 .TP
 .B timew gaps [<interval>] [<tag> ...]
@@ -178,7 +200,7 @@ Then having selected '@1' and '@2' as the intervals you wish to join:
 
   $ timew join @1 @2
 
-See also 'split', 'lengthen', 'shorten'.
+See also 'split', 'lengthen', 'shorten', 'resize'.
 
 .TP
 .B timew lengthen @<id> [@<id> ...] <duration>
@@ -197,7 +219,7 @@ Note that you can lengthen multiple intervals,:
 
   $ timew lengthen @2 @10 @23 1hour
 
-See also 'summary', 'tag', 'untag', 'shorten'.
+See also 'summary', 'tag', 'untag', 'shorten', 'resize'.
 
 .TP
 .B timew month [<interval>] [<tag> ...]
@@ -233,7 +255,7 @@ Then having selected '@2' as the interval you wish to move:
 
   $ timew move @2 9am
 
-See also 'summary', 'tag', 'untag', 'lengthen', 'shorten'.
+See also 'summary', 'tag', 'untag', 'lengthen', 'shorten', 'resize'.
 
 .TP
 .B timew [report] <report> [<interval>] [<tag> ...]
@@ -245,6 +267,25 @@ are equivalent:
   $ timew        foo :week
 
 This does however assume there is a 'foo' extension installed.
+
+.TP
+.B timew resize @<id> [@<id> ...] <duration>
+The 'resize' command is used to change the duration of a closed interval.
+Using the 'summary' command, and specifying the ':ids' hint shows interval IDs.
+Using the right ID, you can identify an interval to resize. For example, show
+the IDs:
+
+  $ timew summary :week :ids
+
+Then having selected '@3' as the interval you wish to resize:
+
+  $ timew resize @3 15mins
+
+Note that you can resize multiple intervals,:
+
+  $ timew resize @3 @1 @13 1hour
+
+See also 'summary', 'tag', 'untag', 'lengthen', 'shorten'.
 
 .TP
 .B timew shorten @<id> [@<id> ...] <duration>
@@ -263,7 +304,7 @@ Note that you can shorten multiple intervals,:
 
   $ timew shorten @2 @10 @23 1hour
 
-See also 'summary', 'tag', 'untag', 'lengthen'.
+See also 'summary', 'tag', 'untag', 'lengthen', 'resize'.
 
 .TP
 .B timew show
@@ -352,8 +393,9 @@ Note that you can tag multiple intervals, with multiple tags:
 See also 'summary', 'shorten', 'lengthen', 'untag'.
 
 .TP
-.B timew tags
-Displays all the tags that have been used.
+.B timew tags [<interval>] [<tag> ...]
+Displays all the tags that have been used by default. When a filter is specified,
+shows only the tags that were used during that time.
 
 .TP
 .B timew track <interval> [<tag> ...]
@@ -468,6 +510,13 @@ Range hints provide convenient shortcuts to date ranges:
   :lastmonth     Last month
   :lastquarter   Last quarter
   :lastyear      Last year
+  :monday        Previous monday
+  :tuesday       Previous tuesday
+  :wednesday     Previous wednesday
+  :thursday      Previous thursday
+  :friday        Previous friday
+  :saturday      Previous saturday
+  :sunday        Previous sunday
 
 .SH DATES
 Timewarrior supports the following date formats based on ISO-8601:
@@ -513,7 +562,6 @@ In addition to the standard date formats, the following are supported:
 
   now                                   Current date and time
   today                                 Current date at 0:00:00
-  sod, eod                              Current date at 0:00:00 and 23:59:59
   yesterday                             Yesterday at 0:00:00
   tomorrow                              Tomorrow at 0:00:00 (midnight tonight)
   <day-of-week>                         Previous named day at 0:00:00
@@ -523,15 +571,24 @@ In addition to the standard date formats, the following are supported:
   <epoch>                               POSIX time
   later                                 2038-01-18T0:00:00 (Y2K38)
   someday                               2038-01-18T0:00:00 (Y2K38)
-  soy, eoy                              Previous start/end of year
-  socy, eocy                            Start/end of current year
-  soq, eoq                              Previous start/end of quarter
-  socq, eocq                            Start/end of current quarter
-  som, eom                              Previous start/end of month
-  socm, eocm                            Start/end of current month
-  sow, eow                              Previous start/end of week
-  socw, eocw                            Start/end of current week
+  sopd, eopd                            Start/end of previous day
+  sod, eod                              Start/end of current day
+  sond, eond                            Start/end of next day
+  sopw, eopw                            Start/end of previous week
+  sow, eow                              Start/end of current week
+  sonw, eonw                            Start/end of next week
+  sopww, eopww                          Start/end of previous work week (mon - fri)
   soww, eoww                            Start/end of current work week (mon - fri)
+  sonww, eonww                          Start/end of next work week (mon - fri)
+  sopm, eopm                            Start/end of previous month
+  som, eom                              Start/end of current month
+  sonm, eonm                            Start/end of next month
+  sopq, eopq                            Start/end of previous quarter
+  soq, eoq                              Start/end of current quarter
+  sonq, eonq                            Start/end of next quarter
+  sopy, eopy                            Start/end of previous year
+  soy, eoy                              Start/end of current year
+  sony, eony                            Start/end of next year
   easter                                Easter Sunday
   eastermonday                          Easter Monday
   ascension                             Ascension
@@ -629,7 +686,8 @@ Supported DOM references are:
 Timewarrior stores its configuration in a file in the user's home directory:
 ~/.timewarrior/timewarrior.cfg.
 
-This file contains a mix of rules and configuration settings.
+This file contains a mix of rules and configuration settings. Note that the
+environment variable $TIMEWARRIORDB can be set to override this location.
 
 The values 'true', '1', 'y', 'yes' and 'on' are all equivalent and enable a
 setting. Any other value means disable the setting.
@@ -669,6 +727,7 @@ Determines how many minutes are represented by a single character cell, for the
 charts.
 A value of '15' means that an hour is represented by 60/15, or 4 character cells.
 Suitable values are the divisors of 60 (30, 20, 15, 12, ...).
+The value must be greater than '0'.
 Default value is '15'.
 Type is one of 'month', 'week', 'day'.
 
@@ -765,7 +824,7 @@ Default value is 'yes'.
 For examples please see the online documentation starting at:
 
 .RS
-<http://taskwarrior.org/???>
+<http://taskwarrior.org/docs/timewarrior/>
 .RE
 
 Note that the online documentation can be more detailed and more current than
@@ -782,7 +841,7 @@ User configuration file.
 Time tracking data files.
 
 .SH "CREDITS & COPYRIGHTS"
-Copyright (C) 2015 \- 2016 P. Beckingham, F. Hernandez.
+Copyright (C) 2015 \- 2018 P. Beckingham, F. Hernandez.
 
 Timewarrior is distributed under the MIT license. See
 http://www.opensource.org/licenses/mit-license.php for more information.

@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 
 class Pig
 {
@@ -39,9 +40,11 @@ public:
   bool skipN (const int quantity = 1);
   bool skipWS ();
   bool skipLiteral (const std::string&);
+  bool skipPartial (const std::string&, std::string&);
 
   bool getUntil (int, std::string&);
   bool getUntilWS (std::string&);
+  bool getCharacter (int&);
   bool getDigit (int&);
   bool getDigit2 (int&);
   bool getDigit3 (int&);
@@ -65,13 +68,14 @@ public:
   std::string::size_type restore ();
   std::string::size_type restoreTo (std::string::size_type);
 
+  std::string substr (std::string::size_type, std::string::size_type) const;
   std::string str () const;
   std::string dump () const;
 
 private:
-  std::string            _text;
-  std::string::size_type _cursor {0};
-  std::string::size_type _saved  {0};
+  std::shared_ptr<std::string> _text;
+  std::string::size_type       _cursor {0};
+  std::string::size_type       _saved  {0};
 };
 
 #endif

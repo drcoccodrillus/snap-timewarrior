@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2006 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2006 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -28,29 +28,26 @@
 #define INCLUDED_TIMER
 
 #include <string>
-#include <sys/time.h>
+#include <chrono>
 
-// Timer is a scope-activated timer that dumps to std::cout at end of scope.
 class Timer
 {
 public:
   Timer ();
-  explicit Timer (const std::string&);
-  ~Timer ();
+  ~Timer () = default;
 
   void start ();
   void stop ();
-  unsigned long total () const;
-  void subtract (unsigned long);
-  std::string str () const;
 
-  static unsigned long now ();
+  double total_s () const;
+  double total_ms () const;
+  double total_us () const;
+  double total_ns () const;
 
 private:
-  std::string    _description {"-"};
-  bool           _running     {false};
-  struct timeval _start       {};
-  unsigned long  _total       {0};
+  std::chrono::time_point<std::chrono::high_resolution_clock> _start   {};
+  std::chrono::time_point<std::chrono::high_resolution_clock> _end     {};
+  bool                                                        _running {false};
 };
 
 #endif

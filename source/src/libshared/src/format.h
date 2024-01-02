@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2006 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2006 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -53,7 +53,7 @@ template<typename T>
 const std::string format (int fmt_num, const std::string& fmt, T arg)
 {
     std::string output = fmt;
-    replace_positional (output, "{" + format (fmt_num) + "}", format (arg));
+    replace_positional (output, '{' + format (fmt_num) + '}', format (arg));
     return output;
 }
 
@@ -75,5 +75,13 @@ std::string leftJustify (const std::string&, const int);
 std::string rightJustifyZero (const int, const int);
 std::string rightJustify (const int, const int);
 std::string rightJustify (const std::string&, const int);
+
+std::string commify (const std::string&);
+std::string formatBytes (size_t);
+std::string formatTime (time_t);
+std::string printable (const std::string&);
+std::string printable (char);
+
+std::string obfuscateText (const std::string&);
 
 #endif

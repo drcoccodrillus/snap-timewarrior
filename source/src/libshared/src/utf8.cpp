@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2013 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2013 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -254,7 +254,7 @@ unsigned int utf8_text_width (const std::string& str)
     {
       if (c == 'm')
         in_color = false;
-    }  
+    }
     else if (c == 033)
     {
       in_color = true;

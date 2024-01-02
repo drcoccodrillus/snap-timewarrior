@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2006 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2006 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -49,8 +49,8 @@ bool setVariableInFile (
   for (auto& line : contents)
   {
     // If there is a comment on the line, it must follow the pattern.
-    auto comment = line.find ("#");
-    auto pos     = line.find (name + "=");
+    auto comment = line.find ('#');
+    auto pos     = line.find (name + '=');
 
     if (pos != std::string::npos &&
         (comment == std::string::npos ||
@@ -58,9 +58,9 @@ bool setVariableInFile (
     {
       found = true;
       if (comment != std::string::npos)
-        line = name + "=" + value + " " + line.substr (comment);
+        line = name + '=' + value + ' ' + line.substr (comment);
       else
-        line = name + "=" + value;
+        line = name + '=' + value;
 
       change = true;
     }
@@ -69,7 +69,7 @@ bool setVariableInFile (
   // Not found, so append instead.
   if (! found)
   {
-    contents.push_back (name + "=" + value);
+    contents.push_back (name + '=' + value);
     change = true;
   }
 
@@ -95,8 +95,8 @@ bool unsetVariableInFile (
     bool lineDeleted = false;
 
     // If there is a comment on the line, it must follow the pattern.
-    auto comment = line->find ("#");
-    auto pos     = line->find (name + "=");
+    auto comment = line->find ('#');
+    auto pos     = line->find (name + '=');
 
     if (pos != std::string::npos &&
         (comment == std::string::npos ||
@@ -131,17 +131,31 @@ void Configuration::load (const std::string& file, int nest /* = 1 */)
   if (nest > 10)
     throw std::string ("Configuration files may only be nested to 10 levels.");
 
-  // First time in, load the default values.
-  if (nest == 1)
-  {
-    // This is where defaults would be set.
-    _original_file = File (file);
-  }
-
   // Read the file, then parse the contents.
+  File config (file);
+
+  if (nest == 1)
+    _original_file = config;
+
+  if (config.exists () &&
+      config.readable ())
+  {
+    std::string contents;
+    if (File::read (file, contents) && contents.length ())
+      parse (contents, nest);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Write the Configuration file.
+void Configuration::save ()
+{
   std::string contents;
-  if (File::read (file, contents) && contents.length ())
-    parse (contents, nest);
+  for (const auto& i : *this)
+    contents += i.first + "=" + i.second + '\n';
+
+  File::write (_original_file, contents);
+  _dirty = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -155,7 +169,7 @@ void Configuration::parse (const std::string& input, int nest /* = 1 */)
   for (auto& line : split (input, '\n'))
   {
     // Remove comments.
-    auto pound = line.find ("#");
+    auto pound = line.find ('#');
     if (pound != std::string::npos)
       line = line.substr (0, pound);
 
@@ -163,7 +177,7 @@ void Configuration::parse (const std::string& input, int nest /* = 1 */)
     line = trim (line);
     if (line.length () > 0)
     {
-      auto equal = line.find ("=");
+      auto equal = line.find ('=');
       if (equal != std::string::npos)
       {
         std::string key   = trim (line.substr (0, equal));
@@ -192,6 +206,8 @@ void Configuration::parse (const std::string& input, int nest /* = 1 */)
       }
     }
   }
+
+  _dirty = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -253,18 +269,32 @@ bool Configuration::getBoolean (const std::string& key) const
 void Configuration::set (const std::string& key, const int value)
 {
   (*this)[key] = format (value);
+  _dirty = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void Configuration::set (const std::string& key, const double value)
 {
   (*this)[key] = format (value, 1, 8);
+  _dirty = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void Configuration::set (const std::string& key, const std::string& value)
 {
   (*this)[key] = value;
+  _dirty = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Autovivification is ok here.
+void Configuration::setIfBlank (const std::string& key, const std::string& value)
+{
+  if ((*this)[key] == "")
+  {
+    (*this)[key] = value;
+    _dirty = true;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -282,6 +312,12 @@ std::vector <std::string> Configuration::all () const
 std::string Configuration::file () const
 {
   return _original_file._data;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool Configuration::dirty ()
+{
+  return _dirty;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

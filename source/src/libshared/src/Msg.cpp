@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2006 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2006 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -101,7 +101,7 @@ bool Msg::parse (const std::string& input)
   {
     auto delimiter = i.find (':');
     if (delimiter == std::string::npos)
-        throw std::string ("Malformed message header '") + i + "'";
+        throw std::string ("Malformed message header '") + i + '\'';
 
     _header[trim (i.substr (0, delimiter))] = trim (i.substr (delimiter + 1));
   }

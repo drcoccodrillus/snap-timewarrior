@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2006 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2006 - 2018, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,7 +37,9 @@ public:
   static int weekstart;
   static int minimumMatchLength;
   static bool isoEnabled;
-  static bool lookForwards;
+  static bool standaloneDateEnabled;
+  static bool standaloneTimeEnabled;
+  static bool timeRelative;
 
   Datetime ();
   Datetime (const std::string&, const std::string& format = "");
@@ -114,14 +116,14 @@ private:
   bool parse_date_time_ext (Pig&);
   bool parse_date_ext      (Pig&);
   bool parse_off_ext       (Pig&);
-  bool parse_time_ext      (Pig&);
+  bool parse_time_ext      (Pig&, bool terminated = true);
   bool parse_time_utc_ext  (Pig&);
   bool parse_time_off_ext  (Pig&);
   bool parse_date_time     (Pig&);
   bool parse_date          (Pig&);
   bool parse_time_utc      (Pig&);
   bool parse_time_off      (Pig&);
-  bool parse_time          (Pig&);
+  bool parse_time          (Pig&, bool terminated = true);
   bool parse_off           (Pig&);
 
   bool parse_year          (Pig&, int&);
@@ -136,42 +138,64 @@ private:
   bool parse_off_hour      (Pig&, int&);
   bool parse_off_minute    (Pig&, int&);
 
-  bool initializeNow            (const std::string&);
-  bool initializeToday          (const std::string&);
-  bool initializeSod            (const std::string&);
-  bool initializeEod            (const std::string&);
-  bool initializeTomorrow       (const std::string&);
-  bool initializeYesterday      (const std::string&);
-  bool initializeDayName        (const std::string&);
-  bool initializeMonthName      (const std::string&);
-  bool initializeLater          (const std::string&);
-  bool initializeEoy            (const std::string&);
-  bool initializeSocy           (const std::string&);
-  bool initializeSoy            (const std::string&);
-  bool initializeEoq            (const std::string&);
-  bool initializeSocq           (const std::string&);
-  bool initializeSoq            (const std::string&);
-  bool initializeSocm           (const std::string&);
-  bool initializeSom            (const std::string&);
-  bool initializeEom            (const std::string&);
-  bool initializeSocw           (const std::string&);
-  bool initializeEow            (const std::string&);
-  bool initializeSow            (const std::string&);
-  bool initializeEoww           (const std::string&);
-  bool initializeOrdinal        (const std::string&);
-  bool initializeEaster         (const std::string&);
-  bool initializeMidsommar      (const std::string&);
-  bool initializeMidsommarafton (const std::string&);
-  bool initializeInformalTime   (const std::string&);
+  bool initializeNow            (Pig&);
+  bool initializeYesterday      (Pig&);
+  bool initializeToday          (Pig&);
+  bool initializeTomorrow       (Pig&);
+  bool initializeOrdinal        (Pig&);
+  bool initializeDayName        (Pig&);
+  bool initializeMonthName      (Pig&);
+  bool initializeLater          (Pig&);
+  bool initializeSopd           (Pig&);
+  bool initializeSod            (Pig&);
+  bool initializeSond           (Pig&);
+  bool initializeEopd           (Pig&);
+  bool initializeEod            (Pig&);
+  bool initializeEond           (Pig&);
+  bool initializeSopw           (Pig&);
+  bool initializeSow            (Pig&);
+  bool initializeSonw           (Pig&);
+  bool initializeEopw           (Pig&);
+  bool initializeEow            (Pig&);
+  bool initializeEonw           (Pig&);
+  bool initializeSopww          (Pig&);
+  bool initializeSonww          (Pig&);
+  bool initializeSoww           (Pig&);
+  bool initializeEopww          (Pig&);
+  bool initializeEonww          (Pig&);
+  bool initializeEoww           (Pig&);
+  bool initializeSopm           (Pig&);
+  bool initializeSom            (Pig&);
+  bool initializeSonm           (Pig&);
+  bool initializeEopm           (Pig&);
+  bool initializeEom            (Pig&);
+  bool initializeEonm           (Pig&);
+  bool initializeSopq           (Pig&);
+  bool initializeSoq            (Pig&);
+  bool initializeSonq           (Pig&);
+  bool initializeEopq           (Pig&);
+  bool initializeEoq            (Pig&);
+  bool initializeEonq           (Pig&);
+  bool initializeSopy           (Pig&);
+  bool initializeSoy            (Pig&);
+  bool initializeSony           (Pig&);
+  bool initializeEopy           (Pig&);
+  bool initializeEoy            (Pig&);
+  bool initializeEony           (Pig&);
+  bool initializeEaster         (Pig&);
+  bool initializeMidsommar      (Pig&);
+  bool initializeMidsommarafton (Pig&);
+  bool initializeInformalTime   (Pig&);
   void easter (struct tm*) const;
   void midsommar (struct tm*) const;
   void midsommarafton (struct tm*) const;
 
-  bool initializeFoo            (const std::vector <std::string>&);
+  bool initializeNthDayInMonth  (const std::vector <std::string>&);
+
+  bool isOrdinal (const std::string&, int&);
 
   bool validate ();
   void resolve ();
-  std::string dump () const;
 
 public:
   int _year    {0};

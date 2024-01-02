@@ -2,12 +2,12 @@
 
 /* Package information */
 #define PACKAGE           "timew"
-#define VERSION           "1.0.0"
+#define VERSION           "1.1.0"
 #define PACKAGE_BUGREPORT "support@taskwarrior.org"
 #define PACKAGE_NAME      "timew"
 #define PACKAGE_TARNAME   "timew"
-#define PACKAGE_VERSION   "1.0.0"
-#define PACKAGE_STRING    "timew 1.0.0"
+#define PACKAGE_VERSION   "1.1.0"
+#define PACKAGE_STRING    "timew 1.1.0"
 
 #define CMAKE_BUILD_TYPE  ""
 
@@ -19,7 +19,7 @@
 
 /* cmake information */
 #define HAVE_CMAKE
-#define CMAKE_VERSION "3.5.2"
+#define CMAKE_VERSION "3.9.6"
 
 /* Compiling platform */
 /* #undef LINUX */
@@ -28,9 +28,21 @@
 /* #undef FREEBSD */
 /* #undef OPENBSD */
 /* #undef NETBSD */
+/* #undef DRAGONFLY */
 /* #undef HAIKU */
 /* #undef SOLARIS */
 /* #undef KFREEBSD */
 /* #undef GNUHURD */
 /* #undef UNKNOWN */
+
+/* Found tm.tm_gmtoff struct member */
+/* #undef HAVE_TM_GMTOFF */
+
+/* Found st.st_birthtime struct member */
+/* #undef HAVE_ST_BIRTHTIME */
+
+/* Functions */
+/* #undef HAVE_GET_CURRENT_DIR_NAME */
+/* #undef HAVE_TIMEGM */
+/* #undef HAVE_UUID_UNPARSE_LOWER */
 
