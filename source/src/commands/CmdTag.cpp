@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -35,19 +35,16 @@
 int CmdTag (
   const CLI& cli,
   Rules& rules,
-  Database& database)
+  Database& database,
+  Journal& journal)
 {
   // Gather IDs and TAGs.
-  std::vector <int> ids = cli.getIds();
+  std::set <int> ids = cli.getIds ();
+  std::vector<std::string> tags = cli.getTags ();
 
-  if (ids.empty ())
-    throw std::string ("IDs must be specified. See 'timew help tag'.");
-
-  std::vector <std::string> tags;
-  for (auto& arg : cli._args)
+  if (tags.empty ())
   {
-    if (arg.hasTag ("TAG"))
-      tags.push_back (arg.attribute ("raw"));
+    throw std::string ("At least one tag must be specified. See 'timew help tag'.");
   }
 
   // Load the data.
@@ -57,6 +54,8 @@ int CmdTag (
 
   bool dirty = true;
 
+  journal.startTransaction ();
+
   for (auto& id : ids)
   {
     if (id > static_cast <int> (tracked.size ()))
@@ -65,17 +64,32 @@ int CmdTag (
     if (tracked[tracked.size() - id].synthetic && dirty)
     {
       auto latest = getLatestInterval(database);
-      auto exclusions = getAllExclusions (rules, filter.range);
+      auto exclusions = getAllExclusions (rules, filter);
 
       Interval modified {latest};
 
       // Update database.
       database.deleteInterval (latest);
       for (auto& interval : flatten (modified, exclusions))
-        database.addInterval (interval);
+        database.addInterval (interval, rules.getBoolean ("verbose"));
 
       dirty = false;
     }
+  }
+
+  if (ids.empty ())
+  {
+    if (tracked.empty ())
+    {
+      throw std::string ("There is no active time tracking.");
+    }
+
+    if (!tracked.back ().is_open ())
+    {
+      throw std::string ("At least one ID must be specified. See 'timew help tag'.");
+    }
+
+    ids.insert (1);
   }
 
   // Apply tags to ids.
@@ -90,14 +104,15 @@ int CmdTag (
       i.tag (tag);
 
     //TODO validate (cli, rules, database, i);
-    database.modifyInterval (tracked[tracked.size () - id], i);
+    database.modifyInterval (tracked[tracked.size () - id], i, rules.getBoolean ("verbose"));
 
-    // Feedback.
     if (rules.getBoolean ("verbose"))
     {
       std::cout << "Added " << joinQuotedIfNeeded (" ", tags) << " to @" << id << '\n';
     }
   }
+
+  journal.endTransaction ();
 
   return 0;
 }

@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -39,12 +39,12 @@ int CmdGaps (
 {
   // If filter is empty, choose 'today'.
   auto filter = getFilter (cli);
-  if (! filter.range.is_started ())
+  if (! filter.is_started ())
   {
     if (rules.has ("reports.gaps.range"))
-      expandIntervalHint (rules.get ("reports.gaps.range"), filter.range);
+      expandIntervalHint (rules.get ("reports.gaps.range"), filter);
     else
-      filter.range = Range (Datetime ("today"), Datetime ("tomorrow"));
+      filter.setRange (Datetime ("today"), Datetime ("tomorrow"));
   }
 
   // Is the :blank hint being used?
@@ -52,7 +52,7 @@ int CmdGaps (
 
   std::vector <Range> untracked;
   if (blank)
-    untracked = subtractRanges ({filter.range}, getAllExclusions (rules, filter.range));
+    untracked = subtractRanges ({filter}, getAllExclusions (rules, filter));
   else
     untracked = getUntracked (database, rules, filter);
 
@@ -70,7 +70,7 @@ int CmdGaps (
   // Each day is rendered separately.
   time_t grand_total = 0;
   Datetime previous;
-  for (Datetime day = filter.range.start; day < filter.range.end; day++)
+  for (Datetime day = filter.start; day < filter.end; day++)
   {
     auto day_range = getFullDay (day);
     time_t daily_total = 0;

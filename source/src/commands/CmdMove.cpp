@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -36,10 +36,11 @@
 int CmdMove (
   const CLI& cli,
   Rules& rules,
-  Database& database)
+  Database& database,
+  Journal& journal)
 {
   // Gather ID and TAGs.
-  std::vector<int> ids = cli.getIds();
+  std::set <int> ids = cli.getIds ();
 
   if (ids.size() > 1)
   {
@@ -51,7 +52,9 @@ int CmdMove (
     throw std::string ("ID must be specified. See 'timew help move'.");
   }
 
-  int id = ids[0];
+  journal.startTransaction ();
+
+  int id = *ids.begin ();
 
   std::string new_start;
   for (auto& arg : cli._args)
@@ -71,14 +74,14 @@ int CmdMove (
   if (tracked[tracked.size() - id].synthetic)
   {
     auto latest = getLatestInterval(database);
-    auto exclusions = getAllExclusions (rules, filter.range);
+    auto exclusions = getAllExclusions (rules, filter);
 
     Interval modified {latest};
 
     // Update database.
     database.deleteInterval (latest);
     for (auto& interval : flatten (modified, exclusions))
-      database.addInterval (interval);
+      database.addInterval (interval, rules.getBoolean ("verbose"));
   }
 
   // Move start time.
@@ -87,28 +90,30 @@ int CmdMove (
 
   // Changing the start date should also change the end date by the same
   // amount.
-  if (i.range.start < start)
+  if (i.start < start)
   {
-    auto delta = start - i.range.start;
-    i.range.start = start;
-    if (! i.range.is_open ())
-      i.range.end += delta;
+    auto delta = start - i.start;
+    i.start = start;
+    if (! i.is_open ())
+      i.end += delta;
   }
   else
   {
-    auto delta = i.range.start - start;
-    i.range.start = start;
-    if (! i.range.is_open ())
-      i.range.end -= delta;
+    auto delta = i.start - start;
+    i.start = start;
+    if (! i.is_open ())
+      i.end -= delta;
   }
 
   database.deleteInterval (tracked[tracked.size () - id]);
 
   validate (cli, rules, database, i);
-  database.addInterval (i);
+  database.addInterval (i, rules.getBoolean ("verbose"));
+
+  journal.endTransaction ();
 
   if (rules.getBoolean ("verbose"))
-    std::cout << "Moved @" << id << " to " << i.range.start.toISOLocalExtended () << '\n';
+    std::cout << "Moved @" << id << " to " << i.start.toISOLocalExtended () << '\n';
 
   return 0;
 }

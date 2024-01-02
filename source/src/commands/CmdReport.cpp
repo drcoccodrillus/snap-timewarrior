@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -47,7 +47,7 @@ static std::string findExtension (
   std::vector <std::string> matches;
   autoComplete (partial, options, matches);
 
-  if (matches.size () == 0)
+  if (matches.empty ())
     throw format ("The report '{1}' is not recognized.", partial);
 
   if (matches.size () > 1)
@@ -75,15 +75,15 @@ int CmdReport (
     if (arg.hasTag ("EXT"))
       script = findExtension (extensions, arg.attribute ("canonical"));
 
-  if (script == "")
+  if (script.empty ())
     throw std::string ("Specify which report to run.");
 
   // Compose Header info.
   auto filter = getFilter (cli);
   auto tracked = getTracked (database, rules, filter);
 
-  rules.set ("temp.report.start", filter.range.start.toEpoch () > 0 ? filter.range.start.toISO () : "");
-  rules.set ("temp.report.end",   filter.range.end.toEpoch ()   > 0 ? filter.range.end.toISO ()   : "");
+  rules.set ("temp.report.start", filter.start.toEpoch () > 0 ? filter.start.toISO () : "");
+  rules.set ("temp.report.end",   filter.end.toEpoch ()   > 0 ? filter.end.toISO ()   : "");
   rules.set ("temp.report.tags", joinQuotedIfNeeded (",", filter.tags ()));
   rules.set ("temp.version", VERSION);
 

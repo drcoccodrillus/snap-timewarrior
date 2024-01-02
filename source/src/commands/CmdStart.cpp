@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -32,14 +32,22 @@
 int CmdStart (
   const CLI& cli,
   Rules& rules,
-  Database& database)
+  Database& database,
+  Journal& journal)
 {
-  // Add a new open interval, which may have a defined start time.
   auto filter = getFilter (cli);
+
+  auto now = Datetime ();
+
+  if (filter.start > now)
+    throw std::string ("Time tracking cannot be set in the future.");
+
   auto latest = getLatestInterval (database);
 
+  journal.startTransaction ();
+
   // If the latest interval is open, close it.
-  if (latest.range.is_open ())
+  if (latest.is_open ())
   {
     // If the new interval tags match those of the currently open interval, then
     // do nothing - the tags are already being tracked.
@@ -53,18 +61,27 @@ int CmdStart (
 
     // Stop it, at the given start time, if applicable.
     Interval modified {latest};
-    if (filter.range.start.toEpoch () != 0)
-      modified.range.end = filter.range.start;
+    if (filter.start.toEpoch () != 0)
+    {
+      if (modified.start >= filter.start)
+      {
+        throw std::string ("The end of a date range must be after the start.");
+      }
+
+      modified.end = filter.start;
+    }
     else
-      modified.range.end = Datetime ();
+    {
+      modified.end = Datetime ();
+    }
 
     // Update database.
     database.deleteInterval (latest);
     validate (cli, rules, database, modified);
 
-    for (auto& interval : flatten (modified, getAllExclusions (rules, modified.range)))
+    for (auto& interval : flatten (modified, getAllExclusions (rules, modified)))
     {
-      database.addInterval (interval);
+      database.addInterval (interval, rules.getBoolean ("verbose"));
 
       if (rules.getBoolean ("verbose"))
         std::cout << intervalSummarize (database, rules, interval);
@@ -72,21 +89,23 @@ int CmdStart (
   }
 
   // Now add the new open interval.
-  Interval now;
-  if (filter.range.start.toEpoch () != 0)
-    now.range.start = filter.range.start;
+  Interval started;
+  if (filter.start.toEpoch () != 0)
+    started.start = filter.start;
   else
-    now.range.start = Datetime ();
+    started.start = Datetime ();
 
   for (auto& tag : filter.tags ())
-    now.tag (tag);
+    started.tag (tag);
 
   // Update database. An open interval does not need to be flattened.
-  validate (cli, rules, database, now);
-  database.addInterval (now);
+  validate (cli, rules, database, started);
+  database.addInterval (started, rules.getBoolean ("verbose"));
 
   if (rules.getBoolean ("verbose"))
-    std::cout << intervalSummarize (database, rules, now);
+    std::cout << intervalSummarize (database, rules, started);
+
+  journal.endTransaction ();
 
   return 0;
 }

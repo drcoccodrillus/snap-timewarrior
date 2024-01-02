@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
+// Copyright 2015 - 2019, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,7 @@
 #include <cmake.h>
 #include <PEG.h>
 #include <Lexer.h>
+#include <utf8.h>
 #include <shared.h>
 #include <format.h>
 #include <iostream>
@@ -85,22 +86,7 @@ void PEG::loadFromString (const std::string& input)
   std::string rule_name = "";
   for (auto& line : loadImports (split (input, '\n')))
   {
-    line = trim (line);
-
-    // Eliminate inline comments.
-    auto hash = line.find ('#');
-    if (hash != std::string::npos)
-    {
-      line.resize (hash);
-      line = trim (line);
-
-      if (line == "")
-        continue;
-    }
-    else
-    {
-      line = trim (line);
-    }
+    line = trim (removeComment (line));
 
     // Skip blank lines with no semantics.
     if (line == "" and rule_name == "")
@@ -301,14 +287,7 @@ std::vector <std::string> PEG::loadImports (const std::vector <std::string>& lin
 
   for (auto& line : lines)
   {
-    auto copy = trim (line);
-
-    auto hash = copy.find ('#');
-    if (hash != std::string::npos)
-    {
-      copy.resize (hash);
-      copy = trim (copy);
-    }
+    auto copy = trim (removeComment (line));
 
     if (copy.find ("import ") == 0)
     {
@@ -339,6 +318,50 @@ std::vector <std::string> PEG::loadImports (const std::vector <std::string>& lin
   }
 
   return resolved;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Remove a comment from the line, which is means truncate after the first '#'
+// character that is not quoted.
+std::string PEG::removeComment (const std::string& line)
+{
+  // Scan line, keeping track of whether quotes are active.  Truncate at first
+  // unquoted #.
+  bool insideQuote = false;
+  int quote = 0;
+
+  std::string::size_type i = 0;
+  int previous = 0;
+  int character = 0;
+
+  while ((character = utf8_next_char (line, i)))
+  {
+    if (insideQuote)
+    {
+       if (character == quote)
+       {
+         quote = 0;
+         insideQuote = false;
+       }
+    }
+    else if (character == '\'' && previous != '\\')
+    {
+      quote = '\'';
+      insideQuote = true;
+    }
+    else if (character == '"' && previous != '\\')
+    {
+      quote = '"';
+      insideQuote = true;
+    }
+
+    if (character == '#' && previous != '\\'  && ! insideQuote)
+      return line.substr (0, i - 1);
+
+    previous = character;
+  }
+
+  return line;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

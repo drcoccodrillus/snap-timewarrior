@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -30,63 +30,16 @@
 #include <format.h>
 #include <Lexer.h>
 #include <sstream>
+#include <JSON.h>
+#include "Interval.h"
 
-////////////////////////////////////////////////////////////////////////////////
-// Syntax:
-//   'inc' [ <iso> [ '-' <iso> ]] [ '#' <tag> [ <tag> ... ]]
-void Interval::initialize (const std::string& line)
-{
-  Lexer lexer (line);
-  std::vector <std::string> tokens;
-  std::string token;
-  Lexer::Type type;
-  while (lexer.token (token, type))
-    tokens.push_back (Lexer::dequote (token));
-
-  // Minimal requirement 'inc'.
-  if (tokens.size () &&
-      tokens[0] == "inc")
-  {
-    unsigned int offset = 0;
-
-    // Optional <iso>
-    if (tokens.size () > 1 &&
-        tokens[1].length () == 16)
-    {
-      range.start = Datetime (tokens[1]);
-      offset = 1;
-
-      // Optional '-' <iso>
-      if (tokens.size () > 3 &&
-          tokens[2] == "-"   &&
-          tokens[3].length () == 16)
-      {
-        range.end = Datetime (tokens[3]);
-        offset = 3;
-      }
-    }
-
-    // Optional '#' <tag>
-    if (tokens.size () > 2 + offset &&
-        tokens[1 + offset] == "#")
-    {
-      // Optional <tag> ...
-      for (unsigned int i = 2 + offset; i < tokens.size (); ++i)
-        _tags.insert (tokens[i]);
-    }
-
-    return;
-  }
-
-  throw format ("Unrecognizable line '{1}'.", line);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 bool Interval::empty () const
 {
-  return range.start.toEpoch () == 0 &&
-         range.end.toEpoch ()   == 0 &&
-         _tags.size ()          == 0;
+  return start.toEpoch () == 0 &&
+         end.toEpoch ()   == 0 &&
+    _tags.empty ();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -120,17 +73,23 @@ std::string Interval::serialize () const
   std::stringstream out;
   out << "inc";
 
-  if (range.start.toEpoch ())
-    out << " " << range.start.toISO ();
+  if (start.toEpoch ())
+    out << " " << start.toISO ();
 
-  if (range.end.toEpoch ())
-    out << " - " << range.end.toISO ();
+  if (end.toEpoch ())
+    out << " - " << end.toISO ();
 
-  if (_tags.size ())
+  if (! _tags.empty ())
   {
     out << " #";
     for (auto& tag : _tags)
       out << ' ' << quoteIfNeeded (tag);
+  }
+
+  if (! annotation.empty ())
+  {
+    out << (_tags.empty () ? " #" : "")
+        << " # \"" << escape (annotation, '"') << "\"";
   }
 
   return out.str ();
@@ -142,17 +101,17 @@ std::string Interval::json () const
   std::stringstream out;
   out << '{';
 
-  if (range.is_started ())
-    out << "\"start\":\"" << range.start.toISO () << "\"";
+  if (is_started ())
+    out << "\"start\":\"" << start.toISO () << "\"";
 
-  if (range.is_ended ())
+  if (is_ended ())
   {
-    if (range.is_started ())
+    if (is_started ())
       out << ',';
-    out << "\"end\":\"" << range.end.toISO () << "\"";
+    out << "\"end\":\"" << end.toISO () << "\"";
   }
 
-  if (_tags.size ())
+  if (! _tags.empty ())
   {
     std::string tags;
     for (auto& tag : _tags)
@@ -160,16 +119,26 @@ std::string Interval::json () const
       if (tags[0])
         tags += ',';
 
-      tags += "\"" + tag + "\"";
+      tags += "\"" + escape (tag, '"') + "\"";
     }
 
-    if (range.start.toEpoch () ||
-        range.end.toEpoch ())
+    if (start.toEpoch () ||
+        end.toEpoch ())
       out << ',';
 
     out << "\"tags\":["
         << tags
         << ']';
+  }
+
+  if (!annotation.empty ())
+  {
+    if (start.toEpoch () || end.toEpoch () || !_tags.empty ())
+    {
+      out << ',';
+    }
+
+    out << "\"annotation\":\"" << escape (annotation, '"') << "\"";
   }
 
   out << "}";
@@ -186,13 +155,13 @@ std::string Interval::dump () const
   if (id)
     out << " @" << id;
 
-  if (range.start.toEpoch ())
-    out << " " << range.start.toISOLocalExtended ();
+  if (start.toEpoch ())
+    out << " " << start.toISOLocalExtended ();
 
-  if (range.end.toEpoch ())
-    out << " - " << range.end.toISOLocalExtended ();
+  if (end.toEpoch ())
+    out << " - " << end.toISOLocalExtended ();
 
-  if (_tags.size ())
+  if (! _tags.empty ())
   {
     out << " #";
     for (auto& tag : _tags)
@@ -203,6 +172,29 @@ std::string Interval::dump () const
     out << " synthetic";
 
   return out.str ();
+}
+
+void Interval::setRange (const Range& range)
+{
+  setRange (range.start, range.end);
+}
+
+void Interval::setRange (const Datetime& start, const Datetime& end)
+{
+  this->start = start;
+  this->end = end;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void Interval::setAnnotation (const std::string& annotation)
+{
+  this->annotation = annotation;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+std::string Interval::getAnnotation ()
+{
+  return annotation;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -63,20 +63,20 @@ void validate (const CLI& cli, const Rules& rules, Database&, Interval&);
 // init.cpp
 bool lightweightVersionCheck (int, const char**);
 void initializeEntities (CLI&);
-void initializeDataAndRules (const CLI&, Database&, Rules&);
+void initializeDataJournalAndRules (const CLI&, Database&, Journal&, Rules&);
 void initializeExtensions (CLI&, const Rules&, Extensions&);
-int dispatchCommand (const CLI&, Database&, Rules&, const Extensions&);
+int dispatchCommand (const CLI&, Database&, Journal&, Rules&, const Extensions&);
 
 // helper.cpp
-Color intervalColor (const Interval&, const Rules&, std::map <std::string, Color>&);
+Color intervalColor (const std::set <std::string>&, const std::map <std::string, Color>&);
 Color tagColor (const Rules&, const std::string&);
 std::string intervalSummarize (Database&, const Rules&, const Interval&);
 bool expandIntervalHint (const std::string&, Range&);
 std::string jsonFromIntervals (const std::vector <Interval>&);
 Palette createPalette (const Rules&);
 std::map <std::string, Color> createTagColorMap (const Rules&, Palette&, const std::vector <Interval>&);
-int quantizeToNMinutes (const int, const int);
-bool dayIsHoliday (const Rules&, const Datetime&);
+int quantizeToNMinutes (int, int);
+
 bool findHint (const CLI&, const std::string&);
 std::string minimalDelta (const Datetime&, const Datetime&);
 std::vector <Interval> getOverlaps (Database&, const Rules&, const Interval&);

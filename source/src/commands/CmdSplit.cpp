@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -36,9 +36,10 @@
 int CmdSplit (
   const CLI& cli,
   Rules& rules,
-  Database& database)
+  Database& database,
+  Journal& journal)
 {
-  std::vector <int> ids = cli.getIds();
+  std::set <int> ids = cli.getIds ();
 
   if (ids.empty ())
     throw std::string ("IDs must be specified. See 'timew help split'.");
@@ -47,6 +48,8 @@ int CmdSplit (
   // Note: There is no filter.
   Interval filter;
   auto tracked = getTracked (database, rules, filter);
+
+  journal.startTransaction ();
 
   // Apply tags to ids.
   for (auto& id : ids)
@@ -57,32 +60,34 @@ int CmdSplit (
     Interval first = tracked[tracked.size () - id];
     Interval second = first;
 
-    if (first.range.is_open ())
+    if (first.is_open ())
     {
       Datetime midpoint;
-      midpoint -= (midpoint - first.range.start) / 2;
-      first.range.end = midpoint;
-      second.range.start = midpoint;
+      midpoint -= (midpoint - first.start) / 2;
+      first.end = midpoint;
+      second.start = midpoint;
     }
     else
     {
-      Datetime midpoint = first.range.start;
-      midpoint += (first.range.end - first.range.start) / 2;
-      first.range.end = midpoint;
-      second.range.start = midpoint;
+      Datetime midpoint = first.start;
+      midpoint += (first.end - first.start) / 2;
+      first.end = midpoint;
+      second.start = midpoint;
     }
 
     database.deleteInterval (tracked[tracked.size () - id]);
 
     validate (cli, rules, database, first);
-    database.addInterval (first);
+    database.addInterval (first, rules.getBoolean ("verbose"));
 
     validate (cli, rules, database, second);
-    database.addInterval (second);
+    database.addInterval (second, rules.getBoolean ("verbose"));
 
     if (rules.getBoolean ("verbose"))
       std::cout << "Split @" << id << '\n';
   }
+
+  journal.endTransaction ();
 
   return 0;
 }

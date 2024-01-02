@@ -1,11 +1,20 @@
 master/HEAD
 
+- Fixed bug where the isIPv4Address() port value could be left uninitialized.
+- Removed CMake CMP0037.
 - TI-91 Timewarrior does not compile on DragonFly
           (thanks to Michael Neumann)
+- TI #112 Add timeRelative flag to initialization of day names
+          (thanks to Thomas Lauf)
 - TW-1936 Tweak tests to have fuller TAP compliance
           (thanks to Paul J. Fenwick)
 - Datetime::timeRelative now controls whether "0:00:01" means today or is
   projected to tomorrow if before the current time.
+- LI #5 Several Path:: methods fail on a broken symlink
+- LI #7 Path::expand() doesn't correctly expand some paths
+          (thanks to Laurence)
+- Corrected initialization order of struct flock for DARWIN. This may address
+  file locking prboelms on MacOS.
 
 tasksh-1.2.0 (2017-05-10)
 

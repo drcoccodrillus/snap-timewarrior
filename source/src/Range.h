@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -34,6 +34,7 @@ class Range
 {
 public:
   Range () = default;
+  virtual ~Range() = default;
   Range (const Datetime&, const Datetime&);
   bool operator== (const Range&) const;
   bool operator!= (const Range&) const;
@@ -49,18 +50,22 @@ public:
 
   bool contains (const Datetime&) const;
 
-  bool overlap (const Range&) const;
+  bool overlaps (const Range &) const;
   bool encloses (const Range&) const;
+  bool startsWithin (const Range &) const;
+  bool endsWithin (const Range &) const;
   Range intersect (const Range&) const;
+  bool intersects (const Range&) const;
   Range combine (const Range&) const;
   std::vector <Range> subtract (const Range&) const;
   time_t total () const;
 
-  std::string dump () const;
+  virtual std::string dump () const;
 
 public:
   Datetime start {0};
   Datetime end   {0};
+
 };
 
 #endif

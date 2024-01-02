@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -33,10 +33,11 @@
 int CmdContinue (
   const CLI& cli,
   Rules& rules,
-  Database& database)
+  Database& database,
+  Journal& journal)
 {
   // Gather IDs and TAGs.
-  std::vector <int> ids = cli.getIds();
+  std::set <int> ids = cli.getIds();
 
   if (ids.size() > 1)
     throw std::string ("You can only specify one ID to continue.");
@@ -51,17 +52,19 @@ int CmdContinue (
     Interval filter;
     auto tracked = getTracked (database, rules, filter);
 
-    if (ids[0] > static_cast <int> (tracked.size ()))
-      throw format ("ID '@{1}' does not correspond to any tracking.", ids[0]);
+    auto id = *ids.begin ();
 
-    to_copy = tracked[tracked.size () - ids[0]];
+    if (id > static_cast <int> (tracked.size ()))
+      throw format ("ID '@{1}' does not correspond to any tracking.", id);
+
+    to_copy = tracked[tracked.size () - id];
   }
   else
   {
     if (latest.empty ())
       throw std::string ("There is no previous tracking to continue.");
 
-    if (latest.range.is_open ())
+    if (latest.is_open ())
       throw std::string ("There is already active tracking.");
 
     to_copy = latest;
@@ -71,10 +74,12 @@ int CmdContinue (
   Datetime start_time;
   Datetime end_time;
 
-  if (filter.range.start.toEpoch () != 0)
+  journal.startTransaction ();
+
+  if (filter.start.toEpoch () != 0)
   {
-    start_time = filter.range.start;
-    end_time = filter.range.end;
+    start_time = filter.start;
+    end_time = filter.end;
   }
   else
   {
@@ -82,19 +87,19 @@ int CmdContinue (
     end_time = 0;
   }
 
-  if (latest.range.is_open ())
+  if (latest.is_open ())
   {
-    auto exclusions = getAllExclusions (rules, filter.range);
+    auto exclusions = getAllExclusions (rules, filter);
 
     // Stop it, at the given start time, if applicable.
     Interval modified {latest};
-    modified.range.end = start_time;
+    modified.end = start_time;
 
     // Update database.
     database.deleteInterval (latest);
     for (auto& interval : flatten (modified, exclusions))
     {
-      database.addInterval (interval);
+      database.addInterval (interval, rules.getBoolean ("verbose"));
 
       if (rules.getBoolean ("verbose"))
         std::cout << '\n' << intervalSummarize (database, rules, interval);
@@ -102,11 +107,13 @@ int CmdContinue (
   }
 
   // Create an identical interval and update the DB.
-  to_copy.range.start = start_time;
-  to_copy.range.end = end_time;
+  to_copy.start = start_time;
+  to_copy.end = end_time;
 
   validate (cli, rules, database, to_copy);
-  database.addInterval (to_copy);
+  database.addInterval (to_copy, rules.getBoolean ("verbose"));
+
+  journal.endTransaction ();
 
   if (rules.getBoolean ("verbose"))
     std::cout << intervalSummarize (database, rules, to_copy);

@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2016, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -43,40 +43,40 @@ void autoFill (
   Database& database,
   Interval& interval)
 {
-  // An empty filter allows scanning beyond interval.range.
+  // An empty filter allows scanning beyond interval range.
   Interval range_filter;
 
-  // Look backwards from interval.range.start to a boundary.
+  // Look backwards from interval.start to a boundary.
   auto tracked = getTracked (database, rules, range_filter);
   for (auto earlier = tracked.rbegin (); earlier != tracked.rend (); ++earlier)
   {
-    if (! earlier->range.is_open () &&
-        earlier->range.end <= interval.range.start)
+    if (! earlier->is_open () &&
+        earlier->end <= interval.start)
     {
-      interval.range.start = earlier->range.end;
+      interval.start = earlier->end;
         if (rules.getBoolean ("verbose"))
         std::cout << "Backfilled "
                   << (interval.id ? format ("@{1} ", interval.id) : "")
                   << "to "
-                  << interval.range.start.toISOLocalExtended ()
+                  << interval.start.toISOLocalExtended ()
                   << "\n";
       break;
     }
   }
 
 // If the interval is closed, scan forwards for the next boundary.
-  if (! interval.range.is_open ())
+  if (! interval.is_open ())
   {
     for (auto& later : tracked)
     {
-      if (interval.range.end <= later.range.start)
+      if (interval.end <= later.start)
       {
-        interval.range.end = later.range.start;
+        interval.end = later.start;
         if (rules.getBoolean ("verbose"))
           std::cout << "Filled "
                     << (interval.id ? format ("@{1} ", interval.id) : "")
                     << "to "
-                    << interval.range.end.toISOLocalExtended ()
+                    << interval.end.toISOLocalExtended ()
                     << "\n";
         break;
       }
@@ -98,36 +98,40 @@ static void autoAdjust (
   Interval& interval)
 {
   auto overlaps = getOverlaps (database, rules, interval);
-  debug ("Input         " + interval.dump ());
-  debug ("Overlaps with");
-  for (auto& overlap : overlaps)
-    debug ("              " + overlap.dump ());
 
   if (! overlaps.empty ())
   {
+    debug ("Input         " + interval.dump ());
+    debug ("Overlaps with");
+
+    for (auto& overlap : overlaps)
+    {
+      debug ("              " + overlap.dump ());
+    }
+
     if (! adjust)
       throw std::string("You cannot overlap intervals. Correct the start/end "
-                          "time, or specify the :adjust hint.");
+                        "time, or specify the :adjust hint.");
 
     // implement overwrite resolution, i.e. the new interval overwrites existing intervals
     for (auto& overlap : overlaps)
     {
-      bool start_within_overlap = overlap.range.contains (interval.range.start);
-      bool end_within_overlap = interval.range.end != 0 && overlap.range.contains (interval.range.end);
+      bool start_within_overlap = interval.startsWithin (overlap);
+      bool end_within_overlap = interval.endsWithin (overlap);
 
       if (start_within_overlap && !end_within_overlap)
       {
         // start date of new interval within old interval
         Interval modified {overlap};
-        modified.range.end = interval.range.start;
-        database.modifyInterval (overlap, modified);
+        modified.end = interval.start;
+        database.modifyInterval (overlap, modified, rules.getBoolean ("verbose"));
       }
       else if (!start_within_overlap && end_within_overlap)
       {
         // end date of new interval within old interval
         Interval modified {overlap};
-        modified.range.start = interval.range.end;
-        database.modifyInterval (overlap, modified);
+        modified.start = interval.end;
+        database.modifyInterval (overlap, modified, rules.getBoolean ("verbose"));
       }
       else if (!start_within_overlap && !end_within_overlap)
       {
@@ -140,58 +144,25 @@ static void autoAdjust (
         Interval split2 {overlap};
         Interval split1 {overlap};
 
-        split1.range.end = interval.range.start;
-        split2.range.start = interval.range.end;
+        split1.end = interval.start;
+        split2.start = interval.end;
 
-        if (split1.range.is_empty ())
+        if (split1.is_empty ())
         {
           database.deleteInterval (overlap);
         }
         else
         {
-          database.modifyInterval (overlap, split1);
+          database.modifyInterval (overlap, split1, rules.getBoolean ("verbose"));
         }
 
-        if (! split2.range.is_empty ())
+        if (! split2.is_empty ())
         {
-          database.addInterval (split2);
+          database.addInterval (split2, rules.getBoolean ("verbose"));
         }
       }
     }
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Warn on new tag.
-static void warnOnNewTag (
-  const Rules&,
-  Database&,
-  const Interval&)
-{
-  // TODO This warning is not working properly, because when an interval is
-  //      modified, it is first deleted, then added. This causes this code to
-  //      determine that it is always a new tag.
-/*
-  if (rules.getBoolean ("verbose"))
-  {
-    std::set <std::string> tags;
-    for (auto& line : database.allLines ())
-    {
-      if (line[0] == 'i')
-      {
-        Interval interval;
-        interval.initialize (line);
-
-        for (auto& tag : interval.tags ())
-          tags.insert (tag);
-      }
-    }
-
-    for (auto& tag : interval.tags ())
-      if (tags.find (tag) == tags.end ())
-        std::cout << "Note: '" << tag << "' is a new tag.\n";
-  }
-*/
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -203,16 +174,14 @@ void validate (
 {
   // Create a filter, and if empty, choose 'today'.
   auto filter = getFilter (cli);
-  if (! filter.range.is_started ())
-    filter.range = Range (Datetime ("today"), Datetime ("tomorrow"));
+  if (! filter.is_started ())
+    filter.setRange (Datetime ("today"), Datetime ("tomorrow"));
 
   // All validation performed here.
   if (findHint (cli, ":fill"))
     autoFill (rules, database, interval);
 
   autoAdjust (findHint (cli, ":adjust"), rules, database, interval);
-
-  warnOnNewTag (rules, database, interval);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

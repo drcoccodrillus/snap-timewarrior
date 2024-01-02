@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
+// Copyright 2017 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -36,9 +36,10 @@
 int CmdResize (
   const CLI& cli,
   Rules& rules,
-  Database& database)
+  Database& database,
+  Journal& journal)
 {
-  std::vector <int> ids = cli.getIds();
+  std::set <int> ids = cli.getIds ();
 
   if (ids.empty ())
     throw std::string ("IDs must be specified. See 'timew help resize'.");
@@ -50,6 +51,8 @@ int CmdResize (
         arg._lextype == Lexer::Type::duration)
       delta = arg.attribute ("raw");
   }
+
+  journal.startTransaction ();
 
   // Load the data.
   // Note: There is no filter.
@@ -63,19 +66,21 @@ int CmdResize (
       throw format ("ID '@{1}' does not correspond to any tracking.", id);
 
     Interval i = tracked[tracked.size () - id];
-    if (i.range.is_open ())
+    if (i.is_open ())
       throw format ("Cannot resize open interval @{1}", id);
 
     Duration dur (delta);
     database.deleteInterval (tracked[tracked.size () - id]);
 
-    i.range.end = i.range.start + dur.toTime_t ();
+    i.end = i.start + dur.toTime_t ();
     validate (cli, rules, database, i);
-    database.addInterval (i);
+    database.addInterval (i, rules.getBoolean ("verbose"));
 
     if (rules.getBoolean ("verbose"))
       std::cout << "Resized @" << id << " to " << dur.formatHours () << '\n';
   }
+
+  journal.endTransaction ();
 
   return 0;
 }

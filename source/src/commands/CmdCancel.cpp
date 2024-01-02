@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright 2015 - 2018, Paul Beckingham, Federico Hernandez.
+// Copyright 2016 - 2019, Thomas Lauf, Paul Beckingham, Federico Hernandez.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 //
-// http://www.opensource.org/licenses/mit-license.php
+// https://www.opensource.org/licenses/mit-license.php
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -31,21 +31,26 @@
 ////////////////////////////////////////////////////////////////////////////////
 int CmdCancel (
   Rules& rules,
-  Database& database)
+  Database& database,
+  Journal& journal)
 {
   // If there is an open interval, cancel it by deleting it..
   auto latest = getLatestInterval (database);
-  if (latest.range.is_open ())
-  {
-    database.deleteInterval (latest);
-    if (rules.getBoolean ("verbose"))
-      std::cout << "Canceled active time tracking.\n";
-  }
-  else
+
+  if (!latest.is_open ())
   {
     if (rules.getBoolean ("verbose"))
       std::cout << "There is no active time tracking.\n";
+
+    return 0;
   }
+
+  journal.startTransaction ();
+  database.deleteInterval(latest);
+  journal.endTransaction ();
+
+  if (rules.getBoolean ("verbose"))
+    std::cout << "Canceled active time tracking.\n";
 
   return 0;
 }
