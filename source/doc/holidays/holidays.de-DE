@@ -1,26 +1,25 @@
 # Holiday data provided by holidata.net
-#   Generated 2023-10-10T17:01:16
+#   Generated 2023-12-29T21:34:58
 
 define holidays:
   de-DE:
-    2023_01_01 = Neujahr
-    2023_01_06 = Heilige drei Könige
-    2023_03_08 = Internationaler Frauentag
-    2023_04_07 = Karfreitag
-    2023_04_09 = Ostern
-    2023_04_10 = Ostermontag
-    2023_05_01 = Erster Maifeiertag
-    2023_05_18 = Christi Himmelfahrt
-    2023_05_28 = Pfingstsonntag
-    2023_05_29 = Pfingstmontag
-    2023_06_08 = Fronleichnam
-    2023_08_15 = Mariä Himmelfahrt
-    2023_10_03 = Tag der Deutschen Einheit
-    2023_10_31 = Reformationstag
-    2023_11_01 = Allerheiligen
-    2023_11_22 = Buß- und Bettag
-    2023_12_24 = Heilig Abend
-    2023_12_25 = Weihnachtstag
-    2023_12_26 = Zweiter Weihnachtstag
-    2023_12_31 = Silvester
-
+    2024_01_01 = Neujahr
+    2024_01_06 = Heilige drei Könige
+    2024_03_08 = Internationaler Frauentag
+    2024_03_29 = Karfreitag
+    2024_03_31 = Ostern
+    2024_04_01 = Ostermontag
+    2024_05_01 = Erster Maifeiertag
+    2024_05_09 = Christi Himmelfahrt
+    2024_05_19 = Pfingstsonntag
+    2024_05_20 = Pfingstmontag
+    2024_05_30 = Fronleichnam
+    2024_08_15 = Mariä Himmelfahrt
+    2024_10_03 = Tag der Deutschen Einheit
+    2024_10_31 = Reformationstag
+    2024_11_01 = Allerheiligen
+    2024_11_20 = Buß- und Bettag
+    2024_12_24 = Heilig Abend
+    2024_12_25 = Weihnachtstag
+    2024_12_26 = Zweiter Weihnachtstag
+    2024_12_31 = Silvester

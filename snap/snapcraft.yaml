@@ -1,14 +1,12 @@
 name: timewarrior
 base: core22
-version: '1.7.0'
+version: '1.7.1'
 summary: Tracks time from the command line.
 description: |
   Timewarrior is a time tracking utility that offers simple stopwatch features as well as sophisticated calendar-based backfill, along with flexible reporting. It is a portable, well-supported and very active Open Source project.
 
-#grade: devel           # This is for development only.
-#confinement: devmode   # This is for development only. Unconfined snap environment. For production, use strict.
-grade: stable           # This is for releasing in the stable channel.
-confinement: strict     # This is for production only.
+grade: stable
+confinement: strict
 
 architectures:
   - build-on: [amd64]
